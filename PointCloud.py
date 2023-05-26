@@ -26,7 +26,7 @@ class PointCloud():
                                 count += 1;
         self.pcd = pointCloudData[0:count,:]
         self.set_colour_map(data)
-        return pointCloudData
+        return self.pcd
     
     def view_point_cloud(self, *args, **kwargs):        
         if len(args)>0:

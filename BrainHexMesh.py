@@ -5,8 +5,8 @@ Created on Wed May 10 09:11:56 2023
 """
 
 import numpy as np
-import mne
-import pooch
+# import mne
+# import pooch
 import nibabel
 from BrainModel import BrainModel
 from Maze_Solver import Maze_Solver
@@ -14,19 +14,15 @@ from PointCloud import PointCloud
 from Mesh import Mesh
 
 # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
-
-data_path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/Freesurfer/" # Enter path to freesurfer subjects file 
-subject = 'Silvia_Brain/mri' # Enter subjectname
-t1_fname = subject + '/aseg.mgz'
-t1 = nibabel.load(data_path + t1_fname)
-t1.orthoview()
+t1_file = 'aseg.mgz'
+t1 = nibabel.load(t1_file)
+# t1.orthoview()
 data = np.asarray(t1.dataobj)
 
-# data_test = data[100:130,100:130,100:130]
+# data_test = data[80:130,80:130,80:130]
 # data = data_test
+data = np.ones((5,4,4))*2
 brainModel = BrainModel()
-# brainModel = BrainModel(data)
-data = np.ones((4,2,3))*2
 
 # Step 2: Determine segmentation of brain model via labels map
 brainModel.addLabelToMap('BrainStem', 16)
@@ -49,43 +45,40 @@ brainModel.addLabelToMap('Amygdala' , [18,54]); # Left, Right
 # brainModel.addLabelToMap('Right-choroid-plexus' , [63]);
 # brainModel.addLabelToMap('Optic-Chiasm' , [85]);
 
-# # Homogenize labels
-# data = brainModel.homogenize_labels(data);
+# Homogenize labels
+data = brainModel.homogenize_labels(data);
 
-# # Coarsen the brain model
+# Coarsen the brain model
 voxel_size = 2
 # data = brainModel.coarsen(voxel_size, data)
 
-# # Clean image removing isolated pixels and small holes
-# data = brainModel.clean_mesh_data(data);
+# Clean image removing isolated pixels and small holes
+brainModel.clean_mesh_data(data);
 
-# # Remove empty rows/columns and plains from 3D array
-# data = brainModel.trim_mesh(data)
+# Remove empty rows/columns and plains from 3D array
+brainModel.trim_mesh(data)
 
-# # Find and fill voids within model
-# solver = Maze_Solver(data);
-# data = solver.find_and_fill_voids();
+# Find and fill voids within model
+solver = Maze_Solver(data);
+data = solver.find_and_fill_voids();
 
 # # Create point cloud
 pointCloud = PointCloud();
 pc = pointCloud.create_point_cloud_of_data(data);
-pc = np.append([[1,2,0,3]], pc, axis=0)
-pc = np.append([[2,2,1,3]], pc, axis=0)
-pc = np.append([[0,3,1,3]], pc, axis=0)
-# # Data for visualization
-# pointCloud.view_slice(1, 50); # View slice of point cloud about chosen axis
+# # # Data for visualization
+# # pointCloud.view_slice(1, 50); # View slice of point cloud about chosen axis
 # pointCloud.view_point_cloud(); # View full 3D point cloud
 
 # Create mesh from point cloud
 mesh = Mesh(pc,voxel_size)
 
-# # Get boundary quads
-# mesh.locate_boundary_faces()
+# Get boundary quads
+mesh.locate_boundary_faces()
 
-# # Smooth mesh
-iteration = 2
-coeffs = [0.5,-0.2]
-mesh.smooth_mesh(coeffs, iteration)
+# Smooth mesh
+# iterations = 4
+# coeffs = [0.5,-0.2]
+# mesh.smooth_mesh(coeffs, iterations)
 
 # Write mesh to file
 mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher", "tester");

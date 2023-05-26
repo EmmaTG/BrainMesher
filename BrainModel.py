@@ -120,7 +120,6 @@ class BrainModel():
                         for z in range(current_dimensions[2]):
                             if (current_data[x,y,z] != 0):
                                 newData[x,y,z] = 1
-        newData[2,2,2] = 0
         return newData
     
     def clean_mesh_data(self, start_data):  

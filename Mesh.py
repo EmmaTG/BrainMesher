@@ -41,8 +41,8 @@ class Mesh():
             elementNo += 1
             [x,y,z,m] = p
             self.mat_sets[m].append(elementNo)
-            startNode = (z+1) + (elementX)*y + ((elementZ+1)*(elementY+1))*x
-            element_ica = [int(startNode+1), int(startNode), int(startNode+4) ,int(startNode+5)]
+            startNode = (z+1) + (elementX+1)*y + ((elementZ+1)*(elementY+1))*x
+            element_ica = [int(startNode+1), int(startNode), int(startNode+(elementZ+1)) ,int(startNode+(elementZ+1)+1)]
             element_ica_tmp = []
             for i in element_ica:   
                 newNode = int(i + (elementZ+1)*(elementY+1))
@@ -93,7 +93,7 @@ class Mesh():
         for key,node in newNodes.items():
             self.nodes[key] = node;
                 
-    def smooth_mesh(self, coeffs, iteration):
+    def smooth_mesh(self, coeffs, iterations):
         print("Starting mesh smoothing")
         if not hasattr(self, "boundary_element_map"):
             self.locate_boundary_faces();
@@ -101,7 +101,8 @@ class Mesh():
         for elementNo, element in self.elements.items():
             elementMap[elementNo] = element.ica
         surfaceNodeConnectivity = smooth.create_surface_connectivity(self.boundary_element_map)
-        smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementMap)
+        for iteration in range(iterations):
+            smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementMap)
         
     def create_node_to_element_connectivity(self):
         self.nodeToElements = {}

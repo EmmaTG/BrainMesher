@@ -162,7 +162,7 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
                       bounds = [-100000,100000,-100000,100000,-100000,100000], inBounds=True):
 
     from element_functions import value_in_square_bounds
-    print("Iteration: " + str(iteration))    
+    print("Iteration: " + str(iteration+1))    
     import numpy as np 
     from element_functions import create_node_to_elem_map
     
