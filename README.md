@@ -6,4 +6,5 @@ Steps:
 3. Use laplacian smothing on the surface
 
 FUTURE WORK: 
+- Addition of CSF
 - Use Lapacian smoothing on the interface boundarries of these regions
