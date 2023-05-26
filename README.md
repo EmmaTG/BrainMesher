@@ -8,3 +8,9 @@ Steps:
 FUTURE WORK: 
 - Addition of CSF
 - Use Lapacian smoothing on the interface boundarries of these regions
+
+Required packages:
+- Nibabel
+- Pyvists
+- Numpy
+- MRI (optional: only needed to view mri images)
