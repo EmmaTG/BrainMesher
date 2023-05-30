@@ -19,9 +19,12 @@ t1 = nibabel.load(t1_file)
 # t1.orthoview()
 data = np.asarray(t1.dataobj)
 
-data_test = data[:,:,:]
-data = data_test
-# data = np.ones((5,4,4))*2
+data_test = data
+# data = data_test
+# data = np.ones((6,6,6))
+# data[2,0,2] = 0
+# data[2,1,2] = 0
+# data[2,2,2] = 0
 brainModel = BrainModel()
 
 # Step 2: Determine segmentation of brain model via labels map
@@ -54,7 +57,7 @@ data = brainModel.coarsen(voxel_size, data)
 
 # Clean image removing isolated pixels and small holes
 brainModel.clean_mesh_data(data);
-
+brainModel.two_d_cleaning(data);
 # Remove empty rows/columns and plains from 3D array
 brainModel.trim_mesh(data)
 
@@ -72,12 +75,12 @@ pc = pointCloud.create_point_cloud_of_data(data);
 # Create mesh from point cloud
 mesh = Mesh(pc,voxel_size)
 
-# Get boundary quads
+Get boundary quads
 mesh.locate_boundary_faces()
 
-# Smooth mesh
+Smooth mesh
 iterations = 6
-coeffs = [0.5,-0.2]
+coeffs = [0.6,-0.2]
 mesh.smooth_mesh(coeffs, iterations)
 
 # Write mesh to file

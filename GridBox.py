@@ -57,7 +57,10 @@ class GridBox:
                 modeIndex = modeIndices[0]
                 replacedValue = modes[modeIndex]
             else:
-                print("***Error replacing value at location" + self.location)
+                print(modes)
+                print(count)
+                print(self.gridBox)
+                print("***Error replacing value at location: " + ", ".join([str(l) for l in self.location]))
                 return None
         return replacedValue
         

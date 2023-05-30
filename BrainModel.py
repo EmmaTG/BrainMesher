@@ -138,22 +138,69 @@ class BrainModel():
         # print(np.sum(cleaned))
         print("Filling in holes (2)")
         cleaned = ndimage.binary_fill_holes(cleaned, structure=structure).astype(int)
-        print(np.sum(cleaned))
+        print(np.sum(cleaned))        
+        print("Complete")        
         self.assign_materials_labels(start_data,cleaned)
-        
+        return
+    
+    def two_d_cleaning(self, start_data):
+        print("Filling in 2D holes")
+        cleaned = self.create_binary_image(start_data)
+        self.two_d_fill(cleaned)
+        self.assign_materials_labels(start_data,cleaned)
 
+    def two_d_fill(self, cleaned):
+        hit_structure = np.ones((3,3))
+        hit_structure[1,1] = 0
+        
+        for x in np.arange(0,(cleaned.shape[0])):
+            if (np.sum(cleaned[x,:,:]) > 0): 
+                old = cleaned[x,:,:]
+                sum_old = np.sum(old)
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[x,px,py] = 1
+                    
+        for y in np.arange(0,(cleaned.shape[1])):
+            if (np.sum(cleaned[:,y,:]) > 0): 
+                old = cleaned[:,y,:]
+                sum_old = np.sum(old)
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[px,y,py] = 1
+                    
+        for z in np.arange(0,(cleaned.shape[2])):
+            if (np.sum(cleaned[:,:,z]) > 0): 
+                old = cleaned[:,:,z]
+                sum_old = np.sum(old)
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[px,py,z] = 1
+        
+   
     def assign_materials_labels(self, labelled_data, end):
         assert labelled_data.shape == end.shape
         dimensions = labelled_data.shape;
+        problem_areas = []
         for x in range(dimensions[0]):
             for y in range(dimensions[1]):
                 for z in range(dimensions[2]):
                     if (labelled_data[x,y,z] == 0) and (end[x,y,z] != 0):
                         box = GridBox(labelled_data,[x,y,z])
-                        replacement_value = box.mode()
-                        labelled_data[x,y,z] = replacement_value
+                        replacement_value = box.mode() 
+                        labelled_data[x,y,z] = replacement_value                              
                     elif (labelled_data[x,y,z] != 0) and (end[x,y,z] == 0):
-                        labelled_data[x,y,z] = 0;
+                        labelled_data[x,y,z] = 0; 
+                
     
     def trim_mesh(self, data):
         current_dimensions = data.shape
@@ -168,8 +215,8 @@ class BrainModel():
             if np.sum(data[x,:,:]) != 0:
                 end = x
                 break
-        print("x trim")
-        print(start,end)
+        # print("x trim")
+        # print(start,end)
         data = data[start-1:end+1,:,:]
         
         start = 0
@@ -183,8 +230,8 @@ class BrainModel():
             if np.sum(data[:,y,:]) != 0:
                 end = y
                 break
-        print("y trim")
-        print(start,end)
+        # print("y trim")
+        # print(start,end)
         data = data[:,start-1:end+1,:]
         
         start = 0
@@ -198,8 +245,8 @@ class BrainModel():
             if np.sum(data[:,:,z]) != 0:
                 end = z
                 break
-        print("y trim")
-        print(start,end)
+        # print("y trim")
+        # print(start,end)
         data = data[:,:,start-1:end+1]
         
         return data
