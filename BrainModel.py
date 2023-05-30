@@ -168,6 +168,8 @@ class BrainModel():
             if np.sum(data[x,:,:]) != 0:
                 end = x
                 break
+        print("x trim")
+        print(start,end)
         data = data[start-1:end+1,:,:]
         
         start = 0
@@ -181,6 +183,8 @@ class BrainModel():
             if np.sum(data[:,y,:]) != 0:
                 end = y
                 break
+        print("y trim")
+        print(start,end)
         data = data[:,start-1:end+1,:]
         
         start = 0
@@ -194,6 +198,8 @@ class BrainModel():
             if np.sum(data[:,:,z]) != 0:
                 end = z
                 break
+        print("y trim")
+        print(start,end)
         data = data[:,:,start-1:end+1]
         
         return data

@@ -19,9 +19,9 @@ t1 = nibabel.load(t1_file)
 # t1.orthoview()
 data = np.asarray(t1.dataobj)
 
-# data_test = data[80:130,80:130,80:130]
-# data = data_test
-data = np.ones((5,4,4))*2
+data_test = data[:,:,:]
+data = data_test
+# data = np.ones((5,4,4))*2
 brainModel = BrainModel()
 
 # Step 2: Determine segmentation of brain model via labels map
@@ -50,7 +50,7 @@ data = brainModel.homogenize_labels(data);
 
 # Coarsen the brain model
 voxel_size = 2
-# data = brainModel.coarsen(voxel_size, data)
+data = brainModel.coarsen(voxel_size, data)
 
 # Clean image removing isolated pixels and small holes
 brainModel.clean_mesh_data(data);
@@ -76,9 +76,9 @@ mesh = Mesh(pc,voxel_size)
 mesh.locate_boundary_faces()
 
 # Smooth mesh
-# iterations = 4
-# coeffs = [0.5,-0.2]
-# mesh.smooth_mesh(coeffs, iterations)
+iterations = 6
+coeffs = [0.5,-0.2]
+mesh.smooth_mesh(coeffs, iterations)
 
 # Write mesh to file
 mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher", "tester");

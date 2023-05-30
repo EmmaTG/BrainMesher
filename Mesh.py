@@ -33,15 +33,15 @@ class Mesh():
         [maxX,maxY,maxZ] = pointData[:,:3].max(axis=0)
         
         elementX = maxX-minX+1
-        elementY = maxY-minY+1
-        elementZ = maxZ-minZ+1
+        elementY = maxY+1
+        elementZ = maxZ+1
         
         elementNo = 0;
         for p in pointData:
             elementNo += 1
             [x,y,z,m] = p
             self.mat_sets[m].append(elementNo)
-            startNode = (z+1) + (elementX+1)*y + ((elementZ+1)*(elementY+1))*x
+            startNode = (z+1) + (elementZ+1)*y + ((elementZ+1)*(elementY+1))*x
             element_ica = [int(startNode+1), int(startNode), int(startNode+(elementZ+1)) ,int(startNode+(elementZ+1)+1)]
             element_ica_tmp = []
             for i in element_ica:   
@@ -52,7 +52,7 @@ class Mesh():
                     self.nodes[i] = coords
                 if not self.nodes.__contains__(newNode):
                     coords = self.calculate_node_coords(elementX,elementY,elementZ,newNode,voxel_size)
-                    self.nodes[newNode] = coords                    
+                    self.nodes[newNode] = coords 
             element_ica += element_ica_tmp
             element = Element(elementNo, element_ica, mat=m)
             self.elements[int(elementNo)] = element
