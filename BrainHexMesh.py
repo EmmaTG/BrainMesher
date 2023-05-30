@@ -75,10 +75,10 @@ pc = pointCloud.create_point_cloud_of_data(data);
 # Create mesh from point cloud
 mesh = Mesh(pc,voxel_size)
 
-Get boundary quads
+# Get boundary quads
 mesh.locate_boundary_faces()
 
-Smooth mesh
+# Smooth mesh
 iterations = 6
 coeffs = [0.6,-0.2]
 mesh.smooth_mesh(coeffs, iterations)
