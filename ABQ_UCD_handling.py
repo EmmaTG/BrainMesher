@@ -332,7 +332,8 @@ def get_refined_mesh(base_model,length,y,z,local):
 
 def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
              elset_number_Mappings={},
-             boundaryElementMap = {}, boundaryElementToElsetMap = {}, boundary_elset_number_Mappings={'FIXED':'2', 'PRESCRIBED':'1'}):
+             boundaryElementMap = {}, boundaryElementToElsetMap = {}, 
+             boundary_elset_number_Mappings={'FIXED':'2', 'PRESCRIBED':'1'}, reNumber = True):
     """
     Function to write data to inp file for importing into deal.ii (and viewing on paraview)
 
@@ -349,15 +350,12 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
     elementToElsetMap : Map(int,string), optional
         Map of element numbers (keys) to element sets which they are a part of (values).
         The default is an empty map
-    boundaryElementMap : Map(int,array), optional
-        Map of 2D bounday element numbers (keys) to ica (values).
-        The default is an empty map
-    elementToElsetMap : Map(int,string), optional
-        Map of boundary element numbers (keys) to element sets which they are a part of (values).
-        The default is an empty map
     elset_number_Mappings : Map(string,int), optional
         Map of elset names (keys) and the material model numbers to assign for the UCD file (values) 
         The default is is an empty map
+    boundaryElementMap : Map(int,array), optional
+        Map of 2D bounday element numbers (keys) to ica (values).
+        The default is an empty map
     boundary_elset_number_Mappings : Map(string,int), optional
         Map of 2D elset names (keys) and the type of boundary to assign for the UCD file (values) 
         The default is {'FIXED':'2', 'PRESCRIBED':'1'}
@@ -384,12 +382,22 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
     f.write("\t".join([str(numNodes),str(numElements),'0','0','0']) + "\n")
     nodeKeys = nodeMap.keys()
     nodeKeys = sorted(nodeKeys)
+    count = 0
+    node_num_map_old_to_new = {}
     for n in nodeKeys:
-        f.write(str(n) + "\t" + "\t".join([str(node) for node in nodeMap[n]]) + "\n")
+        count += 1
+        if reNumber:
+            nodeNum = count
+        else:
+            nodeNum = n        
+        node_num_map_old_to_new[n] = nodeNum
+        f.write(str(nodeNum) + "\t" + "\t".join([str(node) for node in nodeMap[n]]) + "\n")
         
     elemKeys = elementMap.keys()
     elemKeys = sorted(elemKeys)
-    for e in elemKeys:
+    element_count = 0
+    for e in elemKeys:        
+        element_count += 1
         if not elementToElsetMap.__contains__(e):
             elsetnameList = []
         else:
@@ -413,8 +421,17 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
         else:
             material = 0;
         elements = elementMap[e]
-        elements = list(elements[:4]) + list(elements[4:])
-        writeElementUCD(f, e, material, 'hex', elements)
+        elements = list(elements[:4]) + list(elements[4:])        
+        if reNumber:
+            elementNum = element_count
+        else:
+            elementNum = e
+        renumber_ica = []    
+        
+        for ica_node in elements:
+            renumber_ica.append(node_num_map_old_to_new[ica_node])
+            
+        writeElementUCD(f, elementNum, material, 'hex', renumber_ica)
         
     print("Number of boundary Elements: " + str(len(boundaryElementMap)))
     for e in boundaryElementMap:
