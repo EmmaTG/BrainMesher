@@ -69,8 +69,10 @@ class Mesh():
         print("Cleaning brain boundary")
         for elem in self.elements_on_boundary:
             element = self.elements[elem]
-            if element.properties['mat'].count(white_matter_label):
-                mat_idx = element.properties['mat'].index(white_matter_label)
+            materials = element.properties['mat']
+            if materials.count(white_matter_label):
+                materials.remove(white_matter_label)
+                materials.insert(0,replace_label)
         
         
     def clean_mesh(self):
@@ -91,7 +93,7 @@ class Mesh():
                         numberSharedNodes += 1
                 assert numberSharedNodes>0
                 if numberSharedNodes == 1:
-                    print("Cleaning mesh at node {} between elements {} and {}".format(key,element1.num,element2.num))                    
+                    # print("Cleaning mesh at node {} between elements {} and {}".format(key,element1.num,element2.num))                    
                     maxNodeNum += 1
                     nodeCoords = list(self.nodes[key])
                     node_idx = element2.ica.index(key)

@@ -39,15 +39,15 @@ material_labels.addLabelToMap('Thalamus' , [10,49,28,60]); # Thalamus(L&R), Vent
 material_labels.addLabelToMap('Hippocampus' , [17,53]); # Left, Right
 material_labels.addLabelToMap('Amygdala' , [18,54]); # Left, Right
 
-# brainModel.addLabelToMap('Left-Lateral-Ventricle' , [4]);
-# brainModel.addLabelToMap('Right-Lateral-Ventricle' , [43]);
-# brainModel.addLabelToMap('Left-Inf-Lat-Vent' , [5]);
-# brainModel.addLabelToMap('Right-Inf-Lat-Vent ' , [44]);
-# brainModel.addLabelToMap('3rd-Ventricle' , [14]);
-# brainModel.addLabelToMap('4th-Ventricle' , [15]);
-# brainModel.addLabelToMap('Left-choroid-plexus' , [31]);
-# brainModel.addLabelToMap('Right-choroid-plexus' , [63]);
-# brainModel.addLabelToMap('Optic-Chiasm' , [85]);
+# material_labels.addLabelToMap('Left-Lateral-Ventricle' , [4]);
+# material_labels.addLabelToMap('Right-Lateral-Ventricle' , [43]);
+# material_labels.addLabelToMap('Left-Inf-Lat-Vent' , [5]);
+# material_labels.addLabelToMap('Right-Inf-Lat-Vent ' , [44]);
+# material_labels.addLabelToMap('3rd-Ventricle' , [14]);
+# material_labels.addLabelToMap('4th-Ventricle' , [15]);
+# material_labels.addLabelToMap('Left-choroid-plexus' , [31]);
+# material_labels.addLabelToMap('Right-choroid-plexus' , [63]);
+# material_labels.addLabelToMap('Optic-Chiasm' , [85]);
 
 # Homogenize labels
 data = material_labels.homogenize_material_labels(data);
@@ -79,9 +79,9 @@ pc = pointCloud.create_point_cloud_of_data(data);
 mesh = Mesh(pc,voxel_size)
 
 # Smooth mesh
-iterations = 6
-coeffs = [0.6,-0.2]
-mesh.smooth_mesh(coeffs, iterations)
+# iterations = 6
+# coeffs = [0.6,-0.2]
+# mesh.smooth_mesh(coeffs, iterations)
 
 # Write mesh to file
 
