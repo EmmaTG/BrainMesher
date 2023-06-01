@@ -6,14 +6,16 @@ Created on Thu May 25 15:39:38 2023
 """
 import ABQ_UCD_handling as rw
 import Smoothing as smooth
+from Material_Label import Material_Label
 
 class Element():
     
     def __init__(self, number, ica, **kwargs):        
         self.ica = ica
         self.num = number
+        self.properties = {}
         for key,value in kwargs.items():
-            self.key = value;
+            self.properties[key] = value;
     
     
 class Mesh():
@@ -21,9 +23,6 @@ class Mesh():
     def __init__(self, pointData,voxel_size):
         self.elements = {}
         self.nodes = {}
-        self.mat_sets = {}
-        for m in set(pointData[:,3]):
-            self.mat_sets[m] = []
         self.create_mesh(pointData,voxel_size)
         
     
@@ -40,7 +39,6 @@ class Mesh():
         for p in pointData:
             elementNo += 1
             [x,y,z,m] = p
-            self.mat_sets[m].append(elementNo)
             startNode = (z+1) + (elementZ+1)*y + ((elementZ+1)*(elementY+1))*x
             element_ica = [int(startNode+1), int(startNode), int(startNode+(elementZ+1)) ,int(startNode+(elementZ+1)+1)]
             element_ica_tmp = []
@@ -54,16 +52,25 @@ class Mesh():
                     coords = self.calculate_node_coords(elementX,elementY,elementZ,newNode,voxel_size)
                     self.nodes[newNode] = coords 
             element_ica += element_ica_tmp
-            element = Element(elementNo, element_ica, mat=m)
+            element = Element(elementNo, element_ica, mat=[m])
             self.elements[int(elementNo)] = element
         self.clean_mesh();
+        self.locate_boundary_faces()
+        self.remove_outer_white_matter(2, 3)
         
     def locate_boundary_faces(self):
         print("Identifying boundary faces")
         elementMap = {}
         for elementNo, element in self.elements.items():
             elementMap[elementNo] = element.ica
-        self.boundary_element_map, self.elements_on_boundary, self.volume_elem_to_boundary = smooth.get_boundary_surfaces(elementMap)  
+        self.boundary_element_map, self.elements_on_boundary, self.volume_elem_to_boundary = smooth.get_boundary_surfaces(elementMap)
+        
+    def remove_outer_white_matter(self, white_matter_label, replace_label):
+        print("Cleaning brain boundary")
+        for elem in self.elements_on_boundary:
+            element = self.elements[elem]
+            if element.properties['mat'].count(white_matter_label):
+                mat_idx = element.properties['mat'].index(white_matter_label)
         
         
     def clean_mesh(self):
@@ -122,20 +129,25 @@ class Mesh():
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def write_to_file(self, path, filename, filetype="abaqus", boundary=True):
+    def write_to_file(self, path, filename, labels_map, filetype="abaqus", boundary=True):
         print("Writing mesh data to file in "+ filetype + " format")
         if (path[-1] != "\\"):
             path += "\\" 
         elementMap = {}
+        material_mapping = labels_map.create_material_sets(self.elements,file_format=filetype)
         for elementNo, element in self.elements.items():
             elementMap[elementNo] = element.ica
         if (filetype.lower() == "ucd"):
             if boundary:
                 if not hasattr(self, "boundary_element_map"):
-                    self.locate_boundary_faces();                
-            rw.writeUCD(path, filename, self.nodes, elementMap, boundaryElementMap=self.boundary_element_map)
+                    self.locate_boundary_faces();  
+            
+            homogenized_labels_map = labels_map.get_homogenized_labels_map();
+            rw.writeUCD(path, filename, self.nodes, elementMap, 
+                        boundaryElementMap=self.boundary_element_map, 
+                        elementToElsetMap=material_mapping, elset_number_Mappings=homogenized_labels_map)
         else:
-            rw.writeABQ(path, filename, self.nodes, elementMap)
+            rw.writeABQ(path, filename, self.nodes, elementMap, elsetsMap=material_mapping)
             
 
     

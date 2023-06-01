@@ -9,6 +9,7 @@ import numpy as np
 # import pooch
 import nibabel
 from BrainModel import BrainModel
+from Material_Label import Material_Label
 from Maze_Solver import Maze_Solver
 from PointCloud import PointCloud
 from Mesh import Mesh
@@ -19,21 +20,24 @@ t1 = nibabel.load(t1_file)
 # t1.orthoview()
 data = np.asarray(t1.dataobj)
 
-data_test = data[:,:,:]
-data = data_test
-# data = np.ones((5,4,4))*2
-brainModel = BrainModel()
+# data_test = data[80:120, 80:120, 80:120]
+# data = data_test
+# data = np.ones((6,6,6))
+# data[2,0,2] = 0
+# data[2,1,2] = 0
+# data[2,2,2] = 0
 
 # Step 2: Determine segmentation of brain model via labels map
-brainModel.addLabelToMap('BrainStem', 16)
-brainModel.addLabelToMap('GreyMatter', [3,42]) # Left, Right
-brainModel.addLabelToMap('WhiteMatter' , [2,41,77]); # Left, Right, WM-hypointensities
-brainModel.addLabelToMap('Corpuscallosum' , [251,252,253,254,255]); # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
-brainModel.addLabelToMap('BasalGanglia' , [11,50,12,51,13,52,26,58,62,30]); # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
-brainModel.addLabelToMap('Cerebellum' , [7,46,8,47]); # WM(L&R), GM(L&R)
-brainModel.addLabelToMap('Thalamus' , [10,49,28,60]); # Thalamus(L&R), Ventral DC(L&R)
-brainModel.addLabelToMap('Hippocampus' , [17,53]); # Left, Right
-brainModel.addLabelToMap('Amygdala' , [18,54]); # Left, Right
+material_labels  = Material_Label()
+material_labels.addLabelToMap('BrainStem', 16)
+material_labels.addLabelToMap('GreyMatter', [3,42]) # Left, Right
+material_labels.addLabelToMap('WhiteMatter' , [2,41,77]); # Left, Right, WM-hypointensities
+material_labels.addLabelToMap('Corpuscallosum' , [251,252,253,254,255]); # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
+material_labels.addLabelToMap('BasalGanglia' , [11,50,12,51,13,52,26,58,62,30]); # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
+material_labels.addLabelToMap('Cerebellum' , [7,46,8,47]); # WM(L&R), GM(L&R)
+material_labels.addLabelToMap('Thalamus' , [10,49,28,60]); # Thalamus(L&R), Ventral DC(L&R)
+material_labels.addLabelToMap('Hippocampus' , [17,53]); # Left, Right
+material_labels.addLabelToMap('Amygdala' , [18,54]); # Left, Right
 
 # brainModel.addLabelToMap('Left-Lateral-Ventricle' , [4]);
 # brainModel.addLabelToMap('Right-Lateral-Ventricle' , [43]);
@@ -46,14 +50,16 @@ brainModel.addLabelToMap('Amygdala' , [18,54]); # Left, Right
 # brainModel.addLabelToMap('Optic-Chiasm' , [85]);
 
 # Homogenize labels
-data = brainModel.homogenize_labels(data);
+data = material_labels.homogenize_material_labels(data);
 
+brainModel = BrainModel()
 # Coarsen the brain model
 voxel_size = 2
 data = brainModel.coarsen(voxel_size, data)
 
 # Clean image removing isolated pixels and small holes
 brainModel.clean_mesh_data(data);
+brainModel.two_d_cleaning(data);
 
 # Remove empty rows/columns and plains from 3D array
 brainModel.trim_mesh(data)
@@ -72,16 +78,15 @@ pc = pointCloud.create_point_cloud_of_data(data);
 # Create mesh from point cloud
 mesh = Mesh(pc,voxel_size)
 
-# Get boundary quads
-mesh.locate_boundary_faces()
-
 # Smooth mesh
 iterations = 6
-coeffs = [0.5,-0.2]
+coeffs = [0.6,-0.2]
 mesh.smooth_mesh(coeffs, iterations)
 
 # Write mesh to file
-mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher", "tester");
+
+mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher",
+                   "tester", labels_map=material_labels, filetype="ucd");
 
 
 
