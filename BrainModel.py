@@ -41,7 +41,20 @@ class BrainModel():
                                 modeIndices, = np.where(count == max(count))
                                 modeIndex = modeIndices[0]
                                 replacedValue = modes[modeIndex]
-                                if (len(modes)>1) and (count[0]==count[1]):
+                                unique, counts = np.unique(gridBox, return_counts=True)
+                                num_values = dict(zip(unique, counts))
+                                if num_values.__contains__(251):
+                                    replacedValue = 251
+                                    
+                                elif (replacedValue == 0) and (len(modes)>1):                
+                                    zero_idx = np.where(modes == 0)
+                                    np.delete(modes,zero_idx)
+                                    np.delete(count, zero_idx)
+                                    modeIndices, = np.where(count == max(count))
+                                    modeIndex = modeIndices[0]
+                                    replacedValue = modes[modeIndex]
+                                    
+                                elif (len(modes)>1) and (count[0]==count[1]):
                                     xtopL = top_x+1 if top_x<current_dimensions[0] else current_dimensions[0]-1
                                     ytopL = top_y+1 if top_y<current_dimensions[1] else current_dimensions[1]-1
                                     ztopL = top_z+1 if top_z<current_dimensions[2] else current_dimensions[2]-1
@@ -49,7 +62,9 @@ class BrainModel():
                                     [modes,count] = stats.find_repeats(gridBox)
                                     modeIndices, = np.where(count == max(count)) 
                                     modeIndex = modeIndices[0]                                
-                                    replacedValue = modes[modeIndex] 
+                                    replacedValue = modes[modeIndex]
+                                    
+                                    
                                 newData[int(x/new),int(y/new),int(z/new)] = replacedValue
         return newData        
     

@@ -145,9 +145,16 @@ class Mesh():
                     self.locate_boundary_faces();  
             
             homogenized_labels_map = labels_map.get_homogenized_labels_map();
-            rw.writeUCD(path, filename, self.nodes, elementMap, 
-                        boundaryElementMap=self.boundary_element_map, 
+            rw.writeUCD(path, filename, self.nodes, elementMap, boundaryElementMap=self.boundary_element_map, 
                         elementToElsetMap=material_mapping, elset_number_Mappings=homogenized_labels_map)
+            
+        elif (filetype.lower() == "vtk"):
+            elementToMaterial = {}
+            for e_num,e in self.elements.items():
+                materials = e.properties['mat'] 
+                elementToMaterial[e_num] = int(materials[0])
+            rw.writeVTK(path, filename, self.nodes, elementMap, elementToMaterial=elementToMaterial)              
+              
         else:
             rw.writeABQ(path, filename, self.nodes, elementMap, elsetsMap=material_mapping)
             

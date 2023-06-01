@@ -22,7 +22,7 @@ data = np.asarray(t1.dataobj)
 
 # data_test = data[80:120, 80:120, 80:120]
 # data = data_test
-# data = np.ones((6,6,6))
+# data = np.ones((6,6,6))*2
 # data[2,0,2] = 0
 # data[2,1,2] = 0
 # data[2,2,2] = 0
@@ -38,6 +38,7 @@ material_labels.addLabelToMap('Cerebellum' , [7,46,8,47]); # WM(L&R), GM(L&R)
 material_labels.addLabelToMap('Thalamus' , [10,49,28,60]); # Thalamus(L&R), Ventral DC(L&R)
 material_labels.addLabelToMap('Hippocampus' , [17,53]); # Left, Right
 material_labels.addLabelToMap('Amygdala' , [18,54]); # Left, Right
+material_labels.addLabelToMap('Lesion' , [25,57]); # Left, Right
 
 # material_labels.addLabelToMap('Left-Lateral-Ventricle' , [4]);
 # material_labels.addLabelToMap('Right-Lateral-Ventricle' , [43]);
@@ -86,7 +87,7 @@ mesh = Mesh(pc,voxel_size)
 # Write mesh to file
 
 mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher",
-                   "tester", labels_map=material_labels, filetype="ucd");
+                   "tester_silvia", labels_map=material_labels, filetype="vtk");
 
 
 
