@@ -15,7 +15,7 @@ from PointCloud import PointCloud
 from Mesh import Mesh
 
 # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
-t1_file = 'aseg.mgz'
+t1_file = 'aseg_tumor.mgz'
 t1 = nibabel.load(t1_file)
 # t1.orthoview()
 data = np.asarray(t1.dataobj)
@@ -39,6 +39,7 @@ material_labels.addLabelToMap('Thalamus' , [10,49,28,60]); # Thalamus(L&R), Vent
 material_labels.addLabelToMap('Hippocampus' , [17,53]); # Left, Right
 material_labels.addLabelToMap('Amygdala' , [18,54]); # Left, Right
 material_labels.addLabelToMap('Lesion' , [25,57]); # Left, Right
+material_labels.addLabelToMap('CSF' , [24]); # Left, Right
 
 # material_labels.addLabelToMap('Left-Lateral-Ventricle' , [4]);
 # material_labels.addLabelToMap('Right-Lateral-Ventricle' , [43]);
@@ -69,25 +70,29 @@ brainModel.trim_mesh(data)
 solver = Maze_Solver(data);
 data = solver.find_and_fill_voids();
 
+# Create CSF layer around GM
+brainModel.add_CSF(data,layers=2);
+
+           
 # # Create point cloud
-pointCloud = PointCloud();
-pc = pointCloud.create_point_cloud_of_data(data);
-# # # Data for visualization
-# # pointCloud.view_slice(1, 50); # View slice of point cloud about chosen axis
+pointCloud_full = PointCloud();
+pc = pointCloud_full.create_point_cloud_of_data(data);
+# # Data for visualization
+# pointCloud.view_slice(0, 50); # View slice of point cloud about chosen axis
 # pointCloud.view_point_cloud(); # View full 3D point cloud
 
-# Create mesh from point cloud
-mesh = Mesh(pc,voxel_size)
+# # Create mesh from point cloud
+mesh = Mesh(pointCloud_full.pcd,voxel_size)
 
-# Smooth mesh
+# # Smooth mesh
 # iterations = 6
 # coeffs = [0.6,-0.2]
 # mesh.smooth_mesh(coeffs, iterations)
 
-# Write mesh to file
+# # Write mesh to file
 
 mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher",
-                   "tester_silvia", labels_map=material_labels, filetype="vtk");
+                    "tester_csf_tumor", labels_map=material_labels, filetype="vtk");
 
 
 

@@ -13,6 +13,21 @@ from Maze_Solver import Maze_Solver
 from Vertex import Vertex 
 from GridBox import GridBox
 
+def in_hull(p, hull):
+    """
+    Test if points in `p` are in `hull`
+
+    `p` should be a `NxK` coordinates of `N` points in `K` dimensions
+    `hull` is either a scipy.spatial.Delaunay object or the `MxK` array of the 
+    coordinates of `M` points in `K`dimensions for which Delaunay triangulation
+    will be computed
+    """
+    from scipy.spatial import Delaunay
+    if not isinstance(hull,Delaunay):
+        hull = Delaunay(hull)
+
+    return hull.find_simplex(p)>=0
+
 class BrainModel():
         
     def check_data_dims(self,data):        
@@ -86,20 +101,39 @@ class BrainModel():
         print(np.sum(cleaned))
         structure = ndimage.generate_binary_structure(3,3) 
         print("Filling in holes (1)")
-        cleaned = ndimage.binary_fill_holes(cleaned, structure=structure).astype(int)
+        cleaned = self.fill_in_holes(cleaned, structure)
         # print(np.sum(cleaned))
         print("Perfroming binary erosion")
-        cleaned = ndimage.binary_erosion(cleaned, structure=structure).astype(int)
+        cleaned = self.binary_erosion(cleaned, structure)
         # print(np.sum(cleaned))
         print("Perfroming binary dilation")
-        cleaned = ndimage.binary_dilation(cleaned, structure=structure).astype(int)
+        cleaned = self.binary_dilation(cleaned, structure)
         # print(np.sum(cleaned))
         print("Filling in holes (2)")
-        cleaned = ndimage.binary_fill_holes(cleaned, structure=structure).astype(int)
+        cleaned = self.fill_in_holes(cleaned, structure)
         print(np.sum(cleaned))        
         print("Complete")        
         self.assign_materials_labels(start_data,cleaned)
         return
+    
+    def fill_in_holes(self, data, structure = None):
+        if np.any(structure == None):
+            structure = self.create_structure()
+        return ndimage.binary_fill_holes(data, structure=structure).astype(int)
+    
+    def binary_dilation(self, data, structure=None):
+        if np.any(structure == None):
+            structure = self.create_structure()
+        return ndimage.binary_dilation(data, structure=structure).astype(int)
+    
+    def binary_erosion(self, data, structure=None):
+        if np.any(structure == None):
+            structure = self.create_structure()
+        return ndimage.binary_erosion(data, structure=structure).astype(int)
+    
+    def create_structure(self):       
+        structure = ndimage.generate_binary_structure(3,3)
+        return structure
     
     def two_d_cleaning(self, start_data):
         print("Filling in 2D holes")
@@ -159,6 +193,99 @@ class BrainModel():
                     elif (labelled_data[x,y,z] != 0) and (end[x,y,z] == 0):
                         labelled_data[x,y,z] = 0; 
                 
+    def add_CSF(self,data,layers=2):
+        from PointCloud import PointCloud
+        from scipy.spatial import Delaunay
+        
+        current_dimensions = data.shape
+        newData = np.zeros(current_dimensions, int)
+        
+        xs,ys,zs = np.where(data == 3)
+        for [x,y,z] in np.column_stack((xs,ys,zs)):
+            newData[x,y,z] = 3
+        
+        xs,ys,zs = np.where(data == 2)
+        for [x,y,z] in np.column_stack((xs,ys,zs)):
+            newData[x,y,z] = 3
+            
+        xs,ys,zs = np.where(data == 25)
+        for [x,y,z] in np.column_stack((xs,ys,zs)):
+            newData[x,y,z] = 3
+            
+        xs,ys,zs = np.where(data == 57)
+        for [x,y,z] in np.column_stack((xs,ys,zs)):
+            newData[x,y,z] = 3
+
+        inflated_CSF = self.binary_dilation(newData)
+        for i in range(layers-1):
+            inflated_CSF = self.binary_dilation(inflated_CSF)
+
+        xs,ys,zs = np.where(inflated_CSF == 1)
+        current_dimensions = inflated_CSF.shape
+        for [x,y,z] in np.column_stack((xs,ys,zs)):
+            if newData[x,y,z] == 0:
+                newData[x,y,z] = 3 
+            
+        # Create point cloud
+        pointCloud = PointCloud();
+        pc = pointCloud.create_point_cloud_of_data(newData);
+
+        xmin_tot,ymin_tot,zmin_tot = [int(p) for p in np.min(pc[:,:3],axis=0)]
+        xmax_tot,ymax_tot,zmax_tot = [int(p) for p in np.max(pc[:,:3],axis=0)]
+
+        # ymax_tot = 70
+
+        print("Filling in CSF z")
+        for z in range(zmin_tot,zmax_tot+1):
+            points = pointCloud.get_slice(2,z);
+            points = points[:,:2]    
+            hull = Delaunay(points)
+            
+            xmin,ymin = np.min(points, axis=0)
+            xmax,ymax = np.max(points, axis=0)
+            
+            for x in range(int(xmin),int(xmax+1)):
+                for y in range(int(ymin),int(ymax+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([x,y], hull):
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24
+                            newData[x,y,z] = 24
+
+        print("Filling in CSF x")
+        for x in range(xmin_tot,xmax_tot+1):
+            points = pointCloud.get_slice(0,x);
+            points = points[:,1:3]    
+            hull = Delaunay(points)
+            
+            min1d,min2d = np.min(points, axis=0)
+            max1d,max2d = np.max(points, axis=0)
+            
+            for y in range(int(min1d),int(max1d+1)):
+                for z in range(int(min2d),int(max2d+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([y,z], hull):
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24  
+                            newData[x,y,z] = 24  
+            
+        print("Filling in CSF y")
+        for y in range(ymin_tot,ymax_tot+1):
+            points = pointCloud.get_slice(1,y);
+            points = points[:,[0,2]]    
+            hull = Delaunay(points)
+            
+            min1d,min2d = np.min(points, axis=0)
+            max1d,max2d = np.max(points, axis=0)
+            
+            for x in range(int(min1d),int(max1d+1)):
+                for z in range(int(min2d),int(max2d+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([x,z], hull):     
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24 
+                            newData[x,y,z] = 24     
+    
     
     def trim_mesh(self, data):
         current_dimensions = data.shape

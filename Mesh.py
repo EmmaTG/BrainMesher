@@ -99,6 +99,9 @@ class Mesh():
                     node_idx = element2.ica.index(key)
                     element2.ica[node_idx] = maxNodeNum
                     newNodes[maxNodeNum] = nodeCoords
+                    # Remove from node to element map
+                    self.nodeToElements[key].remove(connectedElements[1])
+                    self.nodeToElements[maxNodeNum] = element2.num
         for key,node in newNodes.items():
             self.nodes[key] = node;
                 

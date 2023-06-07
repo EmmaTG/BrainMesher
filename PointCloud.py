@@ -42,6 +42,9 @@ class PointCloud():
         point_cloud.plot(eye_dome_lighting=True)
         return 0
     
+    def add_point_to_cloud(self,p):
+        self.pcd = np.append(self.pcd,[p], axis=0)
+    
     def view_slice(self, axis, location):
         if (location > 1) and (axis < self.pcd.shape[1]):
             arr = self.pcd[:,axis]
@@ -51,8 +54,14 @@ class PointCloud():
                 point_cloud = pv.PolyData(points[:,0:3])
                 point_cloud["material_type"] = points[:,3:]
                 point_cloud.plot(render_points_as_spheres=True)
-            
-            
+    
+    def get_slice(self, axis, location):
+        if (location > 1) and (axis < self.pcd.shape[1]):
+            arr = self.pcd[:,axis]
+            if (location <= max(arr)):
+                indices, = np.where(location == arr)
+                points = self.pcd[indices,:]
+        return points          
         
     
     def set_colour_map(self,d):
