@@ -136,7 +136,7 @@ class BrainModel():
         return structure
     
     def two_d_cleaning(self, start_data):
-        print("Filling in 2D holes")
+        print("Performing 2D cleaning operations on data")
         cleaned = self.create_binary_image(start_data)
         self.two_d_fill(cleaned)
         self.assign_materials_labels(start_data,cleaned)
@@ -235,7 +235,7 @@ class BrainModel():
 
         # ymax_tot = 70
 
-        print("Filling in CSF z")
+        print("Filling in CSF z-dim")
         for z in range(zmin_tot,zmax_tot+1):
             points = pointCloud.get_slice(2,z);
             points = points[:,:2]    
@@ -252,7 +252,7 @@ class BrainModel():
                             data[x,y,z] = 24
                             newData[x,y,z] = 24
 
-        print("Filling in CSF x")
+        print("Filling in CSF x-dim")
         for x in range(xmin_tot,xmax_tot+1):
             points = pointCloud.get_slice(0,x);
             points = points[:,1:3]    
@@ -269,7 +269,7 @@ class BrainModel():
                             data[x,y,z] = 24  
                             newData[x,y,z] = 24  
             
-        print("Filling in CSF y")
+        print("Filling in CSF y-dim")
         for y in range(ymin_tot,ymax_tot+1):
             points = pointCloud.get_slice(1,y);
             points = points[:,[0,2]]    

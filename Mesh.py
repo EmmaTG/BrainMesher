@@ -27,7 +27,6 @@ class Mesh():
         
     
     def create_mesh(self, pointData, voxel_size):
-        print("Creating mesh from point cloud data")
         [minX,minY,minZ] = pointData[:,:3].min(axis=0)
         [maxX,maxY,maxZ] = pointData[:,:3].max(axis=0)
         
@@ -55,14 +54,12 @@ class Mesh():
             element = Element(elementNo, element_ica, mat=[m])
             self.elements[int(elementNo)] = element
         self.clean_mesh();
-        self.locate_boundary_faces()
+        self.locate_boundary_faces(elementsNotIncluded = [24.0])
         self.remove_outer_white_matter(2, 3)
         
-    def locate_boundary_faces(self):
+    def locate_boundary_faces(self, elementsNotIncluded = []):
         print("Identifying boundary faces")
-        elementMap = {}
-        for elementNo, element in self.elements.items():
-            elementMap[elementNo] = element.ica
+        elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
         self.boundary_element_map, self.elements_on_boundary, self.volume_elem_to_boundary = smooth.get_boundary_surfaces(elementMap)
         
     def remove_outer_white_matter(self, white_matter_label, replace_label):
@@ -105,17 +102,25 @@ class Mesh():
         for key,node in newNodes.items():
             self.nodes[key] = node;
                 
-    def smooth_mesh(self, coeffs, iterations):
+    def smooth_mesh(self, coeffs, iterations, elementsNotIncluded = []):
         print("Starting mesh smoothing")
-        if not hasattr(self, "boundary_element_map"):
-            self.locate_boundary_faces();
-        elementMap= {}
-        for elementNo, element in self.elements.items():
-            elementMap[elementNo] = element.ica
+        self.locate_boundary_faces(elementsNotIncluded=elementsNotIncluded);
+        elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
         surfaceNodeConnectivity = smooth.create_surface_connectivity(self.boundary_element_map)
         for iteration in range(iterations):
             smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementMap)
-        
+    
+    def create_elements_map(self, elementsNotIncluded = []):
+        elementMap = {}
+        for elementNo, element in self.elements.items():
+            add = True
+            for el_types in elementsNotIncluded:
+                if element.properties['mat'].count(el_types):
+                    add=False
+            if add:
+                elementMap[elementNo] = element.ica
+        return elementMap
+    
     def create_node_to_element_connectivity(self):
         self.nodeToElements = {}
         for element in self.elements.values():
@@ -138,10 +143,8 @@ class Mesh():
         print("Writing mesh data to file in "+ filetype + " format")
         if (path[-1] != "\\"):
             path += "\\" 
-        elementMap = {}
+        elementMap = self.create_elements_map()
         material_mapping = labels_map.create_material_sets(self.elements,file_format=filetype)
-        for elementNo, element in self.elements.items():
-            elementMap[elementNo] = element.ica
         if (filetype.lower() == "ucd"):
             if boundary:
                 if not hasattr(self, "boundary_element_map"):

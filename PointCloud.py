@@ -11,7 +11,6 @@ from matplotlib.colors import ListedColormap
 class PointCloud():
     
     def create_point_cloud_of_data(self, data):
-        print("Creating point cloud data")
         current_data = data
         current_dimensions = current_data.shape
         pointCloudData = np.zeros((np.prod(current_dimensions),4));

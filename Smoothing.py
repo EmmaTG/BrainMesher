@@ -47,7 +47,7 @@ def calculateQualityMetric(coords, UCD_Values=False):
             kTk = np.linalg.norm(A)*np.linalg.norm(inv_A)
             J += (kTk/3)**2
         else:
-            print("Error: determinant is negative! Element Tangled" ) 
+            # print("Error: determinant is negative! Element Tangled" ) 
             return -100000
     J = J/8
     J = 1/J
@@ -109,7 +109,7 @@ def get_boundary_surfaces(elementMap):
     surface_face_to_elems_map = {}
     # free_faces = []
     nodeToElem = create_node_to_elem_map(elementMap)
-    for e,ica in elementMap.items():
+    for e,ica in elementMap.items():       
         list_of_faces = __get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 
             if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
@@ -169,6 +169,7 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
     nodeToElemMap = create_node_to_elem_map(elementMap)
     newNodePositions = {}
     badElements = []
+    tangled_elements = []
     nodesUnsmoothed = []
     coeff = coeffs[iteration%2]
     for node,connected in surfaceNodeConnectivity.items():
@@ -190,7 +191,9 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
                     else:
                         elemCoords[count] = nodeMap[n]
                 metric = calculateQualityMetric(elemCoords);
-                if metric < 0.2:
+                if metric < -10000:
+                    tangled_elements.append(e)
+                elif metric < 0.2:
                     newNodePositions[node] = nodeMap[node]
                     badElements.append(e)
                     nodesUnsmoothed.append(node)
@@ -200,5 +203,6 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
     nodesUnsmoothed= list(set(nodesUnsmoothed))
     print("Number of unsmoothed nodes: " + str(len(nodesUnsmoothed)))
     print("Number of elements affected: " + str(len(badElements)))
+    print("Number of tangled elements: " + str(len(tangled_elements)))
     for node, newcoords in newNodePositions.items():
         nodeMap[node] = newcoords
