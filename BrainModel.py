@@ -42,7 +42,7 @@ class BrainModel():
         current_dimensions = original_data.shape
         new_dimensions = [int(p) for p in np.floor(np.array(current_dimensions)/new)];
         newData = np.zeros(new_dimensions, int)
-        for x in np.arange(0,(current_dimensions[0]-1),new):
+        for x in np.arange((current_dimensions[0]-2),0,-1*new):
             top_x = x+new
             if (np.sum(original_data[x:top_x,:,:]) > 0):
                 for y in np.arange(0,(current_dimensions[1]-1),new):
@@ -67,6 +67,7 @@ class BrainModel():
                                     np.delete(count, zero_idx)
                                     modeIndices, = np.where(count == max(count))
                                     modeIndex = modeIndices[0]
+                                    # if (count[modeIndex]>(len(gridBox)/3.)):
                                     replacedValue = modes[modeIndex]
                                     
                                 elif (len(modes)>1) and (count[0]==count[1]):
@@ -189,7 +190,10 @@ class BrainModel():
                     if (labelled_data[x,y,z] == 0) and (end[x,y,z] != 0):
                         box = GridBox(labelled_data,[x,y,z])
                         replacement_value = box.mode() 
-                        labelled_data[x,y,z] = replacement_value                              
+                        if replacement_value == None:
+                            labelled_data[x,y,z] = 0
+                        else:
+                            labelled_data[x,y,z] = replacement_value                              
                     elif (labelled_data[x,y,z] != 0) and (end[x,y,z] == 0):
                         labelled_data[x,y,z] = 0; 
                 

@@ -56,6 +56,11 @@ class GridBox:
                 modeIndices, = np.where(count == max(count))
                 modeIndex = modeIndices[0]
                 replacedValue = modes[modeIndex]
+            if (len(np.unique(self.gridBox)) > 1):
+                unique_values = np.unique(self.gridBox)
+                zero_idx = np.where(modes == 0)
+                unique_values = np.delete(unique_values,zero_idx)
+                replacedValue = unique_values[0]                
             else:
                 print(modes)
                 print(count)

@@ -103,12 +103,12 @@ def get_boundary_surfaces(elementMap):
         # if in free faces, remove from free faces and add to fa
         # else add in free faced
     # elementMap = {1: [1,2,3,4,5,6,7,8,9], 2: [ 10,11,12,13,1,2,3,4], 3: [3,15,16,17,7,18,19,20]} ##TEST INPUT
-    from element_functions import calculate_max_number,create_node_to_elem_map
+    from element_functions import calculate_max_number
     print("Locating boundary elements and surfaes")
     face_to_elems_map = {}
     surface_face_to_elems_map = {}
     # free_faces = []
-    nodeToElem = create_node_to_elem_map(elementMap)
+    # nodeToElem = create_node_to_elem_map(elementMap)
     for e,ica in elementMap.items():       
         list_of_faces = __get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 

@@ -104,11 +104,14 @@ class Mesh():
                 
     def smooth_mesh(self, coeffs, iterations, elementsNotIncluded = []):
         print("Starting mesh smoothing")
-        self.locate_boundary_faces(elementsNotIncluded=elementsNotIncluded);
         elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
-        surfaceNodeConnectivity = smooth.create_surface_connectivity(self.boundary_element_map)
-        for iteration in range(iterations):
-            smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementMap)
+        if len(elementMap)>0:
+            self.locate_boundary_faces(elementsNotIncluded=elementsNotIncluded);
+            surfaceNodeConnectivity = smooth.create_surface_connectivity(self.boundary_element_map)
+            for iteration in range(iterations):
+                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementMap)
+        else:
+            print("No elements selected to smooth")
     
     def create_elements_map(self, elementsNotIncluded = []):
         elementMap = {}
