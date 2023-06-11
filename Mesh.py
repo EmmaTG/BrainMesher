@@ -72,7 +72,7 @@ class Mesh():
                 materials.insert(0,replace_label)
         
         
-    def clean_mesh(self):
+    def clean_mesh(self, elementsNotIncluded = []):
         print("Cleaning mesh")
         self.create_node_to_element_connectivity();
         maxNodeNum = max(self.nodes.keys())
@@ -80,7 +80,18 @@ class Mesh():
         for key in self.nodes.keys():
             if not hasattr(self,"nodeToElements"):
                 self.create_node_to_element_connectivity()
-            connectedElements = self.nodeToElements[key]
+            # connectedElements = self.nodeToElements[key]
+            All_connectedElements = self.nodeToElements[key]
+            connectedElements = []
+            for conn_element in All_connectedElements:
+                element = self.elements[conn_element]
+                add = True
+                for el_types in elementsNotIncluded:
+                    if element.properties['mat'].count(el_types):
+                        add=False
+                        break
+                if add:
+                    connectedElements.append(conn_element)
             if len(connectedElements) == 2:
                 element1 = self.elements[connectedElements[0]]
                 element2 = self.elements[connectedElements[1]]
@@ -107,6 +118,7 @@ class Mesh():
         elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
         if len(elementMap)>0:
             self.locate_boundary_faces(elementsNotIncluded=elementsNotIncluded);
+            self.clean_mesh(elementsNotIncluded=elementsNotIncluded)
             surfaceNodeConnectivity = smooth.create_surface_connectivity(self.boundary_element_map)
             for iteration in range(iterations):
                 smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementMap)
@@ -120,6 +132,7 @@ class Mesh():
             for el_types in elementsNotIncluded:
                 if element.properties['mat'].count(el_types):
                     add=False
+                    break;
             if add:
                 elementMap[elementNo] = element.ica
         return elementMap
@@ -134,7 +147,29 @@ class Mesh():
                 else:
                     self.nodeToElements[node] = connectedElements
                 connectedElements.append(element.num)
-        
+                
+    def create_edge_to_element_connectivity(self):
+        from element_functions import get_edges
+        self.edgesToElements = {}
+        joined_edges = 0
+        for element in self.elements.values():
+            if not element.properties['mat'].count(24):
+                edges = get_edges(element.ica)
+                for edge in edges:
+                    connectedElements = []
+                    if self.edgesToElements.__contains__(edge):
+                        connectedElements = self.edgesToElements[edge]
+                    else:
+                        self.edgesToElements[edge] = connectedElements
+                    connectedElements.append(element.num)
+        for edge, elements in self.edgesToElements.items():
+            if len(elements) == 2:
+                joined_edges += 1
+            
+        print (joined_edges)
+                
+
+    
     def calculate_node_coords(self,elementX,elementY,elementZ,i,size):
         coordx = int((i-1)/((elementZ+1)*(elementY+1)))
         tmp = i - (coordx*((elementZ+1)*(elementY+1)))

@@ -15,7 +15,7 @@ from PointCloud import PointCloud
 from Mesh import Mesh
 
 # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
-t1_file = 'aseg.mgz'
+t1_file = 'aseg_tumor.mgz'
 t1 = nibabel.load(t1_file)
 # t1.orthoview()
 data = np.asarray(t1.dataobj)
@@ -74,9 +74,9 @@ print("########## Removing voids from data ##########")
 solver = Maze_Solver(data);
 data = solver.find_and_fill_voids();
 
-# Create CSF layer around GM
-print("########## Adding layers of CSF ##########")
-brainModel.add_CSF(data,layers=1);
+# # Create CSF layer around GM
+# print("########## Adding layers of CSF ##########")
+# brainModel.add_CSF(data,layers=1);
           
 # Create point cloud
 print("########## Creating point cloud from data ##########")
@@ -89,18 +89,18 @@ pc = pointCloud_full.create_point_cloud_of_data(data);
 # Create mesh from point cloud
 print("########## Creating mesh from point cloud ##########")
 mesh = Mesh(pointCloud_full.pcd,voxel_size)
-
+mesh.create_edge_to_element_connectivity()
 # #Global Smoothing
 # # Smooth outer surface of mesh (including CSF)
 # print("########## Smoothing global mesh ##########")
-# iterations = 6
-# coeffs = [0.6,-0.2]
+# iterations = 8
+# coeffs = [0.4,-0.2]
 # mesh.smooth_mesh(coeffs, iterations)
 
 # # Smooth mesh (excluded CSF)
 # print("########## Smoothing mesh exclusing CSF ##########")
-# iterations = 6
-# coeffs = [0.6,-0.2]
+# iterations = 8
+# coeffs = [0.4,-0.2]
 # mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded=[24])
 
 # # Optional Boundary Smoothing
@@ -110,8 +110,8 @@ mesh = Mesh(pointCloud_full.pcd,voxel_size)
 # non_whitematter_labels_map = material_labels.get_homogenized_labels_map()
 # non_whitematter_labels_map.pop('WhiteMatter')
 # non_whitematter_labels_map = list(non_whitematter_labels_map.values())
-# iterations = 6
-# coeffs = [0.6,-0.2]
+# iterations = 8
+# coeffs = [0.4,-0.2]
 # mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded=non_whitematter_labels_map)
 
 # # Smooth tumor boundary
@@ -119,16 +119,16 @@ mesh = Mesh(pointCloud_full.pcd,voxel_size)
 # non_lesion_labels_map = material_labels.get_homogenized_labels_map()
 # non_lesion_labels_map.pop('Lesion')
 # non_lesion_values = list(non_lesion_labels_map.values())
-# iterations = 6
-# coeffs = [0.6,-0.2]
+# iterations = 8
+# coeffs = [0.4,-0.2]
 # mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded=non_lesion_values)
 
-# Write mesh to file
-filename = "tester_csf_coarsen_test_2"
-fileType = "vtk"
-print("########## Writing data to " + filename + " as a " + fileType.upper() + " file ##########")
-mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher", 
-                   filename, labels_map=material_labels, filetype=fileType);
+# # Write mesh to file
+# filename = "tester_tumor"
+# fileType = "vtk"
+# print("########## Writing data to " + filename + " as a " + fileType.upper() + " file ##########")
+# mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher", 
+#                    filename, labels_map=material_labels, filetype=fileType);
 
 
 

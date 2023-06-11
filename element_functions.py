@@ -157,6 +157,14 @@ def translate_mesh(nodeMap,distance=[1,1,1]):
 def round_to_interval(value,interval):
     return interval*round(value/interval)    
 
+def get_edges(ica):
+    edges = []
+    edge_classification = [[0,1],[1,2],[2,3],[3,0],
+                           [4,5],[5,6],[6,7],[7,4],
+                           [0,4],[1,5],[2,6],[3,7]]
+    for edge in edge_classification:
+        edges.append("-".join(str(x) for x in sorted([ica[edge[0]],ica[edge[1]]])))
+    return edges
         
 def get_face_normal(nodeMap,ica):
     import numpy as np
