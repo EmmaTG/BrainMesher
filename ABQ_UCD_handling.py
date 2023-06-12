@@ -512,7 +512,11 @@ def writeVTK(path, filenameIN, nodeMap, elementMap, elementToMaterial = {},
     f.write("SCALARS material int 1\n")
     f.write("LOOKUP_TABLE default\n")
     for e in elemKeys:
-        f.write(str(elementToMaterial[e]) + "\n")
+        material = 1
+        if elementToMaterial.__contains__(e):
+            if len(elementToMaterial[e]) > 0:
+                material = elementToMaterial[e][0]
+        f.write(str(material) + "\n")
         
         
     f.close()

@@ -210,10 +210,7 @@ class Mesh():
             
         elif (filetype.lower() == "vtk"):
             elementToMaterial = {}
-            for e_num,e in self.elements.items():
-                materials = e.properties['mat'] 
-                elementToMaterial[e_num] = int(materials[0])
-            rw.writeVTK(path, filename, self.nodes, elementMap, elementToMaterial=elementToMaterial)              
+            rw.writeVTK(path, filename, self.nodes, elementMap, elementToMaterial=material_mapping)              
               
         else:
             rw.writeABQ(path, filename, self.nodes, elementMap, elsetsMap=material_mapping)

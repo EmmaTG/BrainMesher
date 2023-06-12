@@ -20,8 +20,8 @@ t1 = nibabel.load(t1_file)
 # t1.orthoview()
 data = np.asarray(t1.dataobj)
 
-data_test = data[80:120, 80:120, 80:120]
-data = data_test
+# data_test = data[80:120, 80:120, 80:120]
+# data = data_test
 # data = np.ones((6,6,6))*2
 # data[2,0,2] = 0
 # data[2,1,2] = 0
@@ -59,7 +59,7 @@ brainModel = BrainModel()
 # Coarsen the brain model
 print("########## Coarsening data ##########")
 voxel_size = 2
-# data = brainModel.coarsen(voxel_size, data)
+data = brainModel.coarsen(voxel_size, data)
 
 # Clean image removing isolated pixels and small holes
 print("########## Performing cleaning operations on the data ##########")
