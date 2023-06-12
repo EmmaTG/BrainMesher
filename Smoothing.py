@@ -4,7 +4,7 @@ Created on Mon Feb  6 09:41:58 2023
 
 @author: grife
 """
-def __get_element_faces(node_ica, ordered = False, toString = False):
+def get_element_faces(node_ica, ordered = False, toString = False):
     face_ABQ = [[1,2,3,4],
                 [5,8,7,6],
                 [1,5,6,2],
@@ -110,7 +110,7 @@ def get_boundary_surfaces(elementMap):
     # free_faces = []
     # nodeToElem = create_node_to_elem_map(elementMap)
     for e,ica in elementMap.items():       
-        list_of_faces = __get_element_faces(ica,ordered = True, toString = True)
+        list_of_faces = get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 
             if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
                connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
@@ -128,10 +128,10 @@ def get_boundary_surfaces(elementMap):
     volume_elem_to_boundary = {}
     b_elem_num = calculate_max_number(elementMap)+1
     for face_key,e in surface_face_to_elems_map.items():    
-        faces = __get_element_faces(elementMap[e],True,True)
+        faces = get_element_faces(elementMap[e],True,True)
         for face_num,f in enumerate(faces):
             if f == face_key:
-                boundary_element_map[b_elem_num] = __get_element_faces(elementMap[e])[face_num]
+                boundary_element_map[b_elem_num] = get_element_faces(elementMap[e])[face_num]
                 volume_elem_to_boundary[b_elem_num] = e 
                 b_elem_num += 1
                 break    

@@ -15,13 +15,13 @@ from PointCloud import PointCloud
 from Mesh import Mesh
 
 # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
-t1_file = 'aseg_tumor.mgz'
+t1_file = 'aseg.mgz'
 t1 = nibabel.load(t1_file)
 # t1.orthoview()
 data = np.asarray(t1.dataobj)
 
-# data_test = data[80:120, 80:120, 80:120]
-# data = data_test
+data_test = data[80:120, 80:120, 80:120]
+data = data_test
 # data = np.ones((6,6,6))*2
 # data[2,0,2] = 0
 # data[2,1,2] = 0
@@ -59,7 +59,7 @@ brainModel = BrainModel()
 # Coarsen the brain model
 print("########## Coarsening data ##########")
 voxel_size = 2
-data = brainModel.coarsen(voxel_size, data)
+# data = brainModel.coarsen(voxel_size, data)
 
 # Clean image removing isolated pixels and small holes
 print("########## Performing cleaning operations on the data ##########")
@@ -123,12 +123,14 @@ mesh.create_edge_to_element_connectivity()
 # coeffs = [0.4,-0.2]
 # mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded=non_lesion_values)
 
-# # Write mesh to file
-# filename = "tester_tumor"
-# fileType = "vtk"
-# print("########## Writing data to " + filename + " as a " + fileType.upper() + " file ##########")
-# mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher", 
-#                    filename, labels_map=material_labels, filetype=fileType);
+# Write mesh to file
+test_labels_map  = Material_Label()
+test_labels_map.addLabelToMap('edges_to_check',1000)
+filename = "tester_mesh_cleanup"
+fileType = "vtk"
+print("########## Writing data to " + filename + " as a " + fileType.upper() + " file ##########")
+mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher", 
+                    filename, labels_map=test_labels_map, filetype=fileType);
 
 
 

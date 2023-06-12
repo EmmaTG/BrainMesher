@@ -150,8 +150,10 @@ class Mesh():
                 
     def create_edge_to_element_connectivity(self):
         from element_functions import get_edges
+        from Smoothing import get_element_faces
         self.edgesToElements = {}
         joined_edges = 0
+        joined_edges_and_no_faces = 0
         for element in self.elements.values():
             if not element.properties['mat'].count(24):
                 edges = get_edges(element.ica)
@@ -164,9 +166,23 @@ class Mesh():
                     connectedElements.append(element.num)
         for edge, elements in self.edgesToElements.items():
             if len(elements) == 2:
+                element1 = elements[0]
+                element2 = elements[1]
+                faces1 = get_element_faces(self.elements[element1].ica, ordered = True, toString = True)
+                faces2 = get_element_faces(self.elements[element2].ica, ordered = True, toString = True)
+                shared_face = False
+                for face in faces1:                    
+                    if faces2.count(face):
+                        shared_face = True
+                        break
+                if not shared_face:
+                    joined_edges_and_no_faces += 1
+                    self.elements[element1].properties['mat'].append(1000)
+                    self.elements[element2].properties['mat'].append(1000)
                 joined_edges += 1
             
         print (joined_edges)
+        print (joined_edges_and_no_faces)
                 
 
     

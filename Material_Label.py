@@ -75,14 +75,16 @@ class Material_Label:
     
     def create_material_sets(self, elements, file_format="abaqus"):
         print("Creating material sets")        
-        if (file_format.lower() == "ucd"):    
+        if (file_format.lower() == "ucd" or file_format.lower() == "vtk"):
+            print("Creating material sets")
             elementToMat = {}
             for num,element in elements.items():
                 materials = element.properties['mat']
                 material_list = []
                 for material in materials:
-                    mat_name = self.inverseLabelsMap[material]
-                    material_list.append(mat_name)
+                    if self.inverseLabelsMap.__contains__(material):
+                        mat_name = self.inverseLabelsMap[material]
+                        material_list.append(mat_name)
                 elementToMat[num] = material_list
             return elementToMat                
         else:            
@@ -93,7 +95,8 @@ class Material_Label:
             for num,element in elements.items():
                 materials = element.properties['mat']
                 for material in materials:
-                    mat_name = self.inverseLabelsMap[material]
-                    materialToElements[mat_name].append(num)
+                    if self.inverseLabelsMap.__contains__(material):
+                        mat_name = self.inverseLabelsMap[material]
+                        materialToElements[mat_name].append(num)
             return materialToElements
             
