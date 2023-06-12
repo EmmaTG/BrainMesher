@@ -1,2 +1,4 @@
 tester*
 /__pycache__/*
+*.inp
+*.vtk
