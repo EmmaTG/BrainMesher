@@ -14,18 +14,22 @@ from Maze_Solver import Maze_Solver
 from PointCloud import PointCloud
 from Mesh import Mesh
 
+# Config
+fileInPath = "/"
+fileIn = 'aseg_tumor.mgz'
+fileoutPath = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher"
+fileout = "tester_brain_tumor"
+fileoutTypes = ['vtk','abaqus']
+Coarsen = True
+Add_CSF = True
+Smooth = True
+Smooth_regions = ['WhiteMatter']
+
 # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
-t1_file = 'aseg.mgz'
+t1_file = fileInPath + fileIn
 t1 = nibabel.load(t1_file)
 # t1.orthoview()
 data = np.asarray(t1.dataobj)
-
-# data_test = data[80:120, 80:120, 80:120]
-# data = data_test
-# data = np.ones((6,6,6))
-# data[2,0,2] = 0
-# data[2,1,2] = 0
-# data[2,2,2] = 0
 
 # Step 2: Determine segmentation of brain model via labels map
 material_labels  = Material_Label()
@@ -38,26 +42,34 @@ material_labels.addLabelToMap('Cerebellum' , [7,46,8,47]); # WM(L&R), GM(L&R)
 material_labels.addLabelToMap('Thalamus' , [10,49,28,60]); # Thalamus(L&R), Ventral DC(L&R)
 material_labels.addLabelToMap('Hippocampus' , [17,53]); # Left, Right
 material_labels.addLabelToMap('Amygdala' , [18,54]); # Left, Right
+material_labels.addLabelToMap('Lesion' , [25,57]); # Left, Right
+material_labels.addLabelToMap('CSF' , [24]); # Left, Right
 
-# brainModel.addLabelToMap('Left-Lateral-Ventricle' , [4]);
-# brainModel.addLabelToMap('Right-Lateral-Ventricle' , [43]);
-# brainModel.addLabelToMap('Left-Inf-Lat-Vent' , [5]);
-# brainModel.addLabelToMap('Right-Inf-Lat-Vent ' , [44]);
-# brainModel.addLabelToMap('3rd-Ventricle' , [14]);
-# brainModel.addLabelToMap('4th-Ventricle' , [15]);
-# brainModel.addLabelToMap('Left-choroid-plexus' , [31]);
-# brainModel.addLabelToMap('Right-choroid-plexus' , [63]);
-# brainModel.addLabelToMap('Optic-Chiasm' , [85]);
+# Unused labels (will be set to 0)
+# material_labels.addLabelToMap('Left-Lateral-Ventricle' , [4]);
+# material_labels.addLabelToMap('Right-Lateral-Ventricle' , [43]);
+# material_labels.addLabelToMap('Left-Inf-Lat-Vent' , [5]);
+# material_labels.addLabelToMap('Right-Inf-Lat-Vent ' , [44]);
+# material_labels.addLabelToMap('3rd-Ventricle' , [14]);
+# material_labels.addLabelToMap('4th-Ventricle' , [15]);
+# material_labels.addLabelToMap('Left-choroid-plexus' , [31]);
+# material_labels.addLabelToMap('Right-choroid-plexus' , [63]);
+# material_labels.addLabelToMap('Optic-Chiasm' , [85]);
 
 # Homogenize labels
 data = material_labels.homogenize_material_labels(data);
 
 brainModel = BrainModel()
+
 # Coarsen the brain model
-voxel_size = 2
-data = brainModel.coarsen(voxel_size, data)
+voxel_size= 1;
+if Coarsen:
+    print("########## Coarsening data ##########")
+    voxel_size = 2
+    data = brainModel.coarsen(voxel_size, data)
 
 # Clean image removing isolated pixels and small holes
+print("########## Performing cleaning operations on the data ##########")
 brainModel.clean_mesh_data(data);
 brainModel.two_d_cleaning(data);
 
@@ -65,28 +77,58 @@ brainModel.two_d_cleaning(data);
 brainModel.trim_mesh(data)
 
 # Find and fill voids within model
+print("########## Removing voids from data ##########")
 solver = Maze_Solver(data);
 data = solver.find_and_fill_voids();
 
-# # Create point cloud
-pointCloud = PointCloud();
-pc = pointCloud.create_point_cloud_of_data(data);
-# # # Data for visualization
-# # pointCloud.view_slice(1, 50); # View slice of point cloud about chosen axis
+# Create CSF layer around GM
+if Add_CSF:
+    print("########## Adding layers of CSF ##########")
+    brainModel.add_CSF(data,layers=1);
+          
+# Create point cloud
+print("########## Creating point cloud from data ##########")
+pointCloud_full = PointCloud();
+pc = pointCloud_full.create_point_cloud_of_data(data);
+# # Data for visualization
+# pointCloud.view_slice(0, 50); # View slice of point cloud about chosen axis
 # pointCloud.view_point_cloud(); # View full 3D point cloud
 
 # Create mesh from point cloud
-mesh = Mesh(pc,voxel_size)
+print("########## Creating mesh from point cloud ##########")
+mesh = Mesh(pointCloud_full.pcd,voxel_size)
+mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
+mesh.remove_outer_white_matter(2, 3)
 
-# Smooth mesh
-iterations = 6
-coeffs = [0.6,-0.2]
+# # Smoothing
+# Smooth outer surface of mesh (including CSF)
+print("########## Smoothing global mesh ##########")
+iterations = 8
+coeffs = [0.6,-0.4]
 mesh.smooth_mesh(coeffs, iterations)
 
-# Write mesh to file
+# Smooth mesh (excluded CSF)
+if Add_CSF:
+    print("########## Smoothing mesh excluding CSF ##########")
+    iterations = 8
+    coeffs = [0.6,-0.4]
+    mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded=[24])
 
-mesh.write_to_file("C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher",
-                   "tester", labels_map=material_labels, filetype="ucd");
+# Optional Boundary Smoothing
+for region in Smooth_regions:
+    # Smooth regional boundary
+    print("########## Smoothing white matter ##########")
+    non_whitematter_labels_map = material_labels.get_homogenized_labels_map()
+    non_whitematter_labels_map.pop(region)
+    non_whitematter_labels_map = list(non_whitematter_labels_map.values())
+    iterations = 4
+    coeffs = [0.6,-0.4]
+    mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded=non_whitematter_labels_map)
+
+# Write mesh to file
+for fileType in fileoutTypes:
+    print("########## Writing data to " + fileout + " as a " + fileType.upper() + " file ##########")
+    mesh.write_to_file(fileoutPath, fileout, labels_map=material_labels, filetype=fileType);
 
 
 

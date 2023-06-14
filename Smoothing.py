@@ -4,7 +4,7 @@ Created on Mon Feb  6 09:41:58 2023
 
 @author: grife
 """
-def __get_element_faces(node_ica, ordered = False, toString = False):
+def get_element_faces(node_ica, ordered = False, toString = False):
     face_ABQ = [[1,2,3,4],
                 [5,8,7,6],
                 [1,5,6,2],
@@ -47,7 +47,7 @@ def calculateQualityMetric(coords, UCD_Values=False):
             kTk = np.linalg.norm(A)*np.linalg.norm(inv_A)
             J += (kTk/3)**2
         else:
-            print("Error: determinant is negative! Element Tangled" ) 
+            # print("Error: determinant is negative! Element Tangled" ) 
             return -100000
     J = J/8
     J = 1/J
@@ -103,14 +103,14 @@ def get_boundary_surfaces(elementMap):
         # if in free faces, remove from free faces and add to fa
         # else add in free faced
     # elementMap = {1: [1,2,3,4,5,6,7,8,9], 2: [ 10,11,12,13,1,2,3,4], 3: [3,15,16,17,7,18,19,20]} ##TEST INPUT
-    from element_functions import calculate_max_number,create_node_to_elem_map
+    from element_functions import calculate_max_number
     print("Locating boundary elements and surfaes")
     face_to_elems_map = {}
     surface_face_to_elems_map = {}
     # free_faces = []
-    nodeToElem = create_node_to_elem_map(elementMap)
-    for e,ica in elementMap.items():
-        list_of_faces = __get_element_faces(ica,ordered = True, toString = True)
+    # nodeToElem = create_node_to_elem_map(elementMap)
+    for e,ica in elementMap.items():       
+        list_of_faces = get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 
             if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
                connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
@@ -128,10 +128,10 @@ def get_boundary_surfaces(elementMap):
     volume_elem_to_boundary = {}
     b_elem_num = calculate_max_number(elementMap)+1
     for face_key,e in surface_face_to_elems_map.items():    
-        faces = __get_element_faces(elementMap[e],True,True)
+        faces = get_element_faces(elementMap[e],True,True)
         for face_num,f in enumerate(faces):
             if f == face_key:
-                boundary_element_map[b_elem_num] = __get_element_faces(elementMap[e])[face_num]
+                boundary_element_map[b_elem_num] = get_element_faces(elementMap[e])[face_num]
                 volume_elem_to_boundary[b_elem_num] = e 
                 b_elem_num += 1
                 break    
@@ -158,22 +158,20 @@ def create_surface_connectivity(boundary_element_map):
         surfaceNodeConnectivity[node] = list(set(connectedNodes))
     return surfaceNodeConnectivity
 
-def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementMap, 
+def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementMap, nodeToElemMap,
                       bounds = [-100000,100000,-100000,100000,-100000,100000], inBounds=True):
 
     from element_functions import value_in_square_bounds
     print("Iteration: " + str(iteration+1))    
     import numpy as np 
-    from element_functions import create_node_to_elem_map
-    
-    nodeToElemMap = create_node_to_elem_map(elementMap)
     newNodePositions = {}
     badElements = []
+    tangled_elements = []
     nodesUnsmoothed = []
     coeff = coeffs[iteration%2]
     for node,connected in surfaceNodeConnectivity.items():
-        currentNodeCoords = nodeMap[node]
-        if ( value_in_square_bounds(currentNodeCoords, bounds, inside=inBounds) ):
+        currentNodeCoords = list(nodeMap[node])
+        if (value_in_square_bounds(currentNodeCoords, bounds, inside=inBounds) ):
             coords = []
             for n in connected:
                 coords.append(nodeMap[n])
@@ -191,14 +189,18 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
                         elemCoords[count] = nodeMap[n]
                 metric = calculateQualityMetric(elemCoords);
                 if metric < 0.2:
-                    newNodePositions[node] = nodeMap[node]
-                    badElements.append(e)
-                    nodesUnsmoothed.append(node)
+                    newNodePositions.pop(node)
+                    if metric < -10000:
+                        tangled_elements.append(e)
+                    else:
+                        badElements.append(e)
+                        nodesUnsmoothed.append(node)
                     break
                     
     badElements = list(set(badElements))
     nodesUnsmoothed= list(set(nodesUnsmoothed))
     print("Number of unsmoothed nodes: " + str(len(nodesUnsmoothed)))
     print("Number of elements affected: " + str(len(badElements)))
+    print("Number of tangled elements: " + str(len(tangled_elements)))
     for node, newcoords in newNodePositions.items():
         nodeMap[node] = newcoords

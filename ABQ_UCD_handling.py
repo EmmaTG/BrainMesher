@@ -455,7 +455,74 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
     print("Completed")
     print("New UCD file written to " + path + filenameOUT)
     mesh_statistics(elementMap, nodeMap, boundaryElementMap);
+
+
+def writeVTK(path, filenameIN, nodeMap, elementMap, elementToMaterial = {},
+             elset_number_Mappings={}):
     
+    from datetime import date
+    filenameIN = remove_ext(filenameIN)
+    filenameOUT = filenameIN + "_VTK"
+    f = open(path + filenameOUT + ".vtk", 'w')    
+    firstLine = "# vtk DataFile Version 2.0\n" \
+        + "VTK file created using python script BrainHexMesh script developed by Emma Griffiths"\
+        + " ca. 2022 file created on " + date.today().isoformat() \
+        + " to view: https://www.paraview.org/download/\n\n" \
+        + "ASCII\n" \
+        + "DATASET UNSTRUCTURED_GRID\n\n"
+    f.write(firstLine)
+    # Writing node/point data
+    numNodes = len(nodeMap)
+    f.write(" ".join(["\nPOINTS",str(numNodes),"float"]) + "\n")
+    nodeKeys = nodeMap.keys()
+    nodeKeys = sorted(nodeKeys)
+    count = 0
+    node_num_map_old_to_new = {}
+    for n in nodeKeys:
+        nodeNum = count       
+        node_num_map_old_to_new[n] = nodeNum
+        f.write(" ".join([str(float(coord)) for coord in nodeMap[n]]) + "\n")
+        count += 1
+    
+    # Writing cell data
+    numElements = len(elementMap)
+    f.write(" ".join(["\nCELLS",str(numElements),str(int(numElements*9))]) + "\n")
+    elemKeys = elementMap.keys()
+    elemKeys = sorted(elemKeys)
+    # element_count = 0
+    for e in elemKeys:
+        # element_count += 1
+        elements = elementMap[e]
+        # elements = list(elements[:4]) + list(elements[4:])        
+        # elementNum = element_count
+        renumber_ica = []    
+        
+        for ica_node in elements:
+            renumber_ica.append(node_num_map_old_to_new[ica_node])
+        
+        f.write("8 " + " ".join([str(node) for node in renumber_ica]) + "\n")
+        
+    #Writing cell types
+    f.write("\nCELL_TYPES " + str(numElements) + "\n")
+    for cell in range(numElements):
+        f.write("12\n")    
+        
+    #Writing cell data
+    f.write("\nCELL_DATA " + str(numElements) + "\n")
+    f.write("SCALARS material int 1\n")
+    f.write("LOOKUP_TABLE default\n")
+    for e in elemKeys:
+        material = 1
+        if elementToMaterial.__contains__(e):
+            if len(elementToMaterial[e]) > 0:
+                material = elementToMaterial[e][0]
+        f.write(str(int(material)) + "\n")
+        
+        
+    f.close()
+    print("Completed")
+    print("New VTK file written to " + path + filenameOUT)
+    mesh_statistics(elementMap, nodeMap);
 
 
 ##########################################################################################
