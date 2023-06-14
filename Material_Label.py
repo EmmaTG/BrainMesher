@@ -76,7 +76,6 @@ class Material_Label:
     def create_material_sets(self, elements, file_format="abaqus"):
         print("Creating material sets")        
         if (file_format.lower() == "ucd"):
-            print("Creating material sets")
             elementToMat = {}
             for num,element in elements.items():
                 materials = element.properties['mat']

@@ -516,7 +516,7 @@ def writeVTK(path, filenameIN, nodeMap, elementMap, elementToMaterial = {},
         if elementToMaterial.__contains__(e):
             if len(elementToMaterial[e]) > 0:
                 material = elementToMaterial[e][0]
-        f.write(str(material) + "\n")
+        f.write(str(int(material)) + "\n")
         
         
     f.close()

@@ -158,23 +158,20 @@ def create_surface_connectivity(boundary_element_map):
         surfaceNodeConnectivity[node] = list(set(connectedNodes))
     return surfaceNodeConnectivity
 
-def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementMap, 
+def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementMap, nodeToElemMap,
                       bounds = [-100000,100000,-100000,100000,-100000,100000], inBounds=True):
 
     from element_functions import value_in_square_bounds
     print("Iteration: " + str(iteration+1))    
     import numpy as np 
-    from element_functions import create_node_to_elem_map
-    
-    nodeToElemMap = create_node_to_elem_map(elementMap)
     newNodePositions = {}
     badElements = []
     tangled_elements = []
     nodesUnsmoothed = []
     coeff = coeffs[iteration%2]
     for node,connected in surfaceNodeConnectivity.items():
-        currentNodeCoords = nodeMap[node]
-        if ( value_in_square_bounds(currentNodeCoords, bounds, inside=inBounds) ):
+        currentNodeCoords = list(nodeMap[node])
+        if (value_in_square_bounds(currentNodeCoords, bounds, inside=inBounds) ):
             coords = []
             for n in connected:
                 coords.append(nodeMap[n])
@@ -191,12 +188,13 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
                     else:
                         elemCoords[count] = nodeMap[n]
                 metric = calculateQualityMetric(elemCoords);
-                if metric < -10000:
-                    tangled_elements.append(e)
-                elif metric < 0.2:
-                    newNodePositions[node] = nodeMap[node]
-                    badElements.append(e)
-                    nodesUnsmoothed.append(node)
+                if metric < 0.2:
+                    newNodePositions.pop(node)
+                    if metric < -10000:
+                        tangled_elements.append(e)
+                    else:
+                        badElements.append(e)
+                        nodesUnsmoothed.append(node)
                     break
                     
     badElements = list(set(badElements))
