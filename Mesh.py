@@ -6,7 +6,6 @@ Created on Thu May 25 15:39:38 2023
 """
 import ABQ_UCD_handling as rw
 import Smoothing as smooth
-from Material_Label import Material_Label
 
 class Element():
     
@@ -53,7 +52,7 @@ class Mesh():
             element_ica += element_ica_tmp
             element = Element(elementNo, element_ica, mat=[m])
             self.elements[int(elementNo)] = element
-        self.clean_mesh();
+        # self.clean_mesh();
         self.remove_outer_white_matter(2, 3)
     
     def clean_mesh(self, elementsNotIncluded = [], replace=0):
@@ -62,15 +61,20 @@ class Mesh():
         self.clean_mesh_nodes(elementsNotIncluded = elementsNotIncluded, replace=replace);
          
     
-    def locate_boundary_faces(self, elementsNotIncluded = []):
+    def locate_boundary_element_map(self, elementsNotIncluded = []):
         print("Identifying boundary faces")
         elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
-        self.boundary_element_map, self.elements_on_boundary, self.volume_elem_to_boundary = smooth.get_boundary_surfaces(elementMap)
+        return smooth.get_boundary_element_map(elementMap)
+    
+    def locate_elements_on_boundary(self, elementsNotIncluded = []):
+        print("Identifying boundary faces")
+        elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
+        return smooth.get_elements_on_boundary(elementMap)
         
     def remove_outer_white_matter(self, white_matter_label, replace_label):
         print("Cleaning brain boundary")
-        self.locate_boundary_faces(elementsNotIncluded = [24]);
-        for elem in self.elements_on_boundary:
+        elements_on_boundary = self.locate_elements_on_boundary(elementsNotIncluded=[24])
+        for elem in elements_on_boundary:
             element = self.elements[elem]
             materials = element.properties['mat']
             if materials.count(white_matter_label):
@@ -82,6 +86,7 @@ class Mesh():
         print("Cleaning mesh")
         maxNodeNum = max(self.nodes.keys())
         newNodes = {}
+        elements_to_clean = []
         for key in self.nodes.keys():
             # connectedElements = self.nodeToElements[key]
             All_connectedElements = self.nodeToElements[key]
@@ -104,10 +109,14 @@ class Mesh():
                         numberSharedNodes += 1
                 assert numberSharedNodes>0
                 if numberSharedNodes == 1:
-                    if (replace != 0) or (len(elementsNotIncluded) != 0):
-                        self.replace_element(element2.num,replace=replace)
-                    else:
-                        self.delete_element(element2.num)
+                    if elements_to_clean.count(element2.num):
+                        elements_to_clean.append(element2.num)
+                    
+        for e in elements_to_clean:            
+            if (replace != 0) or (len(elementsNotIncluded) != 0):
+                self.replace_element(e,replace=replace)
+            else:
+                self.delete_element(e)
                     # print("Cleaning mesh at node {} between elements {} and {}".format(key,element1.num,element2.num))                    
         #             maxNodeNum += 1
         #             nodeCoords = list(self.nodes[key])
@@ -120,7 +129,6 @@ class Mesh():
         #             self.nodeToElements[maxNodeNum] = element2.num
         # for key,node in newNodes.items():
         #     self.nodes[key] = node;
-    
     
     def delete_element(self, element_number):
         element = self.elements[element_number]
@@ -152,7 +160,7 @@ class Mesh():
         maxNodeNum = max(self.nodes.keys())
         newNodes = {}
         old_node_to_new = {}
-        deleted_elements= []
+        deleted_elements = []
         for edge, edgeConnectedElements in edgesToElements.items():
             if not deleted_elements.count(edgeConnectedElements[0]) and not deleted_elements.count(edgeConnectedElements[1]):
                 nodes = [int(n) for n in edge.split("-")]
@@ -229,12 +237,10 @@ class Mesh():
             
     def smooth_mesh(self, coeffs, iterations, elementsNotIncluded = []):
         print("Starting mesh smoothing")
-        elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
-        if len(elementMap)>0:
-            from element_functions import create_node_to_elem_map
-            self.locate_boundary_faces(elementsNotIncluded=elementsNotIncluded);
-            # self.clean_mesh(elementsNotIncluded=elementsNotIncluded)
-            surfaceNodeConnectivity = smooth.create_surface_connectivity(self.boundary_element_map)  
+        from element_functions import create_node_to_elem_map
+        boundary_element_map = self.locate_boundary_element_map(elementsNotIncluded)
+        if len(boundary_element_map)>0:
+            surfaceNodeConnectivity = smooth.create_surface_connectivity(boundary_element_map)  
             elementMapFull = self.create_elements_map()
             nodeToElemMap = create_node_to_elem_map(elementMapFull)
             for iteration in range(iterations):
@@ -242,9 +248,11 @@ class Mesh():
         else:
             print("No elements selected to smooth")
     
-    def create_elements_map(self, elementsNotIncluded = []):
+    def create_elements_map(self, elements = [], elementsNotIncluded = []):
         elementMap = {}
-        for elementNo, element in self.elements.items():
+        if len(elements) == 0:
+            elements = self.elements
+        for elementNo, element in elements.items():
             add = True
             for el_types in elementsNotIncluded:
                 if element.properties['mat'].count(el_types):
@@ -313,24 +321,26 @@ class Mesh():
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def write_to_file(self, path, filename, labels_map, filetype="abaqus", boundary=True):
+    def write_to_file(self, path, filename, labels_map, filetype="abaqus", boundaryElementMap={}):
         print("Writing mesh data to file in "+ filetype + " format")
         if (path[-1] != "\\"):
             path += "\\" 
         elementMap = self.create_elements_map()
         material_mapping = labels_map.create_material_sets(self.elements,file_format=filetype)
+        boundary_element_map = {}
+        boundary_material_mapping = {}
+        if len(boundaryElementMap)>0:
+            boundary_element_map = self.create_elements_map(boundaryElementMap)
+            boundary_material_mapping = labels_map.create_material_sets(boundaryElementMap,file_format=filetype)
         if (filetype.lower() == "ucd"):
-            if boundary:
-                if not hasattr(self, "boundary_element_map"):
-                    self.locate_boundary_faces();  
-            
             homogenized_labels_map = labels_map.get_homogenized_labels_map();
-            rw.writeUCD(path, filename, self.nodes, elementMap, boundaryElementMap=self.boundary_element_map, 
+            rw.writeUCD(path, filename, self.nodes, elementMap, boundaryElementMap=boundaryElementMap, 
                         elementToElsetMap=material_mapping, elset_number_Mappings=homogenized_labels_map)
             
         elif (filetype.lower() == "vtk"):
             elementToMaterial = {}
-            rw.writeVTK(path, filename, self.nodes, elementMap, elementToMaterial=material_mapping)              
+            rw.writeVTK(path, filename, self.nodes, elementMap, elementToMaterial=material_mapping, 
+                        boundaryElementMap=boundary_element_map, boundaryElementToMaterial=boundary_material_mapping)              
               
         else:
             rw.writeABQ(path, filename, self.nodes, elementMap, elsetsMap=material_mapping)

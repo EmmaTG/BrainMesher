@@ -38,6 +38,7 @@ class BrainModel():
             return False       
     
     def coarsen(self, new, original_data):        
+        from GridBox import GridBox
         print("Coarsening mesh by a factor of " + str(new))
         current_dimensions = original_data.shape
         new_dimensions = [int(p) for p in np.floor(np.array(current_dimensions)/new)];
@@ -58,18 +59,10 @@ class BrainModel():
                                 replacedValue = modes[modeIndex]
                                 unique, counts = np.unique(gridBox, return_counts=True)
                                 num_values = dict(zip(unique, counts))
-                                if num_values.__contains__(251):
-                                    replacedValue = 251
-                                    
-                                # elif (replacedValue == 0) and (len(modes)>1):                
-                                #     zero_idx = np.where(modes == 0)
-                                #     np.delete(modes,zero_idx)
-                                #     np.delete(count, zero_idx)
-                                #     modeIndices, = np.where(count == max(count))
-                                #     modeIndex = modeIndices[0]
-                                #     # if (count[modeIndex]>(len(gridBox)/3.)):
-                                #     replacedValue = modes[modeIndex]
-                                    
+                                if num_values.__contains__(4):
+                                    replacedValue = 4 
+                                elif num_values.__contains__(251):
+                                    replacedValue = 251                                       
                                 elif (len(modes)>1) and (len(modeIndices)>1):
                                     if (modeIndices[0]==0) or (modeIndices[1]==0):
                                         if (modeIndices[0]==0):

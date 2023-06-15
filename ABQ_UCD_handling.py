@@ -458,7 +458,7 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
 
 
 def writeVTK(path, filenameIN, nodeMap, elementMap, elementToMaterial = {},
-             elset_number_Mappings={}):
+             elset_number_Mappings={}, boundaryElementMap={}, boundaryElementToMaterial = {}):
     
     from datetime import date
     filenameIN = remove_ext(filenameIN)
@@ -485,12 +485,15 @@ def writeVTK(path, filenameIN, nodeMap, elementMap, elementToMaterial = {},
         count += 1
     
     # Writing cell data
-    numElements = len(elementMap)
-    f.write(" ".join(["\nCELLS",str(numElements),str(int(numElements*9))]) + "\n")
-    elemKeys = elementMap.keys()
-    elemKeys = sorted(elemKeys)
+    numHexElements = len(elementMap)
+    numQuadElements = len(boundaryElementMap)
+    num_elements = numHexElements + numQuadElements
+    f.write(" ".join(["\nCELLS",str(num_elements),
+                      str(int(numHexElements*9) + int(numQuadElements*5))]) + "\n")
+    hexElemKeys = elementMap.keys()
+    hexElemKeys = sorted(hexElemKeys)
     # element_count = 0
-    for e in elemKeys:
+    for e in hexElemKeys:
         # element_count += 1
         elements = elementMap[e]
         # elements = list(elements[:4]) + list(elements[4:])        
@@ -501,21 +504,43 @@ def writeVTK(path, filenameIN, nodeMap, elementMap, elementToMaterial = {},
             renumber_ica.append(node_num_map_old_to_new[ica_node])
         
         f.write("8 " + " ".join([str(node) for node in renumber_ica]) + "\n")
+    quadElemKeys = boundaryElementMap.keys()
+    quadElemKeys = sorted(quadElemKeys)
+    # element_count = 0
+    for e in quadElemKeys:
+        # element_count += 1
+        elements = boundaryElementMap[e]
+        # elements = list(elements[:4]) + list(elements[4:])        
+        # elementNum = element_count
+        renumber_ica = []    
+        
+        for ica_node in elements:
+            renumber_ica.append(node_num_map_old_to_new[ica_node])
+        
+        f.write("4 " + " ".join([str(node) for node in renumber_ica]) + "\n")
         
     #Writing cell types
-    f.write("\nCELL_TYPES " + str(numElements) + "\n")
-    for cell in range(numElements):
+    f.write("\nCELL_TYPES " + str(num_elements) + "\n")
+    for cell in range(numHexElements):
         f.write("12\n")    
+    for cell in range(numQuadElements):
+        f.write("9\n")
         
     #Writing cell data
-    f.write("\nCELL_DATA " + str(numElements) + "\n")
+    f.write("\nCELL_DATA " + str(num_elements) + "\n")
     f.write("SCALARS material int 1\n")
     f.write("LOOKUP_TABLE default\n")
-    for e in elemKeys:
-        material = 1
+    for e in hexElemKeys:
+        material = 0
         if elementToMaterial.__contains__(e):
             if len(elementToMaterial[e]) > 0:
                 material = elementToMaterial[e][0]
+        f.write(str(int(material)) + "\n")
+    for e in quadElemKeys:
+        material = 0
+        if boundaryElementToMaterial.__contains__(e):
+            if len(boundaryElementToMaterial[e]) > 0:
+                material = boundaryElementToMaterial[e][0]
         f.write(str(int(material)) + "\n")
         
         
