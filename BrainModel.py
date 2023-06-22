@@ -38,6 +38,7 @@ class BrainModel():
             return False       
     
     def coarsen(self, new, original_data):        
+        from GridBox import GridBox
         print("Coarsening mesh by a factor of " + str(new))
         current_dimensions = original_data.shape
         new_dimensions = [int(p) for p in np.floor(np.array(current_dimensions)/new)];
@@ -58,18 +59,10 @@ class BrainModel():
                                 replacedValue = modes[modeIndex]
                                 unique, counts = np.unique(gridBox, return_counts=True)
                                 num_values = dict(zip(unique, counts))
-                                if num_values.__contains__(251):
-                                    replacedValue = 251
-                                    
-                                # elif (replacedValue == 0) and (len(modes)>1):                
-                                #     zero_idx = np.where(modes == 0)
-                                #     np.delete(modes,zero_idx)
-                                #     np.delete(count, zero_idx)
-                                #     modeIndices, = np.where(count == max(count))
-                                #     modeIndex = modeIndices[0]
-                                #     # if (count[modeIndex]>(len(gridBox)/3.)):
-                                #     replacedValue = modes[modeIndex]
-                                    
+                                if num_values.__contains__(4):
+                                    replacedValue = 4 
+                                elif num_values.__contains__(251):
+                                    replacedValue = 251                                       
                                 elif (len(modes)>1) and (len(modeIndices)>1):
                                     if (modeIndices[0]==0) or (modeIndices[1]==0):
                                         if (modeIndices[0]==0):
@@ -77,9 +70,6 @@ class BrainModel():
                                         elif (modeIndices[1]==0):
                                             replacedValue = modes[modeIndices[0]]
                                     else:
-                                        # xtopL = top_x+1 if top_x<current_dimensions[0] else current_dimensions[0]-1
-                                        # ytopL = top_y+1 if top_y<current_dimensions[1] else current_dimensions[1]-1
-                                        # ztopL = top_z+1 if top_z<current_dimensions[2] else current_dimensions[2]-1
                                         xbot = x-1 if x>0 else 0
                                         ybot = y-1 if y>0 else 0
                                         zbot = z-1 if z>0 else 0
@@ -108,24 +98,215 @@ class BrainModel():
     def clean_mesh_data(self, start_data):  
         print("Performing cleaning operations on data")
         cleaned = self.create_binary_image(start_data)
-        print(np.sum(cleaned))
         structure = ndimage.generate_binary_structure(3,3) 
-        print("Filling in holes (1)")
+        print("Filling in holes")
         cleaned = self.fill_in_holes(cleaned, structure)
-        # print(np.sum(cleaned))
-        print("Perfroming binary erosion")
-        cleaned = self.binary_erosion(cleaned, structure)
-        # print(np.sum(cleaned))
-        print("Perfroming binary dilation")
-        cleaned = self.binary_dilation(cleaned, structure)
-        # print(np.sum(cleaned))
-        print("Filling in holes (2)")
-        cleaned = self.fill_in_holes(cleaned, structure)
-        print(np.sum(cleaned))        
+        print("Hit and miss cleaning")
+        self.hit_and_miss_2d(cleaned)
+        self.hit_and_miss(cleaned) 
+        print("Filling in holes")
+        cleaned = self.fill_in_holes(cleaned, structure)        
         print("Complete")        
         self.assign_materials_labels(start_data,cleaned)
         return
     
+    def hit_and_miss(self, data):
+        
+        hit_structureA_Z = np.ones((2,2,2))
+        hit_structureA_Z[0,1,0] = 0
+        hit_structureA_Z[1,0,0] = 0
+        hit_structureA_Z2 = np.rot90(hit_structureA_Z,)
+        hit_structureA_Z3 = np.rot90(hit_structureA_Z, k=2, axes=(1,2))
+        hit_structureA_Z4 = np.rot90(hit_structureA_Z2, k=2, axes=(1,2))
+        hit_structures_A_Z = [hit_structureA_Z, hit_structureA_Z2, hit_structureA_Z3, hit_structureA_Z4]
+
+        hit_structureA_Y = np.ones((2,2,2))
+        hit_structureA_Y[0,0,1] = 0
+        hit_structureA_Y[1,0,0] = 0
+        hit_structureA_Y2 = np.rot90(hit_structureA_Y, axes=(0,2))
+        hit_structureA_Y3 = np.rot90(hit_structureA_Y, k=2, axes=(0,1))
+        hit_structureA_Y4 = np.rot90(hit_structureA_Y2, k=2, axes=(0,1)) 
+        hit_structures_A_Y = [hit_structureA_Y, hit_structureA_Y2, hit_structureA_Y3, hit_structureA_Y4]
+
+        hit_structureA_X = np.ones((2,2,2))
+        hit_structureA_X[0,0,1] = 0
+        hit_structureA_X[0,1,0] = 0
+        hit_structureA_X2 = np.rot90(hit_structureA_X, axes=(1,2))
+        hit_structureA_X3 = np.rot90(hit_structureA_X, k=2, axes=(0,1))
+        hit_structureA_X4 = np.rot90(hit_structureA_X2, k=2, axes=(0,1))
+        hit_structures_A_X = [hit_structureA_X, hit_structureA_X2, hit_structureA_X3, hit_structureA_X4]                
+        
+        hit_structureB = np.ones((2,2,2))
+        hit_structureB[0,0,0] = 0
+        hit_structureB[1,1,1] = 0
+        hit_structureB_2 = np.rot90(hit_structureB, axes=(1,2))
+        hit_structureB_3 = np.rot90(hit_structureB, k=2, axes=(1,2))
+        hit_structureB_4 = np.rot90(hit_structureB_2, k=2, axes=(1,2))
+        hit_structures_B = [hit_structureB, hit_structureB_2, hit_structureB_3, hit_structureB_4]
+        
+        
+        hit_structureD = np.ones((2,2,2))
+        hit_structureD[0,0,0] = 0
+        hit_structureD[1,0,0] = 0
+        hit_structureD[0,1,0] = 0
+        hit_structureD[1,1,1] = 0
+        hit_structureD[1,0,1] = 0
+        hit_structureD[0,1,1] = 0
+        hit_structureD_2 = np.rot90(hit_structureD)
+        hit_structureD_3 = np.rot90(hit_structureD, k=2)
+        hit_structureD_4 = np.rot90(hit_structureD, k=3)
+        
+        count = 1
+        total_count = 0
+        iterations = 0
+        while (count > 0 and iterations<10):
+            count = 0
+            iterations += 1
+            for structure in hit_structures_A_X+hit_structures_A_Y+hit_structures_A_Z:
+                count += self.hit_and_miss_3d_2x2x2(data,structure, fill=1);
+                
+            for structure in hit_structures_B:
+                count += self.hit_and_miss_3d_2x2x2(data,structure);
+                    
+            count += self.hit_and_miss_3d_2x2x2(data,hit_structureD);
+            count += self.hit_and_miss_3d_2x2x2(data,hit_structureD_2);
+            count += self.hit_and_miss_3d_2x2x2(data,hit_structureD_3);
+            count += self.hit_and_miss_3d_2x2x2(data,hit_structureD_4);
+            
+            total_count += count
+        print("Hit and miss 3D: " + str(total_count) + " in " + str(iterations) + " iterations")
+        
+    def hit_and_miss_3d_2x2x2(self, data, hit_structure, fill=0):
+        count = 0
+        test = ndimage.binary_hit_or_miss(data, structure1=hit_structure).astype(int)
+        xh,yh,zh = np.where(test == 1)
+        for [xs,ys,zs] in np.column_stack((xh,yh,zh)):
+            count += 1
+            data[xs-1:xs+1,ys-1:ys+1,zs-1:zs+1] = np.ones((2,2,2))*fill
+        return count
+        
+        
+    def hit_and_miss_2d(self,data):
+        total_count = 0
+        count = 1
+        iteration= 0        
+        hit_structure1 = np.ones((2,2))
+        hit_structure1[0,0] = 0
+        hit_structure1[1,1] = 0
+        hit_structure2 = np.rot90(hit_structure1)
+        hit_structure3 = np.zeros((3,3))
+        hit_structure3[1,1] = 1
+        hit_structure4 = np.zeros((3,4))
+        hit_structure4[1,1] = 1
+        hit_structure4[1,2] = 1
+        hit_structure4b = np.rot90(hit_structure4)
+        while (count >0 and iteration<10):
+            iteration += 1
+            count = 0
+            for x in np.arange(0,(data.shape[0])):
+                if (np.sum(data[x,:,:]) > 0): 
+                    old = data[x,:,:]
+                    test1 = ndimage.binary_hit_or_miss(old, structure1=hit_structure1).astype(int)
+                    xh,yh = np.where(test1 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[x,xs-1:xs+1,ys-1:ys+1] = np.zeros((2,2))
+                        count += 1
+                        
+                    test2 = ndimage.binary_hit_or_miss(old, structure1=hit_structure2).astype(int)
+                    xh,yh = np.where(test2 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[x,xs-1:xs+1,ys-1:ys+1] = np.zeros((2,2))
+                        count += 1
+                        
+                    test3 = ndimage.binary_hit_or_miss(old, structure1=hit_structure3).astype(int)
+                    xh,yh = np.where(test3 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[x,xs,ys] = 0
+                        count += 1
+                     
+                    test4a = ndimage.binary_hit_or_miss(old, structure1=hit_structure4).astype(int)
+                    xh,yh = np.where(test4a == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[x,xs-1:xs+2,ys-2:ys+2] = np.zeros((3,4))
+                        count += 1                     
+                           
+                    test4b = ndimage.binary_hit_or_miss(old, structure1=hit_structure4b).astype(int)
+                    xh,yh = np.where(test4b == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[x,xs-2:xs+2,ys-1:ys+2] = np.zeros((4,3))
+                        count += 1
+                        
+            for y in np.arange(0,(data.shape[1])):
+                if (np.sum(data[:,y,:]) > 0): 
+                    old = data[:,y,:]
+                    test1 = ndimage.binary_hit_or_miss(old, structure1=hit_structure1).astype(int)
+                    xh,yh = np.where(test1 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs-1:xs+1,y,ys-1:ys+1] = np.zeros((2,2))
+                        count += 1
+                        
+                    test2 = ndimage.binary_hit_or_miss(old, structure1=hit_structure2).astype(int)
+                    xh,yh = np.where(test1 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs-1:xs+1,y,ys-1:ys+1] = np.zeros((2,2))
+                        count += 1
+                        
+                    test3 = ndimage.binary_hit_or_miss(old, structure1=hit_structure3).astype(int)
+                    xh,yh = np.where(test3 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs,y,ys] = 0
+                        count += 1
+                     
+                    test4a = ndimage.binary_hit_or_miss(old, structure1=hit_structure4).astype(int)
+                    xh,yh = np.where(test4a == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs-1:xs+2,y,ys-2:ys+2] = np.zeros((3,4))
+                        count += 1                     
+                           
+                    test4b = ndimage.binary_hit_or_miss(old, structure1=hit_structure4b).astype(int)
+                    xh,yh = np.where(test4b == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs-2:xs+2,y,ys-1:ys+2] = np.zeros((4,3))
+                        count += 1
+                        
+            for z in np.arange(0,(data.shape[2])):
+                if (np.sum(data[:,:,z]) > 0): 
+                    old = data[:,:,z]
+                    
+                    test1 = ndimage.binary_hit_or_miss(old, structure1=hit_structure1).astype(int)
+                    xh,yh = np.where(test1 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs-1:xs+1,ys-1:ys+1,z] = np.zeros((2,2))
+                        count += 1
+                        
+                    test2 = ndimage.binary_hit_or_miss(old, structure1=hit_structure2).astype(int)
+                    xh,yh = np.where(test1 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs-1:xs+1,ys-1:ys+1,z] = np.zeros((2,2))
+                        count += 1 
+                        
+                    test3 = ndimage.binary_hit_or_miss(old, structure1=hit_structure3).astype(int)
+                    xh,yh = np.where(test3 == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs,ys,z] = 0
+                        count += 1
+                     
+                    test4a = ndimage.binary_hit_or_miss(old, structure1=hit_structure4).astype(int)
+                    xh,yh = np.where(test4a == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs-1:xs+2,ys-2:ys+2,z] = np.zeros((3,4))
+                        count += 1                     
+                           
+                    test4b = ndimage.binary_hit_or_miss(old, structure1=hit_structure4b).astype(int)
+                    xh,yh = np.where(test4b == 1)
+                    for [xs,ys] in np.column_stack((xh,yh)):
+                        data[xs-2:xs+2,ys-1:ys+2,z] = np.zeros((4,3))
+                        count += 1
+                    
+            total_count += count
+        print("Hit and miss 2D: " + str(total_count) + " in " + str(iteration) + " iterations")
+        
+        
     def fill_in_holes(self, data, structure = None):
         if np.any(structure == None):
             structure = self.create_structure()
@@ -134,12 +315,12 @@ class BrainModel():
     def binary_dilation(self, data, structure=None):
         if np.any(structure == None):
             structure = self.create_structure()
-        return ndimage.binary_dilation(data, structure=structure).astype(int)
+        return ndimage.binary_dilation(data, structure=structure, iterations=2).astype(int)
     
     def binary_erosion(self, data, structure=None):
         if np.any(structure == None):
             structure = self.create_structure()
-        return ndimage.binary_erosion(data, structure=structure).astype(int)
+        return ndimage.binary_erosion(data, structure=structure, iterations=2).astype(int)
     
     def create_structure(self):       
         structure = ndimage.generate_binary_structure(3,3)
@@ -154,39 +335,84 @@ class BrainModel():
     def two_d_fill(self, cleaned):
         hit_structure = np.ones((3,3))
         hit_structure[1,1] = 0
+        hit_structureA = np.ones((2,2))
+        hit_structureA[0,0] = 0
+        hit_structureA[1,1] = 0
+        hit_structureB = np.ones((2,2))
+        hit_structureB[1,0] = 0
+        hit_structureB[0,1] = 0
         
         for x in np.arange(0,(cleaned.shape[0])):
             if (np.sum(cleaned[x,:,:]) > 0): 
                 old = cleaned[x,:,:]
-                sum_old = np.sum(old)
                 g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
                 loc = np.where(g == 1)
                 for r in range(len(loc[0])):
                     px = loc[0][r]
                     py = loc[1][r]
                     cleaned[x,px,py] = 1
+                
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[x,px,py-1] = 0
+                
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[x,px,py] = 0
                     
         for y in np.arange(0,(cleaned.shape[1])):
             if (np.sum(cleaned[:,y,:]) > 0): 
                 old = cleaned[:,y,:]
-                sum_old = np.sum(old)
                 g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
                 loc = np.where(g == 1)
                 for r in range(len(loc[0])):
                     px = loc[0][r]
                     py = loc[1][r]
                     cleaned[px,y,py] = 1
+                
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[px,y,py-1] = 0
+                
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[px,y,py] = 0
                     
         for z in np.arange(0,(cleaned.shape[2])):
             if (np.sum(cleaned[:,:,z]) > 0): 
                 old = cleaned[:,:,z]
-                sum_old = np.sum(old)
                 g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
                 loc = np.where(g == 1)
                 for r in range(len(loc[0])):
                     px = loc[0][r]
                     py = loc[1][r]
                     cleaned[px,py,z] = 1
+                
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[px,py-1,z] = 0
+                
+                g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
+                loc = np.where(g == 1)
+                for r in range(len(loc[0])):
+                    px = loc[0][r]
+                    py = loc[1][r]
+                    cleaned[px,py,z] = 0
         
    
     def assign_materials_labels(self, labelled_data, end):

@@ -6,7 +6,6 @@ Created on Thu May 25 15:39:38 2023
 """
 import ABQ_UCD_handling as rw
 import Smoothing as smooth
-from Material_Label import Material_Label
 
 class Element():
     
@@ -23,6 +22,7 @@ class Mesh():
     def __init__(self, pointData,voxel_size):
         self.elements = {}
         self.nodes = {}
+        self.elementToPointCloud = {}
         self.create_mesh(pointData,voxel_size)
         
     
@@ -53,24 +53,41 @@ class Mesh():
             element_ica += element_ica_tmp
             element = Element(elementNo, element_ica, mat=[m])
             self.elements[int(elementNo)] = element
-        self.clean_mesh();
-        self.remove_outer_white_matter(2, 3)
+            self.elementToPointCloud[int(elementNo)] = [x,y,z,m]
+    
+            
+    
     
     def clean_mesh(self, elementsNotIncluded = [], replace=0):
+        iteration = 0
+        count = 1
+        total_count = 0
         self.create_node_to_element_connectivity();
-        self.clean_mesh_edges(elementsNotIncluded = elementsNotIncluded, replace=replace);
-        self.clean_mesh_nodes(elementsNotIncluded = elementsNotIncluded, replace=replace);
+        while ((count > 0) and (iteration<10)):
+            count = 0;
+            iteration += 1
+            count += self.clean_mesh_edges(elementsNotIncluded = elementsNotIncluded, replace=replace);
+            count += self.clean_mesh_nodes(elementsNotIncluded = elementsNotIncluded, replace=replace);
+            if ((replace != 0) and (iteration == 1)):
+                elementsNotIncluded.append(replace);
+            total_count += count;
+        print(str(total_count) + " elements deleted/replaced due to poor node/edge connectivity in " + str(iteration) + " iterations")
          
     
-    def locate_boundary_faces(self, elementsNotIncluded = []):
+    def locate_boundary_element_map(self, elementsNotIncluded = []):
         print("Identifying boundary faces")
         elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
-        self.boundary_element_map, self.elements_on_boundary, self.volume_elem_to_boundary = smooth.get_boundary_surfaces(elementMap)
+        return smooth.get_boundary_element_map(elementMap)
+    
+    def locate_elements_on_boundary(self, elementsNotIncluded = []):
+        print("Identifying boundary faces")
+        elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
+        return smooth.get_elements_on_boundary(elementMap)
         
-    def remove_outer_white_matter(self, white_matter_label, replace_label):
+    def replace_outer_region(self, white_matter_label, replace_label, elementsNotIncluded=[]):
         print("Cleaning brain boundary")
-        self.locate_boundary_faces(elementsNotIncluded = [24]);
-        for elem in self.elements_on_boundary:
+        elements_on_boundary = self.locate_elements_on_boundary(elementsNotIncluded=elementsNotIncluded)
+        for elem in elements_on_boundary:
             element = self.elements[elem]
             materials = element.properties['mat']
             if materials.count(white_matter_label):
@@ -79,11 +96,10 @@ class Mesh():
         
         
     def clean_mesh_nodes(self, elementsNotIncluded = [], replace=0):
-        print("Cleaning mesh")
-        maxNodeNum = max(self.nodes.keys())
-        newNodes = {}
-        for key in self.nodes.keys():
-            # connectedElements = self.nodeToElements[key]
+        print("Cleaning mesh node")
+        cleaned_elements = []
+        node_keys = list(self.nodes.keys())
+        for key in node_keys:
             All_connectedElements = self.nodeToElements[key]
             connectedElements = []
             for conn_element in All_connectedElements:
@@ -102,36 +118,28 @@ class Mesh():
                 for node1 in element1.ica:
                     if element2.ica.count(node1)>0:
                         numberSharedNodes += 1
-                assert numberSharedNodes>0
+                assert numberSharedNodes>0;
                 if numberSharedNodes == 1:
-                    if (replace != 0) or (len(elementsNotIncluded) != 0):
-                        self.replace_element(element2.num,replace=replace)
-                    else:
-                        self.delete_element(element2.num)
-                    # print("Cleaning mesh at node {} between elements {} and {}".format(key,element1.num,element2.num))                    
-        #             maxNodeNum += 1
-        #             nodeCoords = list(self.nodes[key])
-        #             node_idx = element2.ica.index(key)
-        #             element2.ica[node_idx] = maxNodeNum
-        #             newNodes[maxNodeNum] = nodeCoords
-        #             element2.properties['mat'].append(1000)
-        #             # Remove from node to element map
-        #             self.nodeToElements[key].remove(connectedElements[1])
-        #             self.nodeToElements[maxNodeNum] = element2.num
-        # for key,node in newNodes.items():
-        #     self.nodes[key] = node;
-    
+                    if not cleaned_elements.count(element2.num):
+                        cleaned_elements.append(element2.num)
+                        if (replace != 0) or (len(elementsNotIncluded) != 0):
+                            self.replace_element(element2.num,replace=replace)
+                        else:
+                            self.delete_element(element2.num) 
+        # print(str(len(cleaned_elements)) + " element deleted due to poor node connectivity")
+        return len(cleaned_elements)
     
     def delete_element(self, element_number):
-        element = self.elements[element_number]
-        ica = element.ica
-        for n in ica:
-            connectedElements = self.nodeToElements[n]
-            connectedElements.remove(element_number)
-            if len(connectedElements)==0:
-                self.nodeToElements.pop(n)
-                self.nodes.pop(n)
-        self.elements.pop(element_number)
+        if self.elements.__contains__(element_number):
+            element = self.elements[element_number]
+            ica = element.ica
+            for n in ica:
+                connectedElements = self.nodeToElements[n]
+                connectedElements.remove(element_number)
+                if len(connectedElements)==0:
+                    self.nodeToElements.pop(n)
+                    self.nodes.pop(n)
+            self.elements.pop(element_number)
         
     def replace_element(self, element_number, replace=24):
         element = self.elements[element_number]
@@ -149,12 +157,10 @@ class Mesh():
         print("Cleaning mesh edges")
         from Smoothing import get_element_faces
         edgesToElements = self.create_edge_to_element_connectivity(elementsNotIncluded)
-        maxNodeNum = max(self.nodes.keys())
-        newNodes = {}
         old_node_to_new = {}
-        deleted_elements= []
+        cleaned_elements = []
         for edge, edgeConnectedElements in edgesToElements.items():
-            if not deleted_elements.count(edgeConnectedElements[0]) and not deleted_elements.count(edgeConnectedElements[1]):
+            if not cleaned_elements.count(edgeConnectedElements[0]) and not cleaned_elements.count(edgeConnectedElements[1]):
                 nodes = [int(n) for n in edge.split("-")]
                 element1 = self.elements[edgeConnectedElements[0]]
                 element2 = self.elements[edgeConnectedElements[1]]
@@ -174,67 +180,23 @@ class Mesh():
                                     break
                             if add:
                                 connectedElements.append(conn_element)
-                        elementsConnected_To_new_node_map = {}
                         if len(connectedElements) <= 4:
-                            if (replace != 0) or (len(elementsNotIncluded) != 0):
-                                self.replace_element(element2.num,replace=replace)
-                            else:
-                                if not deleted_elements.count(element2.num):
+                            if not cleaned_elements.count(element2.num):
+                                cleaned_elements.append(element2.num)
+                                if (replace != 0) or (len(elementsNotIncluded) != 0):
+                                    self.replace_element(element2.num,replace=replace)
+                                else:                                
                                     self.delete_element(element2.num)
-                                    deleted_elements.append(element2.num)
-                        # maxNodeNum += 1
-                        # newNodeNum = maxNodeNum
-                        # nodeCoords = list(self.nodes[nodeNum])
-                        # node_idx = element2.ica.index(nodeNum)
-                        # element2.ica[node_idx] = newNodeNum
-                        # newNodes[newNodeNum] = nodeCoords
-                        # old_node_to_new[nodeNum]=newNodeNum
-                        # if elementsConnected_To_new_node_map.__contains__(newNodeNum):
-                        #     elementsConnected_To_new_node_map[newNodeNum].append(element2.num)
-                        # else:
-                        #     elementsConnected_To_new_node_map[newNodeNum] = [element2.num]
-                        # if len(connectedElements) > 2:
-                        #     for e in connectedElements:
-                        #         if e != element2.num and e != element1.num:
-                        #             connectedEle = self.elements[e]
-                        #             faces_e = get_element_faces(connectedEle.ica,ordered=True,toString =True)
-                        #             shared_Faces = False
-                        #             for f in faces_e:
-                        #                 if faces_e2.count(f) or faces_e1.count(f):
-                        #                     shared_Faces = True
-                        #                     if faces_e2.count(f):
-                        #                         node_idx = connectedEle.ica.index(nodeNum)
-                        #                         connectedEle.ica[node_idx] = newNodeNum
-                        #                         elementsConnected_To_new_node_map[newNodeNum].append(e)
-                        #             if not shared_Faces:                                    
-                        #                 ele = self.elements[e]
-                        #                 maxNodeNum += 1
-                        #                 newNodeNum2 = maxNodeNum
-                        #                 nodeCoords = list(self.nodes[nodeNum])
-                        #                 node_idx = ele.ica.index(nodeNum)
-                        #                 ele.ica[node_idx] = newNodeNum2
-                        #                 newNodes[newNodeNum2] = nodeCoords
-                        #                 old_node_to_new[nodeNum] = newNodeNum2
-                        #                 elementsConnected_To_new_node_map[newNodeNum2] = [ele.num]
-                                    
-                        # # Remove from node to element map
-                        # for newNodeNum,elementsConnected_To_new_node in elementsConnected_To_new_node_map.items():
-                        #     for e in elementsConnected_To_new_node:
-                        #         self.nodeToElements[nodeNum].remove(e)
-                        #     self.nodeToElements[newNodeNum] = elementsConnected_To_new_node
-                    
-            # for key,node in newNodes.items():
-            #     self.nodes[key] = node;
-
+        
+        # print(str(len(cleaned_elements)) + " element deleted due to poor edge connectivity")
+        return len(cleaned_elements)                 
             
     def smooth_mesh(self, coeffs, iterations, elementsNotIncluded = []):
         print("Starting mesh smoothing")
-        elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
-        if len(elementMap)>0:
-            from element_functions import create_node_to_elem_map
-            self.locate_boundary_faces(elementsNotIncluded=elementsNotIncluded);
-            # self.clean_mesh(elementsNotIncluded=elementsNotIncluded)
-            surfaceNodeConnectivity = smooth.create_surface_connectivity(self.boundary_element_map)  
+        from element_functions import create_node_to_elem_map
+        boundary_element_map = self.locate_boundary_element_map(elementsNotIncluded)
+        if len(boundary_element_map)>0:
+            surfaceNodeConnectivity = smooth.create_surface_connectivity(boundary_element_map)  
             elementMapFull = self.create_elements_map()
             nodeToElemMap = create_node_to_elem_map(elementMapFull)
             for iteration in range(iterations):
@@ -242,16 +204,23 @@ class Mesh():
         else:
             print("No elements selected to smooth")
     
-    def create_elements_map(self, elementsNotIncluded = []):
+    def create_elements_map(self, elements = [], elementsNotIncluded = [], elementsIncluded = []):
         elementMap = {}
-        for elementNo, element in self.elements.items():
+        if len(elements) == 0:
+            elements = self.elements
+        for elementNo, element in elements.items():
             add = True
             for el_types in elementsNotIncluded:
                 if element.properties['mat'].count(el_types):
                     add=False
                     break;
-            if add:
-                elementMap[elementNo] = element.ica
+            if add:                
+                if len(elementsIncluded)>0:
+                    for el_types in elementsIncluded:
+                        if element.properties['mat'].count(el_types):
+                            elementMap[elementNo] = element.ica
+                else:
+                    elementMap[elementNo] = element.ica
         return elementMap
     
     def create_node_to_element_connectivity(self):
@@ -270,7 +239,6 @@ class Mesh():
         from Smoothing import get_element_faces
         edgesToElements_tmp = {}
         joined_edges_and_no_faces_count = 0
-        joined_edges_and_no_faces = []
         for element in self.elements.values():
             add = True
             for el_types in elementsNotIncluded:
@@ -313,27 +281,41 @@ class Mesh():
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def write_to_file(self, path, filename, labels_map, filetype="abaqus", boundary=True):
+    def write_to_file(self, path, filename, labels_map, filetype="abaqus", boundaryElementMap={}):
         print("Writing mesh data to file in "+ filetype + " format")
         if (path[-1] != "\\"):
             path += "\\" 
-        elementMap = self.create_elements_map()
-        material_mapping = labels_map.create_material_sets(self.elements,file_format=filetype)
+        # Map of element number (key) to element ica (value)
+        element_ica_Map = self.create_elements_map()
+        # for VTK and UCD files: Map of element number (key) to list of material numbers (value)
+        # for Abaqus files: Map of material names (key) to elements numbers
+        element_to_material_mapping = labels_map.create_material_sets(self.elements,file_format=filetype) 
+        boundary_element_ica_map = {}
+        boundary_material_mapping = {}
+        if len(boundaryElementMap)>0:
+            # Map of boundary element number [quad] (key) to element [quad] ica (value)
+            boundary_element_ica_map = self.create_elements_map(boundaryElementMap)
+            # for VTK and UCD files: Map of boundary element number (key) to list of boundary numbers (value)
+            # for Abaqus files: Map of boundary names (key) to boundary elements numbers
+            boundary_material_mapping = labels_map.create_material_sets(boundaryElementMap,file_format=filetype)
         if (filetype.lower() == "ucd"):
-            if boundary:
-                if not hasattr(self, "boundary_element_map"):
-                    self.locate_boundary_faces();  
-            
-            homogenized_labels_map = labels_map.get_homogenized_labels_map();
-            rw.writeUCD(path, filename, self.nodes, elementMap, boundaryElementMap=self.boundary_element_map, 
-                        elementToElsetMap=material_mapping, elset_number_Mappings=homogenized_labels_map)
+            rw.writeUCD(path, filename, self.nodes, 
+                        element_ica_Map, elementToMaterialMap=element_to_material_mapping, 
+                        boundaryElementMap=boundary_element_ica_map, boundaryElementToMaterial=boundary_material_mapping)
             
         elif (filetype.lower() == "vtk"):
-            elementToMaterial = {}
-            rw.writeVTK(path, filename, self.nodes, elementMap, elementToMaterial=material_mapping)              
+            rw.writeVTK(path, filename, self.nodes, element_ica_Map, elementToMaterial=element_to_material_mapping, 
+                        boundaryElementMap=boundary_element_ica_map, boundaryElementToMaterial=boundary_material_mapping)              
               
         else:
-            rw.writeABQ(path, filename, self.nodes, elementMap, elsetsMap=material_mapping)
+            boundary_nodes = {}
+            boundary_nodes_list = []
+            for ica in boundary_element_ica_map.values():
+                for n in ica:
+                    if not boundary_nodes_list.count(n):
+                        boundary_nodes_list.append(n)            
+            boundary_nodes['Boundary nodes'] = boundary_nodes_list
+            rw.writeABQ(path, filename, self.nodes, element_ica_Map, elsetsMap=element_to_material_mapping, nsetMap=boundary_nodes)
             
 
     

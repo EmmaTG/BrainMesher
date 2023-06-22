@@ -49,7 +49,8 @@ class Material_Label:
         labelsArr += list(numbers);
         for n in numbers:
             self.inverseLabelsMap[n] = name
-        return 0;
+        return 0;  
+    
     def get_homogenized_labels_map(self):
         h_label_map = {}
         for key,values in self.labelsMap.items():
@@ -71,24 +72,12 @@ class Material_Label:
                                 label_name = self.inverseLabelsMap[data_value]
                                 label_number = self.labelsMap[label_name][0]
                                 newData[x,y,z] = label_number
+                                
         return newData;
     
     def create_material_sets(self, elements, file_format="abaqus"):
         print("Creating material sets")        
-        if (file_format.lower() == "ucd"):
-            elementToMat = {}
-            for num,element in elements.items():
-                materials = element.properties['mat']
-                material_list = []
-                for material in materials:
-                    if self.inverseLabelsMap.__contains__(material):
-                        mat_name = self.inverseLabelsMap[material]
-                        material_list.append(mat_name)
-                elementToMat[num] = material_list
-            return elementToMat  
-                
-        elif (file_format.lower() == "vtk"):
-            print("Creating material sets")
+        if (file_format.lower() == "ucd" or file_format.lower() == "vtk"):
             elementToMat = {}
             for num,element in elements.items():
                 materials = element.properties['mat']
@@ -97,7 +86,7 @@ class Material_Label:
                     if self.inverseLabelsMap.__contains__(material):
                         material_list.append(material)
                 elementToMat[num] = material_list
-            return elementToMat                
+            return elementToMat               
         else:            
             materialToElements = {}
             for materialName in self.inverseLabelsMap.values():
