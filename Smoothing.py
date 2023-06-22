@@ -141,7 +141,7 @@ def get_boundary_element_map(elementMap):
     surface_face_to_elems_map = {}
     # free_faces = []
     # nodeToElem = create_node_to_elem_map(elementMap)
-    for e,ica in elementMap.items():       
+    for e,ica in elementMap.items():
         list_of_faces = get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 
             if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map

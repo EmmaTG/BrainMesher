@@ -218,6 +218,33 @@ def create_element_to_elset_map(elementSetsMap):
             sets.append(name)
             elementToElsetMap[e] = sets
     return elementToElsetMap
+    
+def mesh_statistics(elementMap, nodeMap, boundaryElements = {}):
+    print("MESH STATISTICS: ")
+    print("\tNumber of nodes: " + str(len(nodeMap)))
+    print("\tNumber of elements: " + str(len(elementMap)))
+    if (len(boundaryElements)>0):  
+        print("\tNumber of boundary surfaces: " + str(len(boundaryElements)))
+
+def remove_ext(filename):
+    if len(filename.split('.'))>1:
+        filename = filename.split('.')[0]
+    return filename;
+
+
+def writeElementUCD(f, e, material, elemType, element_ica):    
+    f.write(str(e) + "\t" + str(material) + "\t " + elemType + "\t")
+    f.write("\t".join([str(n) for n in element_ica])+ "\n")
+    
+def get_refined_mesh(base_model,length,y,z,local):
+    import os.path
+    refined_file = '_'.join([str(x) for x in [base_model,length,y,z,local]])+".inp"
+    path = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\MatLab\\INPFiles\\"
+    if (os.path.isfile(path + refined_file)):
+        print("Refined model found in cache")
+        nodeMap, elementMap, elementSetsMap = readABQ(path, refined_file)
+        return True,[nodeMap, elementMap, elementSetsMap]
+    return False,[{},{},{}] 
 
 def writeABQ(path, newfilename, nodeMap, elementMap, elsetsMap={}, nsetMap={}, reNumber = True):
     """
@@ -299,41 +326,11 @@ def writeABQ(path, newfilename, nodeMap, elementMap, elsetsMap={}, nsetMap={}, r
     f.close()
     print("Node and element data written to: " + path + newfilename)
     mesh_statistics(elementMap, nodeMap);
-    
-def mesh_statistics(elementMap, nodeMap, boundaryElements = {}):
-    print("MESH STATISTICS: ")
-    print("\tNumber of nodes: " + str(len(nodeMap)))
-    print("\tNumber of elements: " + str(len(elementMap)))
-    if (len(boundaryElements)>0):  
-        print("\tNumber of boundary surfaces: " + str(len(boundaryElements)))
 
-def remove_ext(filename):
-    if len(filename.split('.'))>1:
-        filename = filename.split('.')[0]
-    return filename;
-
-
-def writeElementUCD(f, e, material, elemType, element_ica):    
-    f.write(str(e) + "\t" + str(material) + "\t " + elemType + "\t")
-    f.write("\t".join([str(n) for n in element_ica])+ "\n")
-    
-def get_refined_mesh(base_model,length,y,z,local):
-    import os.path
-    refined_file = '_'.join([str(x) for x in [base_model,length,y,z,local]])+".inp"
-    path = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\MatLab\\INPFiles\\"
-    if (os.path.isfile(path + refined_file)):
-        print("Refined model found in cache")
-        nodeMap, elementMap, elementSetsMap = readABQ(path, refined_file)
-        return True,[nodeMap, elementMap, elementSetsMap]
-    return False,[{},{},{}]
-    
-    
-    
-
-def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
-             elset_number_Mappings={},
-             boundaryElementMap = {}, boundaryElementToElsetMap = {}, 
-             boundary_elset_number_Mappings={'FIXED':'2', 'PRESCRIBED':'1'}, reNumber = True):
+def writeUCD(path,filenameIN,nodeMap, 
+             elementMap, elementToMaterialMap = {},
+             boundaryElementMap = {}, boundaryElementToMaterial = {}, 
+             reNumber = True):
     """
     Function to write data to inp file for importing into deal.ii (and viewing on paraview)
 
@@ -347,27 +344,22 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
         Map of node numbers (keys) to coordinates of nodes (values)
     elementMap : Map(int,array)
         Map of element numbers (keys) to ica (values)
-    elementToElsetMap : Map(int,string), optional
-        Map of element numbers (keys) to element sets which they are a part of (values).
+    elementToElsetMap : Map(int,array), optional
+        Map of element numbers (keys) to element sets (numbered) which they are a part of (values).
         The default is an empty map
-    elset_number_Mappings : Map(string,int), optional
-        Map of elset names (keys) and the material model numbers to assign for the UCD file (values) 
-        The default is is an empty map
     boundaryElementMap : Map(int,array), optional
         Map of 2D bounday element numbers (keys) to ica (values).
         The default is an empty map
-    boundary_elset_number_Mappings : Map(string,int), optional
-        Map of 2D elset names (keys) and the type of boundary to assign for the UCD file (values) 
-        The default is {'FIXED':'2', 'PRESCRIBED':'1'}
+    boundary_elset_number_Mappings : Map(int,array), optional
+        Map of 2D elset numbers (keys) and the boundary sets (numbered) which they are a part of (values).
+        The default is an empty map
 
     Returns
     -------
     None.
 
     """
-    if (len(elset_number_Mappings) == 0):
-        from materialMappings import getMaterialMappings
-        elset_number_Mappings = getMaterialMappings("name", "9R")
+    
     from datetime import date
     filenameIN = remove_ext(filenameIN)
     filenameOUT = filenameIN + "_UCD"
@@ -378,8 +370,8 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
         + "# UCD file created on " + date.today().isoformat() + "\n"
     f.write(firstLine)
     numNodes = len(nodeMap)
-    numElements = len(elementMap)+ len(boundaryElementToElsetMap)
-    f.write("\t".join([str(numNodes),str(numElements),'0','0','0']) + "\n")
+    numElements = len(elementMap)+ len(boundaryElementMap)
+    f.write("\t".join([str(numNodes),str(numElements),'0','0','0']) + "\n") # Data summary row
     nodeKeys = nodeMap.keys()
     nodeKeys = sorted(nodeKeys)
     count = 0
@@ -392,34 +384,19 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
             nodeNum = n        
         node_num_map_old_to_new[n] = nodeNum
         f.write(str(nodeNum) + "\t" + "\t".join([str(node) for node in nodeMap[n]]) + "\n")
-        
+    
+    # Hex elements    
     elemKeys = elementMap.keys()
     elemKeys = sorted(elemKeys)
     element_count = 0
-    for e in elemKeys:        
+    
+    for e in elemKeys:
         element_count += 1
-        if not elementToElsetMap.__contains__(e):
-            elsetnameList = []
-        else:
-            elsetnameList = elementToElsetMap[e]               
-        if len(elsetnameList) == 0:
-            elsetnameList = ['']
-        if len(elsetnameList) > 1:
-            # print("WARNING: element " + str(e) + "is part of two elsets.")
-            nameFound = False;
-            for name in elsetnameList:
-                if (elset_number_Mappings.__contains__(name)):
-                    elsetname = name.replace(" ", '')
-                    # print("Element will be categorized at part of elset " + elsetname)
-                    nameFound = True;
-                    break
-            if not nameFound:    
-                elsetname = elsetnameList[0].replace(" ", '')
-        elsetname = elsetnameList[0].replace(" ", '')
-        if elset_number_Mappings.__contains__(elsetname):
-            material = elset_number_Mappings[elsetname]
-        else:
-            material = 0;
+        material = 0
+        if elementToMaterialMap.__contains__(e):
+            if len(elementToMaterialMap[e]) > 0:
+                material = int(elementToMaterialMap[e][0])
+                
         elements = elementMap[e]
         elements = list(elements[:4]) + list(elements[4:])        
         if reNumber:
@@ -433,23 +410,23 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
             
         writeElementUCD(f, elementNum, material, 'hex', renumber_ica)
         
-    print("Number of boundary Elements: " + str(len(boundaryElementMap)))
     for e in boundaryElementMap:
-        if not boundaryElementToElsetMap.__contains__(e):
-            elsetnameList = []
+        element_count += 1
+        material = 0
+        if boundaryElementToMaterial.__contains__(e):
+            if len(boundaryElementToMaterial[e]) > 0:
+                material = boundaryElementToMaterial[e][0]
+        if reNumber:
+            elementNum = element_count
         else:
-            elsetnameList = boundaryElementToElsetMap[e]               
-        if len(elsetnameList) == 0:
-            elsetnameList = ['']
-        # if len(elsetnameList) > 1:
-            # print("WARNING: element " + str(e) + "is part of two elsets.")
-            # print("Element will be categorized at part of elset " + elsetnameList[0])
-        elsetname = elsetnameList[0].replace(" ", '')
-        if boundary_elset_number_Mappings.__contains__(elsetname):
-            material = boundary_elset_number_Mappings[elsetname]
-        else:
-            material = 0;
-        writeElementUCD(f, e, material, 'quad', boundaryElementMap[e])
+            elementNum = e
+        renumber_boundary_ica = []        
+        boundary_ica = boundaryElementMap[e]
+        
+        for ica_node in boundary_ica:
+            renumber_boundary_ica.append(node_num_map_old_to_new[ica_node])
+            
+        writeElementUCD(f, elementNum, material, 'quad', renumber_boundary_ica)
         
     f.close()    
     print("Completed")
@@ -457,8 +434,9 @@ def writeUCD(path,filenameIN,nodeMap, elementMap, elementToElsetMap = {},
     mesh_statistics(elementMap, nodeMap, boundaryElementMap);
 
 
-def writeVTK(path, filenameIN, nodeMap, elementMap, elementToMaterial = {},
-             elset_number_Mappings={}, boundaryElementMap={}, boundaryElementToMaterial = {}):
+def writeVTK(path, filenameIN, nodeMap, 
+             elementMap, elementToMaterial = {}, 
+             boundaryElementMap={}, boundaryElementToMaterial = {}):
     
     from datetime import date
     filenameIN = remove_ext(filenameIN)
