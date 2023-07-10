@@ -186,18 +186,7 @@ def remove_elements_in_square_bounds(elementMap,nodeMap,bounds):
     
     return extraction_Elements, extraction_Nodes
 
-def create_node_to_elem_map(elementMap):
-    "Creating node to element connectivity"
-    nodeToElemMap = {}
-    for e,ica in elementMap.items():        
-        for node in ica:
-            if nodeToElemMap.__contains__(node):
-                elements = nodeToElemMap[node]
-            else:
-                elements = []
-            elements.append(e)
-            nodeToElemMap[node] = elements  
-    return nodeToElemMap
+
     
 def replace_duplicate_nodes(nodes_changed_map, elems_changed_maps, nodeMap, decimal_places=6, bounds=[-1000]):
     

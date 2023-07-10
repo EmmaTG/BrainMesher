@@ -70,7 +70,7 @@ class GridBox:
                 print(count)
                 print(self.gridBox)
                 print("***Error replacing value at location: " + ", ".join([str(l) for l in self.location]))
-                return None
+                return replacedValue
         return replacedValue
         
     

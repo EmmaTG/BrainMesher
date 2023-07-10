@@ -9,6 +9,7 @@ import numpy as np
 import collections.abc
 from scipy import stats
 from scipy import ndimage
+import nibabel
 from Maze_Solver import Maze_Solver
 from Vertex import Vertex 
 from GridBox import GridBox
@@ -29,6 +30,18 @@ def in_hull(p, hull):
     return hull.find_simplex(p)>=0
 
 class BrainModel():
+    
+    def import_file(self,fileInPath, fileIn):
+        try:
+            # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
+            t1_file = "\\".join([fileInPath,fileIn])
+            t1 = nibabel.load(t1_file)
+            # t1.orthoview()
+            data = np.asarray(t1.dataobj)
+            return data
+        except:
+            print("Error importing file from {}\{}".format(fileInPath, fileIn))
+            return []
         
     def check_data_dims(self,data):        
         if len(data.shape) == 3:
@@ -37,20 +50,20 @@ class BrainModel():
             print('Error, data shape not 3 dimensional!')
             return False       
     
-    def coarsen(self, new, original_data):        
+    def coarsen(self, new_voxel_size, original_data):        
         from GridBox import GridBox
-        print("Coarsening mesh by a factor of " + str(new))
+        print("Coarsening mesh by a factor of " + str(new_voxel_size))
         current_dimensions = original_data.shape
-        new_dimensions = [int(p) for p in np.floor(np.array(current_dimensions)/new)];
+        new_dimensions = [int(p) for p in np.floor(np.array(current_dimensions)/new_voxel_size)];
         newData = np.zeros(new_dimensions, int)
-        for x in np.arange(0,(current_dimensions[0]-1),new):
-            top_x = x+new
+        for x in np.arange(0,(current_dimensions[0]-1),new_voxel_size):
+            top_x = x+new_voxel_size
             if (np.sum(original_data[x:top_x,:,:]) > 0):
-                for y in np.arange(0,(current_dimensions[1]-1),new):
-                    top_y = y+ new
+                for y in np.arange(0,(current_dimensions[1]-1),new_voxel_size):
+                    top_y = y+ new_voxel_size
                     if (np.sum(original_data[x:top_x,y:top_y,:]) > 0):
-                        for z in np.arange(0,(current_dimensions[2]-1),new):
-                            top_z = z+new
+                        for z in np.arange(0,(current_dimensions[2]-1),new_voxel_size):
+                            top_z = z+new_voxel_size
                             gridBox = original_data[x:top_x, y:top_y, z:top_z].reshape(-1)
                             if (np.sum(gridBox) > 0):
                                 [modes,count] = stats.find_repeats(gridBox)
@@ -80,10 +93,10 @@ class BrainModel():
                                         replacedValue = modes[modeIndex]
                                     
                                     
-                                newData[int(x/new),int(y/new),int(z/new)] = replacedValue
+                                newData[int(x/new_voxel_size),int(y/new_voxel_size),int(z/new_voxel_size)] = replacedValue
         return newData        
     
-    def create_binary_image(self, current_data):
+    def create_binary_image(self, current_data, search=-1):
         current_dimensions = current_data.shape
         newData = np.zeros(current_dimensions, int)
         for x in range(current_dimensions[0]):
@@ -91,11 +104,14 @@ class BrainModel():
                 for y in range(current_dimensions[1]):
                     if (np.sum(current_data[x,y,:]) > 0):
                         for z in range(current_dimensions[2]):
-                            if (current_data[x,y,z] != 0):
+                            if (search== -1) and (current_data[x,y,z] != 0):
                                 newData[x,y,z] = 1
+                            elif (search != -1) and (current_data[x,y,z] == search):
+                                newData[x,y,z] = 1
+                                
         return newData
     
-    def clean_mesh_data(self, start_data):  
+    def clean_voxel_data(self, start_data):  
         print("Performing cleaning operations on data")
         cleaned = self.create_binary_image(start_data)
         structure = ndimage.generate_binary_structure(3,3) 
@@ -108,7 +124,6 @@ class BrainModel():
         cleaned = self.fill_in_holes(cleaned, structure)        
         print("Complete")        
         self.assign_materials_labels(start_data,cleaned)
-        return
     
     def hit_and_miss(self, data):
         
@@ -467,7 +482,7 @@ class BrainModel():
             
         # Create point cloud
         pointCloud = PointCloud();
-        pc = pointCloud.create_point_cloud_of_data(newData);
+        pc = pointCloud.create_point_cloud_from_voxel(newData);
 
         xmin_tot,ymin_tot,zmin_tot = [int(p) for p in np.min(pc[:,:3],axis=0)]
         xmax_tot,ymax_tot,zmax_tot = [int(p) for p in np.max(pc[:,:3],axis=0)]
@@ -525,7 +540,63 @@ class BrainModel():
                             data[x,y,z] = 24 
                             newData[x,y,z] = 24     
     
+    def clean_lesion(self,current_data):
+        
+        newData = self.create_binary_image(current_data, search=25)
+        print("Lesion element size before: {}".format(np.sum(newData)))
     
+        structure1 = ndimage.generate_binary_structure(3,1)
+        structure2 = ndimage.generate_binary_structure(3,3)
+        newData = ndimage.binary_erosion(newData, structure=structure1, iterations=1).astype(int)
+        newData = ndimage.binary_dilation(newData, structure=structure1, iterations=1).astype(int)
+        newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
+        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
+    
+        hit_structure1 = np.ones((2,2,2))
+        hit_structure1[0,1,0] = 0
+        hit_structure2 = np.rot90(hit_structure1)
+        hit_structure3 = np.rot90(hit_structure1, k= 2)
+        hit_structure4 = np.rot90(hit_structure1, k= 3)
+        hit_structure5 = np.rot90(hit_structure1,axes=(1,2))
+        hit_structure6 = np.rot90(hit_structure5, k= 1)
+        hit_structure7 = np.rot90(hit_structure5, k= 2)
+        hit_structure8 = np.rot90(hit_structure5, k= 3)
+        total_count = 0;
+        count = 1
+        iteration = 0
+        while (count > 0 and iteration < 10):
+            iteration += 1
+            count = 0
+            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure1, fill=1)
+            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure2, fill=1)
+            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure3, fill=1)
+            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure4, fill=1)
+            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure5, fill=1)
+            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure6, fill=1)
+            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure7, fill=1)
+            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure8, fill=1)
+            total_count += count
+        print("Lesion cleaned after {} iterations and {} elements added".format(iteration,total_count))
+        
+        count_removed = 0
+        current_dimensions = current_data.shape
+        for x in range(current_dimensions[0]):
+            if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == 25)):
+                for y in range(current_dimensions[1]):
+                    if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == 25)):
+                        for z in range(current_dimensions[2]):
+                            if newData[x,y,z] == 1 and current_data[x,y,z] != 25 and current_data[x,y,z] != 0:
+                                current_data[x,y,z] = 25
+                            if newData[x,y,z] == 0 and (current_data[x,y,z] == 25):
+                                box = GridBox(current_data,[x,y,z])
+                                count_removed += 1
+                                idx, = np.where(box.gridBox == 25)
+                                box.gridBox = np.delete(box.gridBox,idx)
+                                replacement_value = box.mode()
+                                current_data[x,y,z] = replacement_value
+        print("previous lesion replaced with non-lesion: {}".format(count_removed))
+        print("Lesion element size after: {}".format(np.sum(newData)))
+                                
     def trim_mesh(self, data):
         current_dimensions = data.shape
         start = 0

@@ -525,7 +525,7 @@ def writeVTK(path, filenameIN, nodeMap,
     f.close()
     print("Completed")
     print("New VTK file written to " + path + filenameOUT)
-    mesh_statistics(elementMap, nodeMap);
+    mesh_statistics(elementMap, nodeMap, boundaryElementMap);
 
 
 ##########################################################################################

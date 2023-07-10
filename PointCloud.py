@@ -8,9 +8,9 @@ import numpy as np
 import pyvista as pv
 from matplotlib.colors import ListedColormap
 
-class PointCloud():
+class PointCloud():        
     
-    def create_point_cloud_of_data(self, data):
+    def create_point_cloud_from_voxel(self, data):
         current_data = data
         current_dimensions = current_data.shape
         pointCloudData = np.zeros((np.prod(current_dimensions),4));
@@ -27,6 +27,18 @@ class PointCloud():
         self.set_colour_map(data)
         return self.pcd
     
+    def create_point_cloud_from_mesh(self, elements, nodes):
+        from element_functions import calculate_element_centroid
+        pointCloudData = np.zeros((len(elements)+1,4));
+        for e in elements.values():
+            m = e.properties['mat'][0]
+            ica = e.ica
+            [x,y,z] = calculate_element_centroid(ica, nodes)
+            pointCloudData[e.num,:] = [x,y,z,m]
+        self.pcd = pointCloudData;
+        return self.pcd
+            
+        
     def view_point_cloud(self, *args, **kwargs):        
         if len(args)>0:
             pointCloudData = args[0]
@@ -40,6 +52,19 @@ class PointCloud():
         point_cloud["material_type"] = pointCloudData[:,3:]
         point_cloud.plot(eye_dome_lighting=True)
         return 0
+    
+    # def view_region_point_cloud(self, material_number):        
+    #     if hasattr(self, "pcd"):
+    #         pointCloudData = self.pcd
+    #     else:
+    #         print("No point cloud data has been created")
+    #         return -1
+    #     # idx, = np.where(np.array(pointCloudData[:,3])==material_number)
+    #     # data_to_display = np.delete(np.array(pointCloudData[:,3]),idx)
+    #     point_cloud = pv.PolyData(data_to_display)
+    #     point_cloud["material_type"] = pointCloudData[:,3:]
+    #     point_cloud.plot(eye_dome_lighting=True)
+    #     return 0
     
     def add_point_to_cloud(self,p):
         self.pcd = np.append(self.pcd,[p], axis=0)

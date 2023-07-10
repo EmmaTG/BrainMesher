@@ -17,6 +17,11 @@ class Material_Label:
     def clear_labels_mapself(self):
         self.labelsMap = {}
         self.inverseLabelsMap = {}
+    
+    def removeLabel(self, name):
+        numbers = self.labelsMap.pop(name)
+        for n in numbers:
+            self.inverseLabelsMap.pop(n)
         
     def addLabelToMap(self, name, numbers):
         if not (hasattr(self, "labelsMap")):
@@ -58,7 +63,7 @@ class Material_Label:
         return h_label_map
         
     
-    def homogenize_material_labels(self, data):
+    def homogenize_material_labels(self, data, replace=0):
         print("Homogenizing data according to chosen labels")
         current_dimensions = data.shape
         newData = np.zeros(current_dimensions, int)
@@ -72,6 +77,8 @@ class Material_Label:
                                 label_name = self.inverseLabelsMap[data_value]
                                 label_number = self.labelsMap[label_name][0]
                                 newData[x,y,z] = label_number
+                            elif data_value != 0:                                
+                                newData[x,y,z] = replace
                                 
         return newData;
     

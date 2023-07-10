@@ -21,9 +21,9 @@ class BrainHexMesh():
     def config(self, configFile):
         # Config
         if configFile.readFile:
-            self.readFile = True
-            self.fileInPath = configFile.fileInPath
-            self.fileIn = configFile.fileIn 
+            # self.readFile = True
+            # self.fileInPath = configFile.fileInPath
+            # self.fileIn = configFile.fileIn 
             self.readData = False
             self.data = []       
         elif configFile.readData:
@@ -49,93 +49,88 @@ class BrainHexMesh():
         self.configured = True
         self.material_labels = configFile.material_labels
     
-    def import_data(self):
-        if self.configured:
-            data = None
-            if self.readFile:
-                # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
-                t1_file = "\\".join([self.fileInPath,self.fileIn])
-                t1 = nibabel.load(t1_file)
-                # t1.orthoview()
-                data = np.asarray(t1.dataobj)
-            elif self.readData:
-                data = self.data
-            else:
-                print("Error")
-                return -1
-            return data
-        return [];
+    def import_data(self,fileInPath, fileIn): 
+        self.brainModel = BrainModel();
+        return self.brainModel.import_file(fileInPath,fileIn)
     
     def preprocess(self,data):        
         # Step 2: Determine segmentation of brain model via labels map
         
         # Homogenize labels
-        data = self.material_labels.homogenize_material_labels(data);
-        
-        brainModel = BrainModel() 
+        label_number = 0
+        if self.material_labels.labelsMap.__contains__('Ventricles'):
+            label_number = self.material_labels.labelsMap['Ventricles'][0]
+            
+        data = self.material_labels.homogenize_material_labels(data, replace = label_number);      
+         
         
         # Coarsen the brain model
         self.VOXEL_SIZE= 1;
         if self.Coarsen:
             print("########## Coarsening data ##########")
             self.VOXEL_SIZE = 2
-            data = brainModel.coarsen(self.VOXEL_SIZE, data)        
+            data = self.brainModel.coarsen(self.VOXEL_SIZE, data)        
         
+        ######### DEBUG COMMENT
         # Clean image removing isolated pixels and small holes
         print("########## Performing cleaning operations on the data ##########")
-        brainModel.clean_mesh_data(data);
-        # brainModel.two_d_cleaning(data);       
+        
+        self.brainModel.clean_voxel_data(data); 
+        self.brainModel.clean_lesion(data)
         
         # Remove empty rows/columns and plains from 3D array
-        brainModel.trim_mesh(data)
+        self.brainModel.trim_mesh(data)
         
         # Find and fill voids within model
         print("########## Removing voids from data ##########")
         solver = Maze_Solver(data);
         data = solver.find_and_fill_voids();
+        ######### DEBUG COMMENT
         
         # Create CSF layer around GM
         if self.Add_CSF:
             print("########## Adding layers of CSF ##########")
-            brainModel.add_CSF(data,layers=1);
+            self.brainModel.add_CSF(data,layers=0);
         return data       
-    
+        
     def make_point_cloud(self, data):
             # Create point cloud
         print("########## Creating point cloud from data ##########")
         pointCloud = PointCloud();
-        pc = pointCloud.create_point_cloud_of_data(data);
+        pointCloud.create_point_cloud_from_voxel(data);
         # # Data for visualization
         # pointCloud.view_slice(0, 50); # View slice of point cloud about chosen axis
         # pointCloud.view_point_cloud(); # View full 3D point cloud
         return pointCloud
     
+    def get_point_cloud_from_mesh(self, mesh):
+        pointCloudFromMesh = PointCloud()
+        pointCloudFromMesh.create_point_cloud_from_mesh(mesh.elements, mesh.nodes)
+        return pointCloudFromMesh
+        
     def make_mesh(self, pc_data):
         print("########## Creating mesh from point cloud ##########")
         mesh = Mesh(pc_data,self.VOXEL_SIZE)
-        mesh.clean_mesh()
-        mesh.replace_outer_region(2, 3, elementsNotIncluded=[24])
+        ######### DEBUG COMMENT
         if self.Add_CSF:
+            # Clean grey matter boundary
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
             mesh.replace_outer_region(3, 24)
+        # Clean CSF boundary    
+        mesh.clean_mesh()
+        ######### 
+        # Replace any white matter on boundary with greay matter
+        mesh.replace_outer_region(2, 3, elementsNotIncluded=[24])
         return mesh;
-    
-    def smooth_mesh(self, mesh):
-        # # Smoothing
-        # Smooth outer surface of mesh (including CSF)
-        print("########## Smoothing global mesh ##########")
-        mesh.smooth_mesh(self.coeffs, self.iterations)
-    
-        # Smooth mesh (excluded CSF)
-        if self.Add_CSF:
-            print("########## Smoothing mesh excluding CSF ##########")
-            mesh.smooth_mesh(self.coeffs, self.iterations, elementsNotIncluded=[24])
+                                
         
+    
+    def smooth_mesh(self, mesh):    
         # Optional Boundary Smoothing
         count = 0
         for region in self.Smooth_regions:
             # Smooth regional boundary
-            print("########## Smoothing white matter ##########")
+            print("########## Smoothing Regions ##########")
             non_whitematter_labels_map = self.material_labels.get_homogenized_labels_map()
             non_whitematter_labels_map.pop(region)
             non_whitematter_labels_map = list(non_whitematter_labels_map.values())
@@ -143,7 +138,20 @@ class BrainHexMesh():
             iterations = self.region_iterations[count]
             mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded=non_whitematter_labels_map)
             count += 1
+        # Smooth mesh (excluded CSF)
+        if self.Add_CSF:
+            print("########## Smoothing mesh excluding CSF ##########")
+            # label = self.material_labels.get_homogenized_labels_map()
+            # ventricles_label = label.pop("Ventricles")
+            mesh.smooth_mesh(self.coeffs, self.iterations, elementsNotIncluded=[24])
+            
+        # # Smoothing
+        # Smooth outer surface of mesh (including CSF)
+        print("########## Smoothing global mesh ##########")
+        mesh.smooth_mesh(self.coeffs, self.iterations)        
         return mesh
+    
+        
 
     def write_to_file(self, mesh, material_labels=None, boundaryElementMap={}):
         
