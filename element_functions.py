@@ -233,7 +233,7 @@ def replace_duplicate_nodes(nodes_changed_map, elems_changed_maps, nodeMap, deci
     for elem_num,ica in elems_changed_maps.items():
         for pos,n in enumerate(ica):
             ica[pos] = n+max_node_num
-            if swapMap.get(n+max_node_num.False):
+            if swapMap.get(n+max_node_num,False):
                 ica[pos] = swapMap[n+max_node_num]
     return  
 

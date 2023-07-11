@@ -497,7 +497,6 @@ class BrainModel():
             
             xmin,ymin = np.min(points, axis=0)
             xmax,ymax = np.max(points, axis=0)
-            
             for x in range(int(xmin),int(xmax+1)):
                 for y in range(int(ymin),int(ymax+1)):
                     if (data[x,y,z] == 0) and (y<ymax_tot):

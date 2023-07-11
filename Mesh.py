@@ -298,7 +298,7 @@ class Mesh():
         else:
             print("No elements selected to smooth")
             
-    def create_node_to_elem_map(elementMap):
+    def create_node_to_elem_map(self,elementMap):
         "Creating node to element connectivity"
         nodeToElemMap = {}
         for e,ica in elementMap.items():        

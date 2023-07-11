@@ -19,11 +19,11 @@ class ConfigFile():
         self.data = []        
         self.fileoutPath = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher"
         self.writeToFile = True
-        self.fileout = "tester_brain_tumor_1"
+        self.fileout = "tester_brain_tumor"
         self.fileoutTypes = ['vtk','ucd'] # 'ucd' | 'vtk' | 'abaqus'
         self.Coarsen = True
-        self.Add_CSF = False
-        self.Smooth = False
+        self.Add_CSF = True
+        self.Smooth = True
         self.iterations = 6
         self.coeffs = [0.6,-0.4]
         
@@ -120,43 +120,6 @@ for compoundKey,ica in boundaryElementsOnCSF.items():
         if Boundary:
             boundary_number += 1
             boundary_elements_map[boundary_number] = QuadElement(boundary_number, ica, mat=[400])
-            # else:
-            #     count += 1
-        # if not element_to_boundary.get(element_num,False):
-        #     [xc,yc,zc,m] = e_centroids[element_num]            
-        #     Boundary = True
-        #     if m == 24 and yc > 160:
-        #         elements_inline = np.stack(e_centroids, axis = 0)
-        #         elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
-        #         elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
-        #         elements_inline = elements_inline[elements_inline[:, 1].argsort()]
-        #         current_element_idx, = np.where(elements_inline[:,1]>yc)
-        #         Boundary = False
-        #         if len(current_element_idx)>0:
-        #             current_element_idx = current_element_idx[0]
-        #             elements_inline = elements_inline[:current_element_idx]
-        #             mats = list(elements_inline[:,3])
-        #             if (mats.count(24) + mats.count(0)) == len(mats):
-        #                 Boundary = True;
-        #             else:
-        #                 if (mats.count(24) + mats.count(0) + mats.count(grey_matter_label) + mats.count(white_matter_label)) != len(mats):
-        #                     for m in mats:
-        #                         if m != 24:
-        #                             if m == grey_matter_label:
-        #                                 Boundary = True
-        #                             else:
-        #                                 print("not_included")
-        #                             break;                                     
-        #                 else:
-        #                     Boundary = True
-        #         else:
-        #             Boundary = True 
-        #         element_to_boundary[element_num] = Boundary
-        # else:
-        #     Boundary = element_to_boundary[element_num]
-        # if Boundary:
-        #     boundary_number += 1
-        #     boundary_elements_map[boundary_number] = QuadElement(boundary_number, ica, mat=[400])
 config.material_labels.addLabelToMap("CSF elements", 400)
 
 print("Locating Tumor boundary")
@@ -164,6 +127,7 @@ Non_lesion_lables = config.material_labels.get_homogenized_labels_map()
 lesion_label = Non_lesion_lables.pop("Lesion")
 boundaryElementsLesion = mesh.locate_boundary_element_map(elementsNotIncluded=list(Non_lesion_lables.values()))
 for compoundKey,ica in boundaryElementsLesion.items():
+    boundary_number += 1
     boundary_element = QuadElement(boundary_number, ica, mat=[500])
     [element_num,face] = [int(x) for x in compoundKey.split("-")]
     [xc,yc,zc,m] = e_centroids[element_num] 
@@ -209,25 +173,55 @@ for compoundKey,ica in boundaryElementsLesion.items():
        if len(mats)>5:
            add_element = True
     if add_element:
-        boundary_number += 1
         boundary_elements_map[boundary_number] = boundary_element
+    else:
+        boundary_number -= 1;
 config.material_labels.addLabelToMap("TumorBoundary", 500) 
 
 all_labels = config.material_labels.get_homogenized_labels_map()
 all_labels.pop("TumorBoundary")
 
-edgeToElement = mesh.create_edge_to_element_connectivity(elementsNotIncluded=[400], elementsMap=boundary_elements_map);
-count = 0
-for ele in boundary_elements_map.values():
-    if ele.getMaterial().count(500):
+iteration = 0
+count = 1
+changed_eles = []
+while (count > 0) and iteration<50:
+    iteration += 1
+    edgeToElement = mesh.create_edge_to_element_connectivity(elementsNotIncluded=[400,600], elementsMap=boundary_elements_map);
+    count = 0
+    boundaryElements = list(filter(lambda x:x.getMaterial().count(500), boundary_elements_map.values()))
+    for ele in boundaryElements:
         edges = ele.get_edges();
         num_shared_edges = 0;
+        shared_edges = []
         for e in edges:
             if len(edgeToElement[e])>1:
                 num_shared_edges += 1
-        if num_shared_edges == 1:
+                shared_edges.append(e)
+        if num_shared_edges < 2:
             count += 1
-            ele.setMaterial(600)
+            # ele.setMaterial(600) 
+            changed_eles.append(ele.num)
+            popped = boundary_elements_map.pop(ele.num,False)              
+            if not popped:
+                ele.setMaterial(600)
+                # iteration = 10000
+                # break;
+        if num_shared_edges == 2:
+            ToBeDeleted = True
+            edge1 = [int(x) for x in shared_edges[0].split("-")]
+            edge2 = [int(x) for x in shared_edges[1].split("-")]
+            for n in edge1:
+                if edge2.count(n):
+                    ToBeDeleted = False
+                    break;
+            if ToBeDeleted:
+                count += 1                
+                # ele.setMaterial(600)
+                changed_eles.append(ele.num)
+                popped = boundary_elements_map.pop(ele.num,False)
+                if not popped:
+                    ele.setMaterial(600)
+                
 config.material_labels.addLabelToMap("TumorBoundaryTBD", 600)        
 
 all_labels = config.material_labels.get_homogenized_labels_map()
@@ -242,11 +236,11 @@ for element_num in element_keys:
 if config.Smooth:
     mesh = brainModel.smooth_mesh(mesh);
   
-# element_keys = list(mesh.elements.keys())    
-# for element_num in element_keys:
-#     e = mesh.elements[element_num]
-#     if e.getMaterial().count(lesion_label):
-#         mesh.delete_element(element_num)       
+element_keys = list(mesh.elements.keys())    
+for element_num in element_keys:
+    e = mesh.elements[element_num]
+    if e.getMaterial().count(lesion_label):
+        mesh.delete_element(element_num)       
       
 # config.material_labels.removeLabel("Ventricles")
 # config.material_labels.removeLabel("Lesion")
