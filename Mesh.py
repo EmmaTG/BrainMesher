@@ -24,6 +24,17 @@ class Element():
         self.properties = {}
         for key,value in kwargs.items():
             self.properties[key] = value;
+    
+    def setMaterial(self,mat):
+        try:
+            list(mat)
+        except TypeError:
+            mat = [mat]
+        self.properties['mat'] = list(mat)    
+    
+    
+    def getMaterial(self):
+        return self.properties['mat']
      
             
     def get_nodes_involved(self, faces, stringyfy=True, order=True):
@@ -128,10 +139,10 @@ class Mesh():
             for i in element_ica:   
                 newNode = int(i + (elementZ+1)*(elementY+1))
                 element_ica_tmp.append(newNode)
-                if not self.nodes.__contains__(i):
+                if not self.nodes.get(i,False):
                     coords = self.calculate_node_coords(elementX,elementY,elementZ,i,voxel_size)
                     self.nodes[i] = coords
-                if not self.nodes.__contains__(newNode):
+                if not self.nodes.get(newNode,False):
                     coords = self.calculate_node_coords(elementX,elementY,elementZ,newNode,voxel_size)
                     self.nodes[newNode] = coords 
             element_ica += element_ica_tmp
@@ -215,7 +226,7 @@ class Mesh():
         return len(cleaned_elements)
     
     def delete_element(self, element_number):
-        if self.elements.__contains__(element_number):    
+        if self.elements.get(element_number,False):    
             element = self.elements[element_number]
             ica = element.ica
             for n in ica:
@@ -250,7 +261,7 @@ class Mesh():
                 element1 = self.elements[edgeConnectedElements[0]]
                 element2 = self.elements[edgeConnectedElements[1]] 
                 for n in nodes:
-                    if not old_node_to_new.__contains__(n):
+                    if not old_node_to_new.get(n,False):
                         nodeNum = n
                         allConnectedElements = self.nodeToElements[nodeNum] 
                         connectedElements = []
@@ -292,7 +303,7 @@ class Mesh():
         nodeToElemMap = {}
         for e,ica in elementMap.items():        
             for node in ica:
-                if nodeToElemMap.__contains__(node):
+                if nodeToElemMap.get(node,False):
                     elements = nodeToElemMap[node]
                 else:
                     elements = []
@@ -324,15 +335,19 @@ class Mesh():
         for element in self.elements.values():
             for node in element.ica:
                 connectedElements = []
-                if self.nodeToElements.__contains__(node):
+                if self.nodeToElements.get(node,False):
                     connectedElements = self.nodeToElements[node]
                 else:
                     self.nodeToElements[node] = connectedElements
                 connectedElements.append(element.num)
                 
-    def create_edge_to_element_connectivity(self, elementsNotIncluded= []):
+    def create_edge_to_element_connectivity(self, elementsNotIncluded= [], elementsMap={}):
         edgesToElements_tmp = {}
-        for element in self.elements.values():
+        if len(elementsMap)>0:
+            elementValues = elementsMap.values()
+        else:
+            elementValues = self.elements.values()
+        for element in elementValues:
             add = True
             for el_types in elementsNotIncluded:
                 if element.properties['mat'].count(el_types):
@@ -342,7 +357,7 @@ class Mesh():
                 edges = element.get_edges(stringyfy=True, order=True)
                 for edge in edges:
                     connectedElements = []
-                    if edgesToElements_tmp.__contains__(edge):
+                    if edgesToElements_tmp.get(edge,False):
                         connectedElements = edgesToElements_tmp[edge]
                     else:
                         edgesToElements_tmp[edge] = connectedElements

@@ -122,7 +122,7 @@ for compoundKey,ica in boundaryElementsOnCSF.items():
             boundary_elements_map[boundary_number] = QuadElement(boundary_number, ica, mat=[400])
             # else:
             #     count += 1
-        # if not element_to_boundary.__contains__(element_num):
+        # if not element_to_boundary.get(element_num,False):
         #     [xc,yc,zc,m] = e_centroids[element_num]            
         #     Boundary = True
         #     if m == 24 and yc > 160:
@@ -211,7 +211,24 @@ for compoundKey,ica in boundaryElementsLesion.items():
     if add_element:
         boundary_number += 1
         boundary_elements_map[boundary_number] = boundary_element
-config.material_labels.addLabelToMap("TumorBoundary", 500)    
+config.material_labels.addLabelToMap("TumorBoundary", 500) 
+
+all_labels = config.material_labels.get_homogenized_labels_map()
+all_labels.pop("TumorBoundary")
+
+edgeToElement = mesh.create_edge_to_element_connectivity(elementsNotIncluded=[400], elementsMap=boundary_elements_map);
+count = 0
+for ele in boundary_elements_map.values():
+    if ele.getMaterial().count(500):
+        edges = ele.get_edges();
+        num_shared_edges = 0;
+        for e in edges:
+            if len(edgeToElement[e])>1:
+                num_shared_edges += 1
+        if num_shared_edges == 1:
+            count += 1
+            ele.setMaterial(600)
+config.material_labels.addLabelToMap("TumorBoundaryTBD", 600)        
 
 all_labels = config.material_labels.get_homogenized_labels_map()
 label_for_ventricles = all_labels.get("Ventricles")

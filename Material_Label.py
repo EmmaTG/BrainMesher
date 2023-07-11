@@ -31,7 +31,7 @@ class Material_Label:
         for x in list(self.labelsMap.values()):
             storedLabelValues += list(x)
         labelsArr = []
-        if (self.labelsMap.__contains__(name)):
+        if (self.labelsMap.get(name,False)):
             labelsArr = self.labelsMap[name]
         else:
             self.labelsMap[name] = labelsArr;          
@@ -73,7 +73,7 @@ class Material_Label:
                     if (np.sum(data[x,y,:]) > 0):
                         for z in range(current_dimensions[2]):
                             data_value = data[x,y,z]
-                            if self.inverseLabelsMap.__contains__(data_value):
+                            if self.inverseLabelsMap.get(data_value,False):
                                 label_name = self.inverseLabelsMap[data_value]
                                 label_number = self.labelsMap[label_name][0]
                                 newData[x,y,z] = label_number
@@ -90,7 +90,7 @@ class Material_Label:
                 materials = element.properties['mat']
                 material_list = []
                 for material in materials:
-                    if self.inverseLabelsMap.__contains__(material):
+                    if self.inverseLabelsMap.get(material,False):
                         material_list.append(material)
                 elementToMat[num] = material_list
             return elementToMat               
@@ -102,7 +102,7 @@ class Material_Label:
             for num,element in elements.items():
                 materials = element.properties['mat']
                 for material in materials:
-                    if self.inverseLabelsMap.__contains__(material):
+                    if self.inverseLabelsMap.get(material,False):
                         mat_name = self.inverseLabelsMap[material]
                         materialToElements[mat_name].append(num)
             return materialToElements

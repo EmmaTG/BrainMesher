@@ -58,7 +58,7 @@ class BrainHexMesh():
         
         # Homogenize labels
         label_number = 0
-        if self.material_labels.labelsMap.__contains__('Ventricles'):
+        if self.material_labels.labelsMap.get('Ventricles',False):
             label_number = self.material_labels.labelsMap['Ventricles'][0]
             
         data = self.material_labels.homogenize_material_labels(data, replace = label_number);      

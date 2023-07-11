@@ -181,7 +181,7 @@ def readINP(path,filename):
         if elemType == 'hex':
             elementMap[elemNum] = ica
             materialName = materialMappings[material]
-            if materialsMap.__contains__(materialName):
+            if materialsMap.get(materialName,False):
                 mat_elements = materialsMap[materialName]
             else:
                 mat_elements = []
@@ -211,7 +211,7 @@ def create_element_to_elset_map(elementSetsMap):
     elementToElsetMap = {}
     for name,elements in elementSetsMap.items():
         for e in elements:
-            if elementToElsetMap.__contains__(e):
+            if elementToElsetMap.get(e,False):
                 sets = elementToElsetMap[e]
             else:
                 sets = []
@@ -393,7 +393,7 @@ def writeUCD(path,filenameIN,nodeMap,
     for e in elemKeys:
         element_count += 1
         material = 0
-        if elementToMaterialMap.__contains__(e):
+        if elementToMaterialMap.get(e,False):
             if len(elementToMaterialMap[e]) > 0:
                 material = int(elementToMaterialMap[e][0])
                 
@@ -413,7 +413,7 @@ def writeUCD(path,filenameIN,nodeMap,
     for e in boundaryElementMap:
         element_count += 1
         material = 0
-        if boundaryElementToMaterial.__contains__(e):
+        if boundaryElementToMaterial.get(e,False):
             if len(boundaryElementToMaterial[e]) > 0:
                 material = boundaryElementToMaterial[e][0]
         if reNumber:
@@ -510,13 +510,13 @@ def writeVTK(path, filenameIN, nodeMap,
     f.write("LOOKUP_TABLE default\n")
     for e in hexElemKeys:
         material = 0
-        if elementToMaterial.__contains__(e):
+        if elementToMaterial.get(e,False):
             if len(elementToMaterial[e]) > 0:
                 material = elementToMaterial[e][0]
         f.write(str(int(material)) + "\n")
     for e in quadElemKeys:
         material = 0
-        if boundaryElementToMaterial.__contains__(e):
+        if boundaryElementToMaterial.get(e,False):
             if len(boundaryElementToMaterial[e]) > 0:
                 material = boundaryElementToMaterial[e][0]
         f.write(str(int(material)) + "\n")
@@ -580,7 +580,7 @@ def writeVTK(path, filenameIN, nodeMap,
 # for e in elemKeys:
 #     elsetname = "0"
 #     assert len(elsetname) == 1
-#     if materialMappings.__contains__(elsetname[0]):
+#     if materialMappingsget(elsetname[0],False):
 #         material = materialMappings[elsetname[0]]
 #     else:
 #         material = 0;

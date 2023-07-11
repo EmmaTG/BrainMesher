@@ -51,7 +51,7 @@ class Maze_Solver():
                 for z in range(bounds[4],bounds[5]):
                     affected_location = GridBox.create_location_key([x,y,z])
                     if affected_location != key:
-                        if (self.location_to_box.__contains__(affected_location)):
+                        if (self.location_to_box.get(affected_location,False)):
                             # print("Box affected by " + key + " found at " + affected_location)
                             box_affected = self.location_to_box[affected_location];
                             box_affected.create_box_from_grid(self.data,[x,y,z]);  
@@ -84,7 +84,7 @@ class Maze_Solver():
                                             ( np.sum(current_data[x,y,z+1:]) == 0 )) :
                                         num_points += 1;
                                         vertexKey = Vertex.create_a_key(x,y,z);
-                                        if not (openPoints.__contains__(vertexKey) or enclosedPoints.__contains__(vertexKey)): # Check it hasn't already been checked
+                                        if not (openPoints.get(vertexKey,False) or enclosedPoints.get(vertexKey,False)): # Check it hasn't already been checked
                                             xEnd = 0 if (x < (current_dimensions[0]-x)) else (current_dimensions[0]-1);
                                             yEnd = 0 if (y < (current_dimensions[1]-y)) else (current_dimensions[1]-1);
                                             zEnd = 0 if (z < (current_dimensions[2]-z)) else (current_dimensions[2]-1);
@@ -126,7 +126,7 @@ class Maze_Solver():
         [x,y,z] = currentVertex.get_location();
         neighbours = self.maze.find_zero_neighbours(x,y,z);
         for v in neighbours:
-            if (self.verticies.__contains__(v.key)):
+            if (self.verticies.get(v.key,False)):
                 v = self.verticies[v.key]
             else:
                 self.verticies[v.key] = v
@@ -153,7 +153,7 @@ class Maze_Solver():
             if not (self.maze.isExit(x,y,z)):
                 neighbours = currentVertex.adjacentNodes;
                 for neighbourKey,neighbourVertex in neighbours.items():
-                    if not (self.visited.__contains__(neighbourKey)):
+                    if not (self.visited.get(neighbourKey,False)):
                         self.add_neighbours(neighbourVertex);
                         self.visited[neighbourKey] = neighbourVertex
                         q.append(neighbourVertex)
@@ -164,7 +164,7 @@ class Maze_Solver():
             else:
                 neighbours = currentVertex.adjacentNodes;
                 for neighbourKey,neighbourVertex in neighbours.items():
-                    if not (self.visited.__contains__(neighbourKey)):
+                    if not (self.visited.get(neighbourKey,False)):
                         self.visited[neighbourKey] = neighbourVertex
                 return False;
         print("Error")

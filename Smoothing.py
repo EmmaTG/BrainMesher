@@ -112,10 +112,10 @@ def get_elements_on_boundary(elementMap):
     for e,ica in elementMap.items():       
         list_of_faces = get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 
-            if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
+            if face_to_elems_map.get(face_key,False):                            # Check if face key already in map
                connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
                connected_elements.append(e)
-               if surface_face_to_elems_map.__contains__(face_key):                   # If previously classified as a free surface; remove from this map
+               if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
                    del surface_face_to_elems_map[face_key]
             else:
                 face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
@@ -144,9 +144,9 @@ def get_boundary_element_map(elementMap):
     for e,ica in elementMap.items():
         list_of_faces = get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 
-            if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
+            if face_to_elems_map.get(face_key,False):                            # Check if face key already in map
                face_to_elems_map[face_key].append(e)                    # key already in face so append element to array (NOT surface face)
-               if surface_face_to_elems_map.__contains__(face_key):                   # If previously classified as a free surface; remove from this map
+               if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
                    del surface_face_to_elems_map[face_key]
             else:
                 face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
@@ -180,10 +180,10 @@ def get_boundary_element_map(elementMap):
 #     for e,ica in elementMap.items():       
 #         list_of_faces = get_element_faces(ica,ordered = True, toString = True)
 #         for face_key in list_of_faces:                                             # Create map key 
-#             if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
+#             if face_to_elems_map.get(face_key, False):                            # Check if face key already in map
 #                connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
 #                connected_elements.append(e)
-#                if surface_face_to_elems_map.__contains__(face_key):                   # If previously classified as a free surface; remove from this map
+#                if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
 #                    del surface_face_to_elems_map[face_key]
 #             else:
 #                 face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
@@ -244,7 +244,7 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
             for e in nodeToElemMap[node]:
                 elemCoords = np.zeros([8,3])
                 for count,n in enumerate(elementMap[e]):
-                    if newNodePositions.__contains__(n):
+                    if newNodePositions.get(n,False):
                         elemCoords[count] = newNodePositions[n]
                     else:
                         elemCoords[count] = nodeMap[n]

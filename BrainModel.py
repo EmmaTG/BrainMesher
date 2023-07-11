@@ -72,9 +72,9 @@ class BrainModel():
                                 replacedValue = modes[modeIndex]
                                 unique, counts = np.unique(gridBox, return_counts=True)
                                 num_values = dict(zip(unique, counts))
-                                if num_values.__contains__(4):
+                                if num_values.get(4,False):
                                     replacedValue = 4 
-                                elif num_values.__contains__(251):
+                                elif num_values.get(251,False):
                                     replacedValue = 251                                       
                                 elif (len(modes)>1) and (len(modeIndices)>1):
                                     if (modeIndices[0]==0) or (modeIndices[1]==0):

@@ -195,15 +195,15 @@ def replace_duplicate_nodes(nodes_changed_map, elems_changed_maps, nodeMap, deci
     nodeLocationMapX = {}    
     for n,coords in nodeMap.items():
         [xcoord, ycoord, zcoord] = [round(i,decimal_places) for i in coords]
-        if nodeLocationMapX.__contains__(xcoord):
+        if nodeLocationMapX.get(xcoord,False):
             nodeLocationMapY = nodeLocationMapX[xcoord]
         else:                    
             nodeLocationMapY = {}                
-        if nodeLocationMapY.__contains__(ycoord):
+        if nodeLocationMapY.get(ycoord,False):
             nodeLocationMapZ = nodeLocationMapY[ycoord]
         else:                    
             nodeLocationMapZ = {}                
-        if nodeLocationMapZ.__contains__(zcoord):
+        if nodeLocationMapZ.get(zcoord,False):
             nodeLocationMapZ[zcoord] = n
         else:
             nodeLocationMapZ[zcoord] = n
@@ -212,17 +212,17 @@ def replace_duplicate_nodes(nodes_changed_map, elems_changed_maps, nodeMap, deci
             
     swapMap = {}
     for n,orig_coords in nodes_changed_map.items():
-        # if not nodeMap.__contains__(n):
+        # if not nodeMap.get(n,false):
         [xcoord, ycoord, zcoord] = [round(i,decimal_places) for i in orig_coords]
-        if nodeLocationMapX.__contains__(xcoord):
+        if nodeLocationMapX.get(xcoord,False):
             nodeLocationMapY = nodeLocationMapX[xcoord]
         else:                    
             nodeLocationMapY = {}                
-        if nodeLocationMapY.__contains__(ycoord):
+        if nodeLocationMapY.get(ycoord,False):
             nodeLocationMapZ = nodeLocationMapY[ycoord]
         else:                    
             nodeLocationMapZ = {}                
-        if nodeLocationMapZ.__contains__(zcoord):
+        if nodeLocationMapZ.get(zcoord,False):
             swapMap[n] = nodeLocationMapZ[zcoord]
         else:
             nodeLocationMapZ[zcoord] = n
@@ -233,7 +233,7 @@ def replace_duplicate_nodes(nodes_changed_map, elems_changed_maps, nodeMap, deci
     for elem_num,ica in elems_changed_maps.items():
         for pos,n in enumerate(ica):
             ica[pos] = n+max_node_num
-            if swapMap.__contains__(n+max_node_num):
+            if swapMap.get(n+max_node_num.False):
                 ica[pos] = swapMap[n+max_node_num]
     return  
 
