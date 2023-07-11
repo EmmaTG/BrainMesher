@@ -6,11 +6,11 @@ Created on Mon Feb  6 09:41:58 2023
 """
 def get_element_faces(node_ica, ordered = False, toString = False):
     face_ABQ = [[1,2,3,4],
-                [5,8,7,6],
-                [1,5,6,2],
-                [2,6,7,3],
-                [3,7,8,4],
-                [4,8,5,1]]
+            [5,8,7,6],
+            [1,5,6,2],
+            [2,6,7,3],
+            [3,7,8,4],
+            [4,8,5,1]]
     faces = []
     for f in face_ABQ:
         face =[]
@@ -112,10 +112,10 @@ def get_elements_on_boundary(elementMap):
     for e,ica in elementMap.items():       
         list_of_faces = get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 
-            if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
+            if face_to_elems_map.get(face_key,False):                            # Check if face key already in map
                connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
                connected_elements.append(e)
-               if surface_face_to_elems_map.__contains__(face_key):                   # If previously classified as a free surface; remove from this map
+               if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
                    del surface_face_to_elems_map[face_key]
             else:
                 face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
@@ -144,10 +144,9 @@ def get_boundary_element_map(elementMap):
     for e,ica in elementMap.items():
         list_of_faces = get_element_faces(ica,ordered = True, toString = True)
         for face_key in list_of_faces:                                             # Create map key 
-            if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
-               connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
-               connected_elements.append(e)
-               if surface_face_to_elems_map.__contains__(face_key):                   # If previously classified as a free surface; remove from this map
+            if face_to_elems_map.get(face_key,False):                            # Check if face key already in map
+               face_to_elems_map[face_key].append(e)                    # key already in face so append element to array (NOT surface face)
+               if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
                    del surface_face_to_elems_map[face_key]
             else:
                 face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
@@ -158,8 +157,8 @@ def get_boundary_element_map(elementMap):
         faces = get_element_faces(elementMap[e],True,True)
         for face_num,f in enumerate(faces):
             if f == face_key:
-                compund_key = "-".join([str(e),str(face_num)])
-                boundary_element_map[compund_key] = get_element_faces(elementMap[e])[face_num]
+                compound_key = "-".join([str(e),str(face_num)])
+                boundary_element_map[compound_key] = get_element_faces(elementMap[e])[face_num]
                 break    
     
     return boundary_element_map
@@ -181,10 +180,10 @@ def get_boundary_element_map(elementMap):
 #     for e,ica in elementMap.items():       
 #         list_of_faces = get_element_faces(ica,ordered = True, toString = True)
 #         for face_key in list_of_faces:                                             # Create map key 
-#             if face_to_elems_map.__contains__(face_key):                            # Check if face key already in map
+#             if face_to_elems_map.get(face_key, False):                            # Check if face key already in map
 #                connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
 #                connected_elements.append(e)
-#                if surface_face_to_elems_map.__contains__(face_key):                   # If previously classified as a free surface; remove from this map
+#                if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
 #                    del surface_face_to_elems_map[face_key]
 #             else:
 #                 face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
@@ -204,10 +203,8 @@ def get_boundary_element_map(elementMap):
     
 #     return volume_elem_to_boundary
 
-def create_surface_connectivity(boundary_element_map):
+def create_surface_connectivity(boundary_element_map, nodeToBoundaryElementMap):
     ## Create surface connectivity map
-    from element_functions import create_node_to_elem_map
-    nodeToBoundaryElementMap = create_node_to_elem_map(boundary_element_map)
     print("Creating node surface connectivty map")
     surfaceNodeConnectivity = {}
     for node,compoundKeys in nodeToBoundaryElementMap.items():
@@ -247,7 +244,7 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
             for e in nodeToElemMap[node]:
                 elemCoords = np.zeros([8,3])
                 for count,n in enumerate(elementMap[e]):
-                    if newNodePositions.__contains__(n):
+                    if newNodePositions.get(n,False):
                         elemCoords[count] = newNodePositions[n]
                     else:
                         elemCoords[count] = nodeMap[n]

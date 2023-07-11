@@ -17,6 +17,11 @@ class Material_Label:
     def clear_labels_mapself(self):
         self.labelsMap = {}
         self.inverseLabelsMap = {}
+    
+    def removeLabel(self, name):
+        numbers = self.labelsMap.pop(name)
+        for n in numbers:
+            self.inverseLabelsMap.pop(n)
         
     def addLabelToMap(self, name, numbers):
         if not (hasattr(self, "labelsMap")):
@@ -26,7 +31,7 @@ class Material_Label:
         for x in list(self.labelsMap.values()):
             storedLabelValues += list(x)
         labelsArr = []
-        if (self.labelsMap.__contains__(name)):
+        if (self.labelsMap.get(name,False)):
             labelsArr = self.labelsMap[name]
         else:
             self.labelsMap[name] = labelsArr;          
@@ -58,7 +63,7 @@ class Material_Label:
         return h_label_map
         
     
-    def homogenize_material_labels(self, data):
+    def homogenize_material_labels(self, data, replace=0):
         print("Homogenizing data according to chosen labels")
         current_dimensions = data.shape
         newData = np.zeros(current_dimensions, int)
@@ -68,10 +73,12 @@ class Material_Label:
                     if (np.sum(data[x,y,:]) > 0):
                         for z in range(current_dimensions[2]):
                             data_value = data[x,y,z]
-                            if self.inverseLabelsMap.__contains__(data_value):
+                            if self.inverseLabelsMap.get(data_value,False):
                                 label_name = self.inverseLabelsMap[data_value]
                                 label_number = self.labelsMap[label_name][0]
                                 newData[x,y,z] = label_number
+                            elif data_value != 0:                                
+                                newData[x,y,z] = replace
                                 
         return newData;
     
@@ -80,10 +87,10 @@ class Material_Label:
         if (file_format.lower() == "ucd" or file_format.lower() == "vtk"):
             elementToMat = {}
             for num,element in elements.items():
-                materials = element.properties['mat']
+                materials = element.getMaterial()
                 material_list = []
                 for material in materials:
-                    if self.inverseLabelsMap.__contains__(material):
+                    if self.inverseLabelsMap.get(material,False):
                         material_list.append(material)
                 elementToMat[num] = material_list
             return elementToMat               
@@ -93,9 +100,9 @@ class Material_Label:
                 materialToElements[materialName] = []
                 
             for num,element in elements.items():
-                materials = element.properties['mat']
+                materials = element.getMaterial()
                 for material in materials:
-                    if self.inverseLabelsMap.__contains__(material):
+                    if self.inverseLabelsMap.get(material,False):
                         mat_name = self.inverseLabelsMap[material]
                         materialToElements[mat_name].append(num)
             return materialToElements
