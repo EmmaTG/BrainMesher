@@ -87,7 +87,7 @@ class Material_Label:
         if (file_format.lower() == "ucd" or file_format.lower() == "vtk"):
             elementToMat = {}
             for num,element in elements.items():
-                materials = element.properties['mat']
+                materials = element.getMaterial()
                 material_list = []
                 for material in materials:
                     if self.inverseLabelsMap.get(material,False):
@@ -100,7 +100,7 @@ class Material_Label:
                 materialToElements[materialName] = []
                 
             for num,element in elements.items():
-                materials = element.properties['mat']
+                materials = element.getMaterial()
                 for material in materials:
                     if self.inverseLabelsMap.get(material,False):
                         mat_name = self.inverseLabelsMap[material]

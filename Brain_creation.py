@@ -80,7 +80,7 @@ e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
 count = 0
 for e_num,element in mesh.elements.items():
     element_centroid = element.calculate_element_centroid(mesh.nodes)
-    e_centroids[e_num] = list(element_centroid) + [element.properties['mat'][0]]
+    e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
     count += 1
 e_centroids = np.stack(e_centroids, axis = 0)
 
@@ -236,7 +236,7 @@ label_for_ventricles = all_labels.get("Ventricles")
 element_keys = list(mesh.elements.keys())    
 for element_num in element_keys:
     e = mesh.elements[element_num]
-    if e.properties['mat'].count(label_for_ventricles):
+    if e.getMaterial().count(label_for_ventricles):
         mesh.delete_element(element_num)
         
 if config.Smooth:
@@ -245,7 +245,7 @@ if config.Smooth:
 # element_keys = list(mesh.elements.keys())    
 # for element_num in element_keys:
 #     e = mesh.elements[element_num]
-#     if e.properties['mat'].count(lesion_label):
+#     if e.getMaterial().count(lesion_label):
 #         mesh.delete_element(element_num)       
       
 # config.material_labels.removeLabel("Ventricles")

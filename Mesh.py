@@ -182,7 +182,7 @@ class Mesh():
         elements_on_boundary = self.locate_elements_on_boundary(elementsNotIncluded=elementsNotIncluded)
         for elem in elements_on_boundary:
             element = self.elements[elem]
-            materials = element.properties['mat']
+            materials = element.getMaterial()
             if materials.count(white_matter_label):
                 materials.remove(white_matter_label)
                 materials.insert(0,replace_label)
@@ -201,7 +201,7 @@ class Mesh():
                     element = self.elements[conn_element]
                     add = True
                     for el_types in elementsNotIncluded:
-                        if element.properties['mat'].count(el_types):
+                        if element.getMaterial().count(el_types):
                             add=False
                             break
                     if add:
@@ -239,7 +239,7 @@ class Mesh():
         
     def replace_element(self, element_number, replace=24):
         element = self.elements[element_number]
-        element.properties['mat'] = [replace]
+        element.setMaterial(replace)
         # ica = element.ica
         # total_connected_elements_material = []
         # for n in ica:
@@ -269,7 +269,7 @@ class Mesh():
                             element = self.elements[conn_element]
                             add = True
                             for el_types in elementsNotIncluded:
-                                if element.properties['mat'].count(el_types):
+                                if element.getMaterial().count(el_types):
                                     add=False
                                     break
                             if add:
@@ -318,13 +318,13 @@ class Mesh():
         for elementNo, element in elements.items():
             add = True
             for el_types in elementsNotIncluded:
-                if element.properties['mat'].count(el_types):
+                if element.getMaterial().count(el_types):
                     add=False
                     break;
             if add:                
                 if len(elementsIncluded)>0:
                     for el_types in elementsIncluded:
-                        if element.properties['mat'].count(el_types):
+                        if element.getMaterial().count(el_types):
                             elementMap[elementNo] = element.ica
                 else:
                     elementMap[elementNo] = element.ica
@@ -350,7 +350,7 @@ class Mesh():
         for element in elementValues:
             add = True
             for el_types in elementsNotIncluded:
-                if element.properties['mat'].count(el_types):
+                if element.getMaterial().count(el_types):
                     add=False
                     break
             if add:
