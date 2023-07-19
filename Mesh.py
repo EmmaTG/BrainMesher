@@ -4,7 +4,7 @@ Created on Thu May 25 15:39:38 2023
 
 @author: grife
 """
-import ABQ_UCD_handling as rw
+# import ABQ_UCD_handling as rw
 import Smoothing as smooth
 from abc import ABC, abstractmethod
 
@@ -17,41 +17,7 @@ class IElement(ABC):
     def get_edges(self, stringyfy, order):
         pass
     
-class Element():
-    def __init__(self, number, ica, **kwargs):        
-        self.ica = ica
-        self.num = number
-        self.properties = {}
-        for key,value in kwargs.items():
-            self.properties[key] = value;
-    
-    def setMaterial(self,mat):
-        try:
-            list(mat)
-        except TypeError:
-            mat = [mat]
-        self.properties['mat'] = list(mat)    
-    
-    
-    def getMaterial(self):
-        return self.properties['mat']
-     
-            
-    def get_nodes_involved(self, faces, stringyfy=True, order=True):
-       
-        node_faces = []
-        for f in faces:
-            new_face = []
-            for n in f:
-                new_face.append(self.ica[n-1])                
-            if order:
-                new_face = sorted(new_face)
-            if stringyfy:
-                node_faces.append("-".join(str(x) for x in new_face))
-            else:
-                node_faces.append(new_face)
-        return node_faces  
-    
+class ElementCalculations():
     def calculate_element_centroid(self,nodeMap):
         """
         Calculates element centroid
@@ -75,7 +41,42 @@ class Element():
                 
         for i in range(3):
             centroid[i] /= len(self.ica)
-        return centroid 
+        return centroid ;
+    
+class Element(ElementCalculations):
+    def __init__(self, number, ica, **kwargs):        
+        self.ica = ica
+        self.num = number
+        self.properties = {}
+        for key,value in kwargs.items():
+            self.properties[key] = value;
+    
+    def setMaterial(self,mat):
+        try:
+            list(mat)
+        except TypeError:
+            mat = [mat]
+        self.properties['mat'] = list(mat)    
+    
+    
+    def getMaterial(self):
+        return self.properties['mat']
+     
+            
+    def get_nodes_involved(self, faces, stringyfy=True, order=True):       
+        node_faces = []
+        for f in faces:
+            new_face = []
+            for n in f:
+                new_face.append(self.ica[n-1])                
+            if order:
+                new_face = sorted(new_face)
+            if stringyfy:
+                node_faces.append("-".join(str(x) for x in new_face))
+            else:
+                node_faces.append(new_face)
+        return node_faces      
+   
     
 class HexElement(Element, IElement):
     
@@ -110,18 +111,149 @@ class QuadElement(Element, IElement):
     def get_edges(self, stringyfy=True, order=True):
         edge_classification = [[0,1],[1,2],[2,3],[3,0]]
         return super().get_nodes_involved(edge_classification, stringyfy=stringyfy, order=order)
+
+class MeshUtils():
+
+    def create_elements_map(self, elements, elementsNotIncluded, elementsIncluded = []):
+        elementMap = {}
+        for elementNo, element in elements.items():
+            add = True
+            for el_types in elementsNotIncluded:
+                if element.getMaterial().count(el_types):
+                    add=False
+                    break;
+            if add:                
+                if len(elementsIncluded)>0:
+                    for el_types in elementsIncluded:
+                        if element.getMaterial().count(el_types):
+                            elementMap[elementNo] = element
+                else:
+                    elementMap[elementNo] = element
+        return elementMap
     
+    def create_elements_ica_map(self, elements):
+        elementMap = {}
+        for elementNo, element in elements.items():
+            elementMap[elementNo] = element.ica
+        return elementMap
+
+    def locate_boundary_element_map(self, elements, elementsNotIncluded = []):
+        print("Identifying boundary faces")
+        print("Locating boundary elements")
+        elementMap = self.create_elements_map(elements, elementsNotIncluded)
+        face_to_elems_map = {}
+        surface_face_to_elems_map = {}
+        for e,element in elementMap.items():
+            list_of_faces = elementMap[e].get_faces(True,True)
+            for face_key in list_of_faces:                                             # Create map key 
+                if face_to_elems_map.get(face_key,False):                            # Check if face key already in map
+                   face_to_elems_map[face_key].append(e)                    # key already in face so append element to array (NOT surface face)
+                   if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
+                       del surface_face_to_elems_map[face_key]
+                else:
+                    face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
+                    surface_face_to_elems_map[face_key] = e
+            
+        boundary_element_map = {}
+        for face_key,e in surface_face_to_elems_map.items():    
+            faces = elementMap[e].get_faces(True,True)
+            for face_num,f in enumerate(faces):
+                if f == face_key:
+                    compound_key = "-".join([str(e),str(face_num)])
+                    boundary_element_map[compound_key] = elementMap[e].get_faces(False,False)[face_num]
+                    break    
+        
+        return boundary_element_map
     
+        
+    def locate_elements_on_boundary(self, elements, elementsNotIncluded = []):
+        print("Identifying boundary elements")
+        print("Locating elements on the boundary")
+        elementMap = self.create_elements_map(elements, elementsNotIncluded)
+        face_to_elems_map = {}
+        surface_face_to_elems_map = {}
+        for e,element in elementMap.items():       
+            list_of_faces = elementMap[e].get_faces(True,True)
+            for face_key in list_of_faces:                                             # Create map key 
+                if face_to_elems_map.get(face_key,False):                            # Check if face key already in map
+                   connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
+                   connected_elements.append(e)
+                   if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
+                       del surface_face_to_elems_map[face_key]
+                else:
+                    face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
+                    surface_face_to_elems_map[face_key] = e
+            
+        elements_on_boundary = []
+        for face_key,e in surface_face_to_elems_map.items():    
+            if not elements_on_boundary.count(e):
+                    elements_on_boundary.append(e) 
+        
+        return elements_on_boundary
+    
+    def create_node_to_elem_map(self,elementICAMap):
+        "Creating node to element connectivity"
+        nodeToElemMap = {}
+        for e,ica in elementICAMap.items():        
+            for node in ica:
+                if nodeToElemMap.get(node,False):
+                    elements = nodeToElemMap[node]
+                else:
+                    elements = []
+                elements.append(e)
+                nodeToElemMap[node] = elements  
+        return nodeToElemMap
+    
+    def create_surface_connectivity(self, boundary_element_map, nodeToBoundaryElementMap):
+        ## Create surface connectivity map
+        print("Creating node surface connectivty map")
+        surfaceNodeConnectivity = {}
+        for node,compoundKeys in nodeToBoundaryElementMap.items():
+            connectedNodes = []
+            for f in compoundKeys:
+                faceICA = boundary_element_map[f] 
+                idx = faceICA.index(node)
+                idx1 = idx + 1 if idx < 3 else 0
+                idx2 = idx -1 if idx > 0 else 3
+                connectedNodes.append(faceICA[idx1])
+                connectedNodes.append(faceICA[idx2])
+            surfaceNodeConnectivity[node] = list(set(connectedNodes))
+        return surfaceNodeConnectivity
+    
+    def create_edge_to_element_connectivity(self, elementsMap, elementsNotIncluded= []):
+        edgesToElements_tmp = {}
+        for element in elementsMap.values():
+            add = True
+            for el_types in elementsNotIncluded:
+                if element.getMaterial().count(el_types):
+                    add=False
+                    break
+            if add:
+                edges = element.get_edges(stringyfy=True, order=True)
+                for edge in edges:
+                    connectedElements = []
+                    if edgesToElements_tmp.get(edge,False):
+                        connectedElements = edgesToElements_tmp[edge]
+                    else:
+                        edgesToElements_tmp[edge] = connectedElements
+                    connectedElements.append(element.num)
+        return edgesToElements_tmp
+  
 class Mesh():
     
-    def __init__(self, pointData,voxel_size):
+    def __init__(self):
         self.elements = {}
         self.nodes = {}
+        self.boundaryElements = {}
         self.elementToPointCloud = {}
-        self.create_mesh(pointData,voxel_size)
+        self.dataToWrite = {}
+        self._meshUtils = MeshUtils();
+        
+    def addBoundaryElements(self,boundaryElementsMap):
+        self.boundaryElements = self.boundaryElements | boundaryElementsMap;
         
     
-    def create_mesh(self, pointData, voxel_size):
+    def create_mesh_from_Point_Cloud(self, pointData, voxel_size):
         [minX,minY,minZ] = pointData[:,:3].min(axis=0)
         [maxX,maxY,maxZ] = pointData[:,:3].max(axis=0)
         
@@ -165,21 +297,9 @@ class Mesh():
                 elementsNotIncluded.append(replace);
             total_count += count;
         print(str(total_count) + " elements deleted/replaced due to poor node/edge connectivity in " + str(iteration) + " iterations")
-         
-    
-    def locate_boundary_element_map(self, elementsNotIncluded = []):
-        print("Identifying boundary faces")
-        elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
-        return smooth.get_boundary_element_map(elementMap)
-    
-    def locate_elements_on_boundary(self, elementsNotIncluded = []):
-        print("Identifying boundary elements")
-        elementMap = self.create_elements_map(elementsNotIncluded=elementsNotIncluded)
-        return smooth.get_elements_on_boundary(elementMap)
         
-    def replace_outer_region(self, white_matter_label, replace_label, elementsNotIncluded=[]):
+    def replace_outer_region(self, white_matter_label, replace_label, elements_on_boundary):
         print("Cleaning brain boundary")
-        elements_on_boundary = self.locate_elements_on_boundary(elementsNotIncluded=elementsNotIncluded)
         for elem in elements_on_boundary:
             element = self.elements[elem]
             materials = element.getMaterial()
@@ -239,19 +359,11 @@ class Mesh():
         
     def replace_element(self, element_number, replace=24):
         element = self.elements[element_number]
-        element.setMaterial(replace)
-        # ica = element.ica
-        # total_connected_elements_material = []
-        # for n in ica:
-        #     connectedElements = self.nodeToElements[n]
-        #     for e in connectedElements:
-        #         if self.elements[e].properties['mat'] != element.properties['mat']:
-        #             total_connected_elements_material.append(self.elements[e].properties['mat'])
-            
+        element.setMaterial(replace)            
     
     def clean_mesh_edges(self, elementsNotIncluded = [], replace=0):
         print("Cleaning mesh edges")
-        edgesToElementsMap = self.create_edge_to_element_connectivity(elementsNotIncluded)
+        edgesToElementsMap = self._meshUtils.create_edge_to_element_connectivity(self.elements, elementsNotIncluded)
         edgesToElements = self.get_edge_without_shared_face(edgesToElementsMap)
         old_node_to_new = {}
         cleaned_elements = []
@@ -281,54 +393,19 @@ class Mesh():
                                     self.replace_element(element2.num,replace=replace)
                                 else:                                
                                     self.delete_element(element2.num)
-        
-        # print(str(len(cleaned_elements)) + " element deleted due to poor edge connectivity")
         return len(cleaned_elements)                 
             
-    def smooth_mesh(self, coeffs, iterations, elementsNotIncluded = []):
+    def smooth_mesh(self, coeffs, iterations, boundary_element_map):
         print("Starting mesh smoothing")
-        boundary_element_map = self.locate_boundary_element_map(elementsNotIncluded)
         if len(boundary_element_map)>0:
-            node_to_boundary_element_map = self.create_node_to_elem_map(boundary_element_map)
-            surfaceNodeConnectivity = smooth.create_surface_connectivity(boundary_element_map,node_to_boundary_element_map)  
-            elementMapFull = self.create_elements_map()
-            nodeToElemMap = self.create_node_to_elem_map(elementMapFull)
+            node_to_boundary_element_map = self._meshUtils.create_node_to_elem_map(boundary_element_map)
+            surfaceNodeConnectivity = self._meshUtils.create_surface_connectivity(boundary_element_map,node_to_boundary_element_map)
+            elementICAMap = self._meshUtils.create_elements_ica_map(self.elements)
+            nodeToElemMap = self._meshUtils.create_node_to_elem_map(elementICAMap)
             for iteration in range(iterations):
-                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementMapFull, nodeToElemMap=nodeToElemMap)
+                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementICAMap, nodeToElemMap=nodeToElemMap)
         else:
             print("No elements selected to smooth")
-            
-    def create_node_to_elem_map(self,elementMap):
-        "Creating node to element connectivity"
-        nodeToElemMap = {}
-        for e,ica in elementMap.items():        
-            for node in ica:
-                if nodeToElemMap.get(node,False):
-                    elements = nodeToElemMap[node]
-                else:
-                    elements = []
-                elements.append(e)
-                nodeToElemMap[node] = elements  
-        return nodeToElemMap
-    
-    def create_elements_map(self, elements = [], elementsNotIncluded = [], elementsIncluded = []):
-        elementMap = {}
-        if len(elements) == 0:
-            elements = self.elements
-        for elementNo, element in elements.items():
-            add = True
-            for el_types in elementsNotIncluded:
-                if element.getMaterial().count(el_types):
-                    add=False
-                    break;
-            if add:                
-                if len(elementsIncluded)>0:
-                    for el_types in elementsIncluded:
-                        if element.getMaterial().count(el_types):
-                            elementMap[elementNo] = element.ica
-                else:
-                    elementMap[elementNo] = element.ica
-        return elementMap
     
     def create_node_to_element_connectivity(self):
         self.nodeToElements = {}
@@ -340,29 +417,6 @@ class Mesh():
                 else:
                     self.nodeToElements[node] = connectedElements
                 connectedElements.append(element.num)
-                
-    def create_edge_to_element_connectivity(self, elementsNotIncluded= [], elementsMap={}):
-        edgesToElements_tmp = {}
-        if len(elementsMap)>0:
-            elementValues = elementsMap.values()
-        else:
-            elementValues = self.elements.values()
-        for element in elementValues:
-            add = True
-            for el_types in elementsNotIncluded:
-                if element.getMaterial().count(el_types):
-                    add=False
-                    break
-            if add:
-                edges = element.get_edges(stringyfy=True, order=True)
-                for edge in edges:
-                    connectedElements = []
-                    if edgesToElements_tmp.get(edge,False):
-                        connectedElements = edgesToElements_tmp[edge]
-                    else:
-                        edgesToElements_tmp[edge] = connectedElements
-                    connectedElements.append(element.num)
-        return edgesToElements_tmp
                            
                 
     def get_edge_without_shared_face(self,edgesToElements_map):
@@ -389,45 +443,14 @@ class Mesh():
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def write_to_file(self, path, filename, labels_map, filetype="abaqus", boundaryElementMap={}):
-        print("Writing mesh data to file in "+ filetype + " format")
-        if (path[-1] != "\\"):
-            path += "\\" 
-        # Map of element number (key) to element ica (value)
-        element_ica_Map = self.create_elements_map()
-        # for VTK and UCD files: Map of element number (key) to list of material numbers (value)
-        # for Abaqus files: Map of material names (key) to elements numbers
-        element_to_material_mapping = labels_map.create_material_sets(self.elements,file_format=filetype) 
-        boundary_element_ica_map = {}
-        boundary_material_mapping = {}
-        if len(boundaryElementMap)>0:
-            # Map of boundary element number [quad] (key) to element [quad] ica (value)
-            boundary_element_ica_map = self.create_elements_map(boundaryElementMap)
-            # for VTK and UCD files: Map of boundary element number (key) to list of boundary numbers (value)
-            # for Abaqus files: Map of boundary names (key) to boundary elements numbers
-            boundary_material_mapping = labels_map.create_material_sets(boundaryElementMap,file_format=filetype)
-        if (filetype.lower() == "ucd"):
-            rw.writeUCD(path, filename, self.nodes, 
-                        element_ica_Map, elementToMaterialMap=element_to_material_mapping, 
-                        boundaryElementMap=boundary_element_ica_map, boundaryElementToMaterial=boundary_material_mapping)
-            
-        elif (filetype.lower() == "vtk"):
-            rw.writeVTK(path, filename, self.nodes, element_ica_Map, elementToMaterial=element_to_material_mapping, 
-                        boundaryElementMap=boundary_element_ica_map, boundaryElementToMaterial=boundary_material_mapping)              
-              
-        else:
-            boundary_nodes = {}
-            boundary_nodes_list = []
-            for ica in boundary_element_ica_map.values():
-                for n in ica:
-                    if not boundary_nodes_list.count(n):
-                        boundary_nodes_list.append(n)            
-            boundary_nodes['Boundary nodes'] = boundary_nodes_list
-            rw.writeABQ(path, filename, self.nodes, element_ica_Map, elsetsMap=element_to_material_mapping, nsetMap=boundary_nodes)
-            
-
-    
-                   
+    def write_to_file(self, path, filename, filetype="vtk"):
+        from Writer import Writer 
+        print("Writing mesh data to file in "+ filetype + " format") 
+        writer = Writer()
+        writer.openWriter(filetype, filename, path)
+        writer.initializeWriter(self)
+        writer.writeMeshData()
+        writer.closeWriter();
         
          
         
