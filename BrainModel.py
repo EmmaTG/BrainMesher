@@ -6,12 +6,12 @@ Created on Fri May 12 11:02:36 2023
 """
 
 import numpy as np
-import collections.abc
+# import collections.abc
 from scipy import stats
 from scipy import ndimage
 import nibabel
-from Maze_Solver import Maze_Solver
-from Vertex import Vertex 
+# from Maze_Solver import Maze_Solver
+# from Vertex import Vertex 
 from GridBox import GridBox
 
 def in_hull(p, hull):
@@ -49,7 +49,19 @@ class BrainModel():
         else:
             print('Error, data shape not 3 dimensional!')
             return False       
-    
+    def add_corpus_callosum(self,path_cc,filename_cc,current_data):
+        cc_data = self.import_file(path_cc,filename_cc)
+        cc_data = self.create_binary_image(cc_data)
+        current_dimensions = current_data.shape
+        for x in range(current_dimensions[0]):
+            if (np.sum(cc_data[x,:,:]) > 0):
+                for y in range(current_dimensions[1]):
+                    if (np.sum(cc_data[x,y,:]) > 0):
+                        for z in range(current_dimensions[2]):
+                            if (cc_data[x,y,z] == 1):
+                                current_data[x,y,z] = 251;
+        return
+        
     def coarsen(self, new_voxel_size, original_data):        
         from GridBox import GridBox
         print("Coarsening mesh by a factor of " + str(new_voxel_size))
@@ -447,7 +459,7 @@ class BrainModel():
                     elif (labelled_data[x,y,z] != 0) and (end[x,y,z] == 0):
                         labelled_data[x,y,z] = 0; 
                 
-    def add_CSF(self,data,layers=2):
+    def add_CSF(self,data,layers=1):
         from PointCloud import PointCloud
         from scipy.spatial import Delaunay
         
@@ -546,10 +558,14 @@ class BrainModel():
     
         structure1 = ndimage.generate_binary_structure(3,1)
         structure2 = ndimage.generate_binary_structure(3,3)
-        newData = ndimage.binary_erosion(newData, structure=structure1, iterations=1).astype(int)
-        newData = ndimage.binary_dilation(newData, structure=structure1, iterations=1).astype(int)
+        
+        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=3).astype(int)
+        newData = ndimage.binary_erosion(newData, structure=structure1, iterations=3).astype(int)
         newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
         newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
+        newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
+        # newData = ndimage.binary_dilation(newData, structure=structure2, iterations=2).astype(int)
+        # newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
     
         hit_structure1 = np.ones((2,2,2))
         hit_structure1[0,1,0] = 0
@@ -584,18 +600,33 @@ class BrainModel():
                 for y in range(current_dimensions[1]):
                     if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == 25)):
                         for z in range(current_dimensions[2]):
-                            if newData[x,y,z] == 1 and current_data[x,y,z] != 25 and current_data[x,y,z] != 0:
+                            if newData[x,y,z] == 1:
                                 current_data[x,y,z] = 25
                             if newData[x,y,z] == 0 and (current_data[x,y,z] == 25):
-                                box = GridBox(current_data,[x,y,z])
-                                count_removed += 1
-                                idx, = np.where(box.gridBox == 25)
-                                box.gridBox = np.delete(box.gridBox,idx)
-                                replacement_value = box.mode()
-                                current_data[x,y,z] = replacement_value
+                                current_data[x,y,z] = 0;
+                                # box = GridBox(current_data,[x,y,z])
+                                # count_removed += 1
+                                # idx, = np.where(box.gridBox == 25)
+                                # box.gridBox = np.delete(box.gridBox,idx)
+                                # replacement_value = box.mode()
+                                # current_data[x,y,z] = replacement_value
         print("previous lesion replaced with non-lesion: {}".format(count_removed))
         print("Lesion element size after: {}".format(np.sum(newData)))
-                                
+    
+    def add_edemic_tissue(self,current_data):
+        newData = self.create_binary_image(current_data, search=25)    
+        structure2 = ndimage.generate_binary_structure(3,3)
+        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
+        edemic_count = 0
+        current_dimensions = current_data.shape
+        for x in range(current_dimensions[0]):
+            if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == 25)):
+                for y in range(current_dimensions[1]):
+                    if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == 25)):
+                        for z in range(current_dimensions[2]):
+                            if newData[x,y,z] == 1 and current_data[x,y,z] != 25:
+                                current_data[x,y,z] = 29
+                            
     def trim_mesh(self, data):
         current_dimensions = data.shape
         start = 0

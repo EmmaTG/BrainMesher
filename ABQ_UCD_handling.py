@@ -436,7 +436,7 @@ def writeUCD(path,filenameIN,nodeMap,
 
 def writeVTK(path, filenameIN, nodeMap, 
              elementMap, elementToMaterial = {}, 
-             boundaryElementMap={}, boundaryElementToMaterial = {}):
+             boundaryElementMap={}, boundaryElementToMaterial = {}, PointData=None):
     
     from datetime import date
     filenameIN = remove_ext(filenameIN)
@@ -520,6 +520,15 @@ def writeVTK(path, filenameIN, nodeMap,
             if len(boundaryElementToMaterial[e]) > 0:
                 material = boundaryElementToMaterial[e][0]
         f.write(str(int(material)) + "\n")
+    
+    if PointData is not None:
+        for name,orderedValues in PointData.items():
+            #Writing point data
+            f.write("\nPOINT_DATA " + str(len(orderedValues)) + "\n")
+            f.write("SCALARS {} float 1\n".format(name))
+            f.write("LOOKUP_TABLE default\n")
+            for v in orderedValues:
+                f.write(str(v) + "\n")
         
         
     f.close()

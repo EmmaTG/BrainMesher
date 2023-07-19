@@ -4,14 +4,14 @@ Created on Wed May 10 09:11:56 2023
 @author: grife
 """
 
-import numpy as np
+# import numpy as np
 # import mne
 # import pooch
-import nibabel
+# import nibabel
 from BrainModel import BrainModel
 from Maze_Solver import Maze_Solver
 from PointCloud import PointCloud
-from Mesh import Mesh
+from Mesh import Mesh, MeshUtils
 
 class BrainHexMesh():
     
@@ -53,13 +53,17 @@ class BrainHexMesh():
         self.brainModel = BrainModel();
         return self.brainModel.import_file(fileInPath,fileIn)
     
-    def preprocess(self,data):        
+    def preprocess(self,data, lesion=True, edemicTissue=True):        
         # Step 2: Determine segmentation of brain model via labels map
         
         # Homogenize labels
         label_number = 0
         if self.material_labels.labelsMap.get('Ventricles',False):
             label_number = self.material_labels.labelsMap['Ventricles'][0]
+        
+        # if self.material_labels.labelsMap.get('Corpuscallosum',False):
+        #     if not (list(np.unique(data)).count(self.material_labels.labelsMap['Corpuscallosum'][0])):
+        #         self.add_corpus_callosum(path_cc, filename_cc, current_data)
             
         data = self.material_labels.homogenize_material_labels(data, replace = label_number);      
          
@@ -76,7 +80,10 @@ class BrainHexMesh():
         print("########## Performing cleaning operations on the data ##########")
         
         self.brainModel.clean_voxel_data(data); 
-        self.brainModel.clean_lesion(data)
+        if lesion:
+            self.brainModel.clean_lesion(data)
+        if edemicTissue:
+            self.brainModel.add_edemic_tissue(data)        
         
         # Remove empty rows/columns and plains from 3D array
         self.brainModel.trim_mesh(data)
@@ -110,22 +117,33 @@ class BrainHexMesh():
         
     def make_mesh(self, pc_data):
         print("########## Creating mesh from point cloud ##########")
-        mesh = Mesh(pc_data,self.VOXEL_SIZE)
+        mesh = Mesh()        
+        mesh.create_mesh_from_Point_Cloud(pc_data,self.VOXEL_SIZE)
+        self.clean_mesh(mesh);
+        return mesh;
+    
+    def clean_mesh(self,mesh):
+        meshUtils = MeshUtils();
         ######### DEBUG COMMENT
         if self.Add_CSF:
             # Clean grey matter boundary
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
-            mesh.replace_outer_region(3, 24)
+            elementsOnBoundary = meshUtils.locate_elements_on_boundary(mesh.elements)
+            mesh.replace_outer_region(3, 24, elementsOnBoundary)
         # Clean CSF boundary    
         mesh.clean_mesh()
+        # Clean white matter boundary
+        mesh.clean_mesh(elementsNotIncluded=[24,3], replace=2)
         ######### 
-        # Replace any white matter on boundary with greay matter
-        mesh.replace_outer_region(2, 3, elementsNotIncluded=[24])
-        return mesh;
-                                
+        # Replace any white matter on boundary with grey matter
+        elementsOnBoundary = meshUtils.locate_elements_on_boundary(mesh.elements, elementsNotIncluded = [24])
+        mesh.replace_outer_region(2, 3, elementsOnBoundary)        
         
+    def add_corpus_callosum(self,path_cc,filename_cc,current_data):
+        self.brainModel.add_corpus_callosum(path_cc,filename_cc,current_data)
     
-    def smooth_mesh(self, mesh):    
+    def smooth_mesh(self, mesh):
+        meshUtils = MeshUtils();
         # Optional Boundary Smoothing
         count = 0
         for region in self.Smooth_regions:
@@ -134,34 +152,34 @@ class BrainHexMesh():
             non_whitematter_labels_map = self.material_labels.get_homogenized_labels_map()
             non_whitematter_labels_map.pop(region)
             non_whitematter_labels_map = list(non_whitematter_labels_map.values())
+            boundary_element_map = meshUtils.locate_boundary_element_map(mesh.elements, elementsNotIncluded = non_whitematter_labels_map)
             coeffs = self.region_coeffs[count]
             iterations = self.region_iterations[count]
-            mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded=non_whitematter_labels_map)
+            mesh.smooth_mesh(coeffs, iterations, boundary_element_map)
             count += 1
         # Smooth mesh (excluded CSF)
         if self.Add_CSF:
             print("########## Smoothing mesh excluding CSF ##########")
             # label = self.material_labels.get_homogenized_labels_map()
             # ventricles_label = label.pop("Ventricles")
-            mesh.smooth_mesh(self.coeffs, self.iterations, elementsNotIncluded=[24])
+            boundary_element_map = meshUtils.locate_boundary_element_map(mesh.elements, elementsNotIncluded=[24])
+            mesh.smooth_mesh(self.coeffs, self.iterations, boundary_element_map)
             
         # # Smoothing
         # Smooth outer surface of mesh (including CSF)
         print("########## Smoothing global mesh ##########")
-        mesh.smooth_mesh(self.coeffs, self.iterations)        
+        boundary_element_map = meshUtils.locate_boundary_element_map(mesh.elements)
+        mesh.smooth_mesh(self.coeffs, self.iterations, boundary_element_map)        
         return mesh
     
         
 
-    def write_to_file(self, mesh, material_labels=None, boundaryElementMap={}):
+    def write_to_file(self, mesh):
         
-        if material_labels == None:
-            material_labels = self.material_labels
         # Write mesh to file
         for fileType in self.fileoutTypes:
             print("########## Writing data to " + self.fileout + " as a " + fileType.upper() + " file ##########")
-            mesh.write_to_file(self.fileoutPath, self.fileout, labels_map=material_labels, 
-                               filetype=fileType, boundaryElementMap=boundaryElementMap);
+            mesh.write_to_file(self.fileoutPath, self.fileout);
 
 
 

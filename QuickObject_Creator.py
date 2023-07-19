@@ -91,12 +91,15 @@ brainModel.clean_voxel_data(data)
 newData = brainModel.create_binary_image(data, search=25)
 print("Lesion element size before: {}".format(np.sum(newData)))
 
-erosion_structure = ndimage.generate_binary_structure(3,1) 
-dialtion_structure = ndimage.generate_binary_structure(3,3) 
-newData = ndimage.binary_erosion(newData, structure=erosion_structure, iterations=1).astype(int)
-newData = ndimage.binary_dilation(newData, structure=erosion_structure, iterations=1).astype(int)
-newData = ndimage.binary_erosion(newData, structure=dialtion_structure, iterations=1).astype(int)
-newData = ndimage.binary_dilation(newData, structure=dialtion_structure, iterations=1).astype(int)
+
+structure1 = ndimage.generate_binary_structure(3,1)
+structure2 = ndimage.generate_binary_structure(3,3)
+
+newData = ndimage.binary_dilation(newData, structure=structure2, iterations=3).astype(int)
+newData = ndimage.binary_erosion(newData, structure=structure1, iterations=3).astype(int)
+newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
+newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
+newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
 
 hit_structure1 = np.ones((2,2,2))
 hit_structure1[0,1,0] = 0
@@ -158,7 +161,8 @@ labels.addLabelToMap('CSF' , [24])
 
 pointCloud = PointCloud()
 pointCloud.create_point_cloud_from_voxel(data)
-mesh = Mesh(pointCloud.pcd, 2)
+mesh = Mesh()
+mesh.create_mesh_from_Point_Cloud(pointCloud.pcd, 2)
 
 boundary_elements_map = {}
 boundary_number = max(list(mesh.elements.keys()))
@@ -195,7 +199,7 @@ labels.addLabelToMap("TractionBoundary", 500)
         
 # mesh.smooth_mesh([0.6,-0.4], 6)
 for file_type in ['vtk','ucd']:
-    mesh.write_to_file("C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\PythonScripts\BrainMesher", "Tester_lesion",
+    mesh.write_to_file("C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\PythonScripts\BrainMesher", "Tester_lesion_original",
                         labels, filetype=file_type, boundaryElementMap=boundary_elements_map)
         
     
