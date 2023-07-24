@@ -4,8 +4,9 @@ Output written to: C:\Users\grife\OneDrive\Documents\PostDoc\BrainModels\PythonS
 Output file types: vtk, ucd
 Coarsen: True
 Add CSF: True
-Layers of CSF: 2
+Layers of CSF: 1
 Smooth global mesh: True
-Iterations: 1, coeffs: 0.6, -0.4
-COMPLETE
-Lesion location: ['106', '115', '85']]
+Iterations: 4, coeffs: 0.6, -0.4
+Smooth region: Lesion
+Iterations: 4, coeffs: 0.6, -0.4
+Lesion location: ['100', '118', '97']Regions included: 	: BrainStem	: GreyMatter	: WhiteMatter	: Corpuscallosum	: BasalGanglia	: Cerebellum	: Thalamus	: Hippocampus	: Amygdala	: Lesion	: EdemicTissue	: CSF	: VentriclesCOMPLETE

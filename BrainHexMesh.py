@@ -55,7 +55,7 @@ class BrainHexMesh():
         self.brainModel = BrainModel();
         return self.brainModel.import_file(fileInPath,fileIn)
     
-    def preprocess(self,data, lesion=True, edemicTissue=True):
+    def preprocess(self,data, lesion=False, edemicTissue=False):
         # Step 2: Determine segmentation of brain model via labels map
         
         # Homogenize labels
@@ -143,9 +143,17 @@ class BrainHexMesh():
         elementsOnBoundary = meshUtils.locate_elements_on_boundary(mesh.elements, elementsNotIncluded = [24])
         mesh.replace_outer_region(2, 3, elementsOnBoundary)        
 
-    def centerMesh(self,mesh,start,end):
-        direction = np.array(end)-np.array(start)
-        MeshTransformations().translate_mesh(mesh.nodes,direction)
+    def centerMesh(self,mesh):
+        centroid = [0,0,0]
+        num_elements = 0;
+        for e in mesh.elements.values():
+            if (e.getMaterial()[0] == 251):
+                e_centroid = e.calculate_element_centroid(mesh.nodes);
+                num_elements += 1
+                for d in range(len(e_centroid)):
+                  centroid[d] += e_centroid[d];
+        middleOfCC = [ int(x) for x in (np.array(centroid)/num_elements)]
+        MeshTransformations().translate_mesh(mesh.nodes,middleOfCC)
         
     def createCSFBoundary(self,mesh):
         e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
