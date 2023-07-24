@@ -2,5 +2,7 @@ tester*
 /__pycache__/*
 *.inp
 *.vtk
+*.txt
+OAS*
 /Images/*
 Brain_creation_personal.py

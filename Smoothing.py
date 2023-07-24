@@ -91,11 +91,11 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
     nodesUnsmoothed = []
     coeff = coeffs[iteration%2]
     for node,connected in surfaceNodeConnectivity.items():
-        currentNodeCoords = list(nodeMap[node])
+        currentNodeCoords = list(nodeMap[node].getCoords())
         if (value_in_square_bounds(currentNodeCoords, bounds, inside=inBounds) ):
             coords = []
             for n in connected:
-                coords.append(nodeMap[n])
+                coords.append(nodeMap[n].getCoords())
             curvature = calculateCurvature(coords,currentNodeCoords)
             newCoords = [0,0,0]
             for i in range(3):
@@ -107,7 +107,7 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
                     if newNodePositions.get(n,False):
                         elemCoords[count] = newNodePositions[n]
                     else:
-                        elemCoords[count] = nodeMap[n]
+                        elemCoords[count] = nodeMap[n].getCoords()
                 metric = calculateQualityMetric(elemCoords);
                 if metric < 0.2:
                     newNodePositions.pop(node)
@@ -124,4 +124,5 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
     print("Number of elements affected: " + str(len(badElements)))
     print("Number of tangled elements: " + str(len(tangled_elements)))
     for node, newcoords in newNodePositions.items():
-        nodeMap[node] = newcoords
+        changedNode = nodeMap[node]
+        changedNode.setCoords(newcoords);

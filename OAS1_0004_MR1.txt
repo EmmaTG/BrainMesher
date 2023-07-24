@@ -1,0 +1,11 @@
+Input file: C:\Users\grife\OneDrive\Documents\PostDoc\BrainModels\OASIS\OASIS-1\oasis_cs_freesurfer_disc1.tar\oasis_cs_freesurfer_disc1\disc1\OAS1_0004_MR1\mri\aseg.mgz
+Write output to file: True
+Output written to: C:\Users\grife\OneDrive\Documents\PostDoc\BrainModels\PythonScripts\BrainMesher\OAS1_0004_MR1
+Output file types: vtk, ucd
+Coarsen: True
+Add CSF: True
+Layers of CSF: 2
+Smooth global mesh: True
+Iterations: 1, coeffs: 0.6, -0.4
+COMPLETE
+Lesion location: ['106', '115', '85']]

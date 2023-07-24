@@ -48,19 +48,17 @@ class BrainModel():
             return True
         else:
             print('Error, data shape not 3 dimensional!')
-            return False       
-    def add_corpus_callosum(self,path_cc,filename_cc,current_data):
-        cc_data = self.import_file(path_cc,filename_cc)
-        cc_data = self.create_binary_image(cc_data)
+            return False    
+        
+    def override_voxel_data(self,new_data,current_data, replacementValue):
         current_dimensions = current_data.shape
         for x in range(current_dimensions[0]):
-            if (np.sum(cc_data[x,:,:]) > 0):
+            if (np.sum(new_data[x,:,:]) > 0):
                 for y in range(current_dimensions[1]):
-                    if (np.sum(cc_data[x,y,:]) > 0):
+                    if (np.sum(new_data[x,y,:]) > 0):
                         for z in range(current_dimensions[2]):
-                            if (cc_data[x,y,z] == 1):
-                                current_data[x,y,z] = 251;
-        return
+                            if (new_data[x,y,z] == 1):
+                                current_data[x,y,z] = replacementValue;
         
     def coarsen(self, new_voxel_size, original_data):        
         from GridBox import GridBox
@@ -508,14 +506,26 @@ class BrainModel():
             hull = Delaunay(points)
             
             xmin,ymin = np.min(points, axis=0)
-            xmax,ymax = np.max(points, axis=0)
+            xmax,ymax_slice = np.max(points, axis=0)
+            ymax = min([ymax_tot,ymax_slice])
+            mid_y = int((int(ymin) +int(ymax+1))/2)
             for x in range(int(xmin),int(xmax+1)):
-                for y in range(int(ymin),int(ymax+1)):
+                for y in range(int(mid_y),int(ymin-1),-1):
                     if (data[x,y,z] == 0) and (y<ymax_tot):
                         if in_hull([x,y], hull):
                             pointCloud.add_point_to_cloud([x,y,z,24])
                             data[x,y,z] = 24
                             newData[x,y,z] = 24
+                        else:
+                            break;
+                for y in range(int(mid_y),int(ymax+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([x,y], hull):
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24
+                            newData[x,y,z] = 24                        
+                        else:
+                            break;
 
         print("Filling in CSF x-dim")
         for x in range(xmin_tot,xmax_tot+1):
@@ -524,15 +534,27 @@ class BrainModel():
             hull = Delaunay(points)
             
             min1d,min2d = np.min(points, axis=0)
-            max1d,max2d = np.max(points, axis=0)
-            
+            max1d_slice,max2d = np.max(points, axis=0)
+            max1d = min([ymax_tot,max1d_slice])
+            mid_2d = int((int(min2d) +int(max2d+1))/2)
             for y in range(int(min1d),int(max1d+1)):
-                for z in range(int(min2d),int(max2d+1)):
+                for z in range(int(mid_2d),int(min2d-1),-1):
                     if (data[x,y,z] == 0) and (y<ymax_tot):
                         if in_hull([y,z], hull):
                             pointCloud.add_point_to_cloud([x,y,z,24])
                             data[x,y,z] = 24  
-                            newData[x,y,z] = 24  
+                            newData[x,y,z] = 24 
+                        else:
+                            break;
+                
+                for z in range(int(mid_2d),int(max2d+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([y,z], hull):
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24  
+                            newData[x,y,z] = 24 
+                        else:
+                            break;
             
         print("Filling in CSF y-dim")
         for y in range(ymin_tot,ymax_tot+1):
@@ -542,14 +564,24 @@ class BrainModel():
             
             min1d,min2d = np.min(points, axis=0)
             max1d,max2d = np.max(points, axis=0)
-            
+            mid_2d = int((int(min2d) +int(max2d+1))/2)
             for x in range(int(min1d),int(max1d+1)):
-                for z in range(int(min2d),int(max2d+1)):
+                for z in range(int(mid_2d),int(min2d-1),-1):
                     if (data[x,y,z] == 0) and (y<ymax_tot):
                         if in_hull([x,z], hull):     
                             pointCloud.add_point_to_cloud([x,y,z,24])
                             data[x,y,z] = 24 
-                            newData[x,y,z] = 24     
+                            newData[x,y,z] = 24 
+                        else: 
+                            break;
+                for z in range(int(mid_2d),int(max2d+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([x,z], hull):     
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24 
+                            newData[x,y,z] = 24 
+                        else: 
+                            break;
     
     def clean_lesion(self,current_data):
         
