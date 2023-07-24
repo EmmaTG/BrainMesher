@@ -48,19 +48,17 @@ class BrainModel():
             return True
         else:
             print('Error, data shape not 3 dimensional!')
-            return False       
-    def add_corpus_callosum(self,path_cc,filename_cc,current_data):
-        cc_data = self.import_file(path_cc,filename_cc)
-        cc_data = self.create_binary_image(cc_data)
+            return False    
+        
+    def override_voxel_data(self,new_data,current_data, replacementValue):
         current_dimensions = current_data.shape
         for x in range(current_dimensions[0]):
-            if (np.sum(cc_data[x,:,:]) > 0):
+            if (np.sum(new_data[x,:,:]) > 0):
                 for y in range(current_dimensions[1]):
-                    if (np.sum(cc_data[x,y,:]) > 0):
+                    if (np.sum(new_data[x,y,:]) > 0):
                         for z in range(current_dimensions[2]):
-                            if (cc_data[x,y,z] == 1):
-                                current_data[x,y,z] = 251;
-        return
+                            if (new_data[x,y,z] == 1):
+                                current_data[x,y,z] = replacementValue;
         
     def coarsen(self, new_voxel_size, original_data):        
         from GridBox import GridBox
@@ -508,14 +506,26 @@ class BrainModel():
             hull = Delaunay(points)
             
             xmin,ymin = np.min(points, axis=0)
-            xmax,ymax = np.max(points, axis=0)
+            xmax,ymax_slice = np.max(points, axis=0)
+            ymax = min([ymax_tot,ymax_slice])
+            mid_y = int((int(ymin) +int(ymax+1))/2)
             for x in range(int(xmin),int(xmax+1)):
-                for y in range(int(ymin),int(ymax+1)):
+                for y in range(int(mid_y),int(ymin-1),-1):
                     if (data[x,y,z] == 0) and (y<ymax_tot):
                         if in_hull([x,y], hull):
                             pointCloud.add_point_to_cloud([x,y,z,24])
                             data[x,y,z] = 24
                             newData[x,y,z] = 24
+                        else:
+                            break;
+                for y in range(int(mid_y),int(ymax+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([x,y], hull):
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24
+                            newData[x,y,z] = 24                        
+                        else:
+                            break;
 
         print("Filling in CSF x-dim")
         for x in range(xmin_tot,xmax_tot+1):
@@ -524,15 +534,27 @@ class BrainModel():
             hull = Delaunay(points)
             
             min1d,min2d = np.min(points, axis=0)
-            max1d,max2d = np.max(points, axis=0)
-            
+            max1d_slice,max2d = np.max(points, axis=0)
+            max1d = min([ymax_tot,max1d_slice])
+            mid_2d = int((int(min2d) +int(max2d+1))/2)
             for y in range(int(min1d),int(max1d+1)):
-                for z in range(int(min2d),int(max2d+1)):
+                for z in range(int(mid_2d),int(min2d-1),-1):
                     if (data[x,y,z] == 0) and (y<ymax_tot):
                         if in_hull([y,z], hull):
                             pointCloud.add_point_to_cloud([x,y,z,24])
                             data[x,y,z] = 24  
-                            newData[x,y,z] = 24  
+                            newData[x,y,z] = 24 
+                        else:
+                            break;
+                
+                for z in range(int(mid_2d),int(max2d+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([y,z], hull):
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24  
+                            newData[x,y,z] = 24 
+                        else:
+                            break;
             
         print("Filling in CSF y-dim")
         for y in range(ymin_tot,ymax_tot+1):
@@ -542,76 +564,88 @@ class BrainModel():
             
             min1d,min2d = np.min(points, axis=0)
             max1d,max2d = np.max(points, axis=0)
-            
+            mid_2d = int((int(min2d) +int(max2d+1))/2)
             for x in range(int(min1d),int(max1d+1)):
-                for z in range(int(min2d),int(max2d+1)):
+                for z in range(int(mid_2d),int(min2d-1),-1):
                     if (data[x,y,z] == 0) and (y<ymax_tot):
                         if in_hull([x,z], hull):     
                             pointCloud.add_point_to_cloud([x,y,z,24])
                             data[x,y,z] = 24 
-                            newData[x,y,z] = 24     
+                            newData[x,y,z] = 24 
+                        else: 
+                            break;
+                for z in range(int(mid_2d),int(max2d+1)):
+                    if (data[x,y,z] == 0) and (y<ymax_tot):
+                        if in_hull([x,z], hull):     
+                            pointCloud.add_point_to_cloud([x,y,z,24])
+                            data[x,y,z] = 24 
+                            newData[x,y,z] = 24 
+                        else: 
+                            break;
     
     def clean_lesion(self,current_data):
         
         newData = self.create_binary_image(current_data, search=25)
-        print("Lesion element size before: {}".format(np.sum(newData)))
-    
-        structure1 = ndimage.generate_binary_structure(3,1)
-        structure2 = ndimage.generate_binary_structure(3,3)
+        if np.sum(newData) > 0:
+            print("Lesion element size before: {}".format(np.sum(newData)))
         
-        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=3).astype(int)
-        newData = ndimage.binary_erosion(newData, structure=structure1, iterations=3).astype(int)
-        newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
-        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
-        newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
-        # newData = ndimage.binary_dilation(newData, structure=structure2, iterations=2).astype(int)
-        # newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
-    
-        hit_structure1 = np.ones((2,2,2))
-        hit_structure1[0,1,0] = 0
-        hit_structure2 = np.rot90(hit_structure1)
-        hit_structure3 = np.rot90(hit_structure1, k= 2)
-        hit_structure4 = np.rot90(hit_structure1, k= 3)
-        hit_structure5 = np.rot90(hit_structure1,axes=(1,2))
-        hit_structure6 = np.rot90(hit_structure5, k= 1)
-        hit_structure7 = np.rot90(hit_structure5, k= 2)
-        hit_structure8 = np.rot90(hit_structure5, k= 3)
-        total_count = 0;
-        count = 1
-        iteration = 0
-        while (count > 0 and iteration < 10):
-            iteration += 1
-            count = 0
-            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure1, fill=1)
-            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure2, fill=1)
-            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure3, fill=1)
-            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure4, fill=1)
-            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure5, fill=1)
-            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure6, fill=1)
-            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure7, fill=1)
-            count += self.hit_and_miss_3d_2x2x2(newData, hit_structure8, fill=1)
-            total_count += count
-        print("Lesion cleaned after {} iterations and {} elements added".format(iteration,total_count))
+            structure1 = ndimage.generate_binary_structure(3,1)
+            structure2 = ndimage.generate_binary_structure(3,3)
+            
+            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=3).astype(int)
+            newData = ndimage.binary_erosion(newData, structure=structure1, iterations=3).astype(int)
+            newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
+            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
+            newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
+            # newData = ndimage.binary_dilation(newData, structure=structure2, iterations=2).astype(int)
+            # newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
         
-        count_removed = 0
-        current_dimensions = current_data.shape
-        for x in range(current_dimensions[0]):
-            if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == 25)):
-                for y in range(current_dimensions[1]):
-                    if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == 25)):
-                        for z in range(current_dimensions[2]):
-                            if newData[x,y,z] == 1:
-                                current_data[x,y,z] = 25
-                            if newData[x,y,z] == 0 and (current_data[x,y,z] == 25):
-                                current_data[x,y,z] = 0;
-                                # box = GridBox(current_data,[x,y,z])
-                                # count_removed += 1
-                                # idx, = np.where(box.gridBox == 25)
-                                # box.gridBox = np.delete(box.gridBox,idx)
-                                # replacement_value = box.mode()
-                                # current_data[x,y,z] = replacement_value
-        print("previous lesion replaced with non-lesion: {}".format(count_removed))
-        print("Lesion element size after: {}".format(np.sum(newData)))
+            hit_structure1 = np.ones((2,2,2))
+            hit_structure1[0,1,0] = 0
+            hit_structure2 = np.rot90(hit_structure1)
+            hit_structure3 = np.rot90(hit_structure1, k= 2)
+            hit_structure4 = np.rot90(hit_structure1, k= 3)
+            hit_structure5 = np.rot90(hit_structure1,axes=(1,2))
+            hit_structure6 = np.rot90(hit_structure5, k= 1)
+            hit_structure7 = np.rot90(hit_structure5, k= 2)
+            hit_structure8 = np.rot90(hit_structure5, k= 3)
+            total_count = 0;
+            count = 1
+            iteration = 0
+            while (count > 0 and iteration < 10):
+                iteration += 1
+                count = 0
+                count += self.hit_and_miss_3d_2x2x2(newData, hit_structure1, fill=1)
+                count += self.hit_and_miss_3d_2x2x2(newData, hit_structure2, fill=1)
+                count += self.hit_and_miss_3d_2x2x2(newData, hit_structure3, fill=1)
+                count += self.hit_and_miss_3d_2x2x2(newData, hit_structure4, fill=1)
+                count += self.hit_and_miss_3d_2x2x2(newData, hit_structure5, fill=1)
+                count += self.hit_and_miss_3d_2x2x2(newData, hit_structure6, fill=1)
+                count += self.hit_and_miss_3d_2x2x2(newData, hit_structure7, fill=1)
+                count += self.hit_and_miss_3d_2x2x2(newData, hit_structure8, fill=1)
+                total_count += count
+            print("Lesion cleaned after {} iterations and {} elements added".format(iteration,total_count))
+            
+            count_removed = 0
+            current_dimensions = current_data.shape
+            for x in range(current_dimensions[0]):
+                if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == 25)):
+                    for y in range(current_dimensions[1]):
+                        if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == 25)):
+                            for z in range(current_dimensions[2]):
+                                if newData[x,y,z] == 1:
+                                    current_data[x,y,z] = 25
+                                if newData[x,y,z] == 0 and (current_data[x,y,z] == 25):
+                                    current_data[x,y,z] = 0;
+                                    # box = GridBox(current_data,[x,y,z])
+                                    # count_removed += 1
+                                    # idx, = np.where(box.gridBox == 25)
+                                    # box.gridBox = np.delete(box.gridBox,idx)
+                                    # replacement_value = box.mode()
+                                    # current_data[x,y,z] = replacement_value
+            print("previous lesion replaced with non-lesion: {}".format(count_removed))
+            print("Lesion element size after: {}".format(np.sum(newData)))
+            assert (np.sum(newData) > 0)
     
     def add_edemic_tissue(self,current_data):
         newData = self.create_binary_image(current_data, search=25)    

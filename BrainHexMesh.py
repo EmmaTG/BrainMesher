@@ -4,14 +4,15 @@ Created on Wed May 10 09:11:56 2023
 @author: grife
 """
 
-# import numpy as np
+import numpy as np
 # import mne
 # import pooch
 # import nibabel
 from BrainModel import BrainModel
 from Maze_Solver import Maze_Solver
 from PointCloud import PointCloud
-from Mesh import Mesh, MeshUtils
+from Mesh import Mesh, MeshUtils, MeshTransformations, QuadElement
+from BrainVoxelCleaner import BrainVoxelData
 
 class BrainHexMesh():
     
@@ -42,6 +43,7 @@ class BrainHexMesh():
         self.Smooth = configFile.Smooth
         self.iterations = configFile.iterations
         self.coeffs = configFile.coeffs
+        self.layers = configFile.layers
         
         self.Smooth_regions = configFile.Smooth_regions
         self.region_iterations = configFile.region_iterations
@@ -53,7 +55,7 @@ class BrainHexMesh():
         self.brainModel = BrainModel();
         return self.brainModel.import_file(fileInPath,fileIn)
     
-    def preprocess(self,data, lesion=True, edemicTissue=True):        
+    def preprocess(self,data, lesion=False, edemicTissue=False):
         # Step 2: Determine segmentation of brain model via labels map
         
         # Homogenize labels
@@ -97,7 +99,7 @@ class BrainHexMesh():
         # Create CSF layer around GM
         if self.Add_CSF:
             print("########## Adding layers of CSF ##########")
-            self.brainModel.add_CSF(data,layers=0);
+            self.brainModel.add_CSF(data,layers=self.layers);
         return data       
         
     def make_point_cloud(self, data):
@@ -119,7 +121,6 @@ class BrainHexMesh():
         print("########## Creating mesh from point cloud ##########")
         mesh = Mesh()        
         mesh.create_mesh_from_Point_Cloud(pc_data,self.VOXEL_SIZE)
-        self.clean_mesh(mesh);
         return mesh;
     
     def clean_mesh(self,mesh):
@@ -127,20 +128,82 @@ class BrainHexMesh():
         ######### DEBUG COMMENT
         if self.Add_CSF:
             # Clean grey matter boundary
+            print("####### Cleaning grey matter boundary #######")
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
             elementsOnBoundary = meshUtils.locate_elements_on_boundary(mesh.elements)
             mesh.replace_outer_region(3, 24, elementsOnBoundary)
-        # Clean CSF boundary    
+        # Clean CSF boundary
+        print("####### Cleaning CSF boundary #######")    
         mesh.clean_mesh()
         # Clean white matter boundary
+        print("####### Cleaning white matter boundary #######")
         mesh.clean_mesh(elementsNotIncluded=[24,3], replace=2)
         ######### 
         # Replace any white matter on boundary with grey matter
         elementsOnBoundary = meshUtils.locate_elements_on_boundary(mesh.elements, elementsNotIncluded = [24])
         mesh.replace_outer_region(2, 3, elementsOnBoundary)        
+
+    def centerMesh(self,mesh):
+        centroid = [0,0,0]
+        num_elements = 0;
+        for e in mesh.elements.values():
+            if (e.getMaterial()[0] == 251):
+                e_centroid = e.calculate_element_centroid(mesh.nodes);
+                num_elements += 1
+                for d in range(len(e_centroid)):
+                  centroid[d] += e_centroid[d];
+        middleOfCC = [ int(x) for x in (np.array(centroid)/num_elements)]
+        MeshTransformations().translate_mesh(mesh.nodes,middleOfCC)
         
-    def add_corpus_callosum(self,path_cc,filename_cc,current_data):
-        self.brainModel.add_corpus_callosum(path_cc,filename_cc,current_data)
+    def createCSFBoundary(self,mesh):
+        e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
+        count = 0
+        for e_num,element in mesh.elements.items():
+            element_centroid = element.calculate_element_centroid(mesh.nodes)
+            e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
+            count += 1
+        e_centroids = np.stack(e_centroids, axis = 0)
+        
+        # mesh.create_node_to_element_connectivity()
+        boundary_elements_map = {}
+        boundary_number = max(list(mesh.elements.keys()))
+        meshUtils = MeshUtils();
+        boundaryElementsOnCSF = mesh.locate_boundary_element_map() 
+        print("Locating CSF boundary")
+        for compoundKey,ica in boundaryElementsOnCSF.items():
+            boundary_number += 1;
+            boundary_element = QuadElement(boundary_number, ica, mat=[400])
+            [element_num,face] = [int(x) for x in compoundKey.split("-")]
+            [xc,yc,zc,m] = e_centroids[element_num]    
+            Boundary = False
+            if m == 24:
+                boundary_number += 1             
+                elements_inline = e_centroids
+                elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
+                elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
+                elements_inline = elements_inline[elements_inline[:, 1].argsort()]
+                current_element_idx, = np.where(elements_inline[:,1]>=yc)
+                if len(current_element_idx)!= 0:
+                    current_element_idx = current_element_idx[0]
+                    elements_inline = elements_inline[:current_element_idx]
+                mats = list(elements_inline[:,3])
+                Boundary = self.validCSFBoundary(mats);
+            if Boundary:
+                boundary_elements_map[boundary_number] = boundary_element
+            else:
+                boundary_number -= 1;
+        return boundary_elements_map;
+                
+    def validCSFBoundary(self, mats):    
+        grey_matter_label = self.material_labels.get_homogenized_labels_map()['GreyMatter']
+        white_matter_label = self.material_labels.get_homogenized_labels_map()['WhiteMatter']
+        csf_label = self.material_labels.get_homogenized_labels_map()['CSF']
+        
+        valid_element = ((mats.count(csf_label) + mats.count(grey_matter_label) + mats.count(white_matter_label)) == len(mats))
+        return valid_element;
+        
+    def add_region(self,cc_data,current_data, region_value): 
+        self.brainModel.override_voxel_data(cc_data,current_data, region_value)
     
     def smooth_mesh(self, mesh):
         meshUtils = MeshUtils();
@@ -170,16 +233,18 @@ class BrainHexMesh():
         print("########## Smoothing global mesh ##########")
         boundary_element_map = meshUtils.locate_boundary_element_map(mesh.elements)
         mesh.smooth_mesh(self.coeffs, self.iterations, boundary_element_map)        
-        return mesh
-    
+        return mesh    
         
 
-    def write_to_file(self, mesh):
-        
+    def write_to_file(self, mesh):        
         # Write mesh to file
         for fileType in self.fileoutTypes:
             print("########## Writing data to " + self.fileout + " as a " + fileType.upper() + " file ##########")
-            mesh.write_to_file(self.fileoutPath, self.fileout);
+            from Writer import Writer 
+            writer = Writer()
+            writer.openWriter(fileType, self.fileout, self.fileoutPath, mesh)
+            writer.writeMeshData()
+            writer.closeWriter();
 
 
 

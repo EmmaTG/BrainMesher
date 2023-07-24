@@ -32,7 +32,7 @@ class BaseWriter():
         self.__ext__ = ext;
         self.__tag__ = tag;
         
-    def openWriter(self, filename, path):
+    def openWriter(self, filename, path, mesh):
         self.__path__ = path;
         self.__filename__ = filename        
         if (path[-1] != "\\"):
@@ -41,6 +41,7 @@ class BaseWriter():
             filename = filename.split('.')[0]
         filenameOUT = filename + "_" + self.__tag__.upper()
         self.f = open(path + filenameOUT + "." + self.__ext__, 'w')
+        self.initializeMesh(mesh)
 
     def saveAndClose(self):
         self.f.close()
@@ -65,8 +66,8 @@ class ABQWriter(BaseWriter,IWriter):
         super().__init__("inp","abq")
         
 
-    def openWriter(self, filename, path):
-        super().openWriter(filename, path)
+    def openWriter(self, filename, path, mesh):
+        super().openWriter(filename, path, mesh)
         from datetime import date
         firstLine = "# UCD SCRIPT\n" \
             + "# Inp file created using python script BrainHexMesh\n"\
@@ -86,9 +87,9 @@ class ABQWriter(BaseWriter,IWriter):
             if reNumber:
                 nodeNum = count+1
             else:
-                nodeNum = n
-            self.oldNumToNewNum[n] = nodeNum
-            self.f.write(str(nodeNum) + ",\t" + ",\t".join([str(round(i,6)) for i in nodeMap[n]])+"\n")
+                nodeNum = n.number
+            self.oldNumToNewNum[n.number] = nodeNum
+            self.f.write(str(nodeNum) + ",\t" + ",\t".join([str(round(i,6)) for i in nodeMap[n].getCoords()])+"\n")
     
     def writeElements(self, reNumber):
         elementMap = self._mesh.elements;
@@ -131,8 +132,8 @@ class VTKWriter(BaseWriter,IWriter):
     def __init__(self):
         super().__init__("vtk","vtk")  
 
-    def openWriter(self, filename, path):
-        super().openWriter(filename, path)        
+    def openWriter(self, filename, path, mesh):
+        super().openWriter(filename, path, mesh)        
         from datetime import date
         firstLine = "# vtk DataFile Version 2.0\n" \
         + "VTK file created using python script BrainHexMesh script developed by Emma Griffiths"\
@@ -156,7 +157,7 @@ class VTKWriter(BaseWriter,IWriter):
         for n in nodeKeys:
             nodeNum = count       
             self.node_num_map_old_to_new[n] = nodeNum
-            self.f.write(" ".join([str(float(coord)) for coord in nodeMap[n]]) + "\n")
+            self.f.write(" ".join([str(float(coord)) for coord in nodeMap[n].getCoords()]) + "\n")
             count += 1
     
     def writeElements(self, renumber):
@@ -220,50 +221,92 @@ class VTKWriter(BaseWriter,IWriter):
             material = e.getMaterial()[0]
             self.f.write(str(int(material)) + "\n")            
             
-        self.writeData(self._mesh.dataToWrite)
+        self.writePointData()
     
-    def writeData(self, dataToWrite):
+    def writePointData(self):
         from re import sub
-        elementMap = self._mesh.elements
+        nodes = self._mesh.nodes
+        dataToWrite = self._mesh.dataToWrite
+        
         #Writing point data
         for d in dataToWrite:
-            self.f.write("\nPOINT_DATA " + str(len(elementMap)) + "\n")
+            self.f.write("\nPOINT_DATA " + str(len(nodes)) + "\n")
             self.f.write("FIELD FieldData 1 \n")
-            self.f.write("{} 3 {} float\n".format(d, len(elementMap)))
-            for numE, e in elementMap.items():
-                data = [0,0,0]
-                if not (e.properties.get(d,False)):
-                    data = e.properties.get(d)
-                    line = sub("[\[\]\(\),]*", '', str(data))
-                    self.f.write(line + "\n")
+            self.f.write("{} 3 {} float\n".format(d, len(nodes)))
+            for nodeNum, n in nodes.items():
+                data = n.data.get(d,[0,0,0]);
+                line = sub("[\[\]\(\),]*", '', str(data))
+                self.f.write(line + "\n")
 
 class UCDWriter(BaseWriter,IWriter):
     
     def __init__(self):
         super().__init__("inp","ucd") 
 
-    def openWriter(self, filename, path):
-        super().openWriter(filename, path)
+    def openWriter(self, filename, path, mesh):
+        super().openWriter(filename, path, mesh)
         from datetime import date
-        firstLine = "*HEADING \n" \
-            + "Abaqus file created using python script BrainHexMesh\n"\
-            + "Script developed by Emma Griffiths ca. 2022\n"\
-            + "INP file created on " + date.today().isoformat() + "\n"\
-            + "**\n** Model Definition\n**\n"
+        firstLine = "# UCD SCRIPT\n" \
+            + "# Inp file created using python script BrainHexMesh\n"\
+            + "# Script developed by Emma Griffiths ca. 2022\n"\
+            + "# UCD file created on " + date.today().isoformat() + "\n"
         self.f.write(firstLine)
+        numNodes = len(self._mesh.nodes)
+        numElements = len(self._mesh.elements)+ len(self._mesh.boundaryElements)
+        self.f.write("\t".join([str(numNodes),str(numElements),'0','0','0']) + "\n") # Data summary row
 
     def saveAndClose(self):
         super().saveAndClose()
     
-    def writeElements(self, renumber):
-        pass
-    
     def writeNodes(self, renumber):
-        pass
+        nodeMap = self._mesh.nodes;
+        nodeKeys = nodeMap.keys()
+        nodeKeys = sorted(nodeKeys)
+        count = 0
+        self.node_num_map_old_to_new = {}
+        for n in nodeKeys:
+            nodeNum = count       
+            self.node_num_map_old_to_new[n] = nodeNum
+            self.f.write(str(nodeNum) + "\t" + "\t".join([str(node) for node in nodeMap[n].getCoords()]) + "\n")
+            count += 1
+        
+    
+    def writeElements(self, renumber):
+        element_count = 0
+        
+        for e in self._mesh.elements.values():
+            element_count += 1
+            material = material = e.getMaterial()[0]
+                    
+            ica = e.ica
+            ica = list(ica[:4]) + list(ica[4:])  
+            renumber_ica = []
+            for ica_node in ica:
+                renumber_ica.append(self.node_num_map_old_to_new[ica_node])
+                
+                
+            self.f.write(str(e.num) + "\t" + str(int(material)) + "\t " + "hex" + "\t")
+            self.f.write("\t".join([str(n) for n in renumber_ica])+ "\n")
+            
+        self.writeBoundaryElements(renumber);
+    
+    def writeBoundaryElements(self,renumber):
+        element_count = 0
+        
+        for e in self._mesh.boundaryElements.values():
+            element_count += 1
+            material = material = e.getMaterial()[0] 
+            ica = e.ica;
+            renumber_ica = []
+            for ica_node in ica:
+                renumber_ica.append(self.node_num_map_old_to_new[ica_node])                
+                
+            self.f.write(str(e.num) + "\t" + str(int(material)) + "\t " + "quad" + "\t")
+            self.f.write("\t".join([str(n) for n in renumber_ica])+ "\n")        
     
 class Writer():    
     
-    def openWriter(self,filetype, filename,filePath):
+    def openWriter(self,filetype, filename,filePath, mesh):
         self.fileType = filetype
         if filetype == "abaqus":
             self.writer = ABQWriter();
@@ -271,13 +314,7 @@ class Writer():
             self.writer = VTKWriter();
         if filetype == "ucd":
             self.writer = UCDWriter();
-        self.writer.openWriter(filename,filePath)
-    
-    def initializeWriter(self, mesh):
-        if (hasattr(self, "writer")):
-            self.writer.initializeMesh(mesh);
-        else:
-            raise Exception(("Writer has not been opened"));
+        self.writer.openWriter(filename,filePath, mesh)
     
     def writeMeshData(self):
         self.writer.writeNodes(True); 
@@ -286,6 +323,8 @@ class Writer():
     
     def closeWriter(self):
         self.writer.saveAndClose();
+        self.writer
+        
         
         
 

@@ -8,6 +8,25 @@ Created on Thu May 25 15:39:38 2023
 import Smoothing as smooth
 from abc import ABC, abstractmethod
 
+class INode():
+    def __init__(self, number, coords):        
+        self.number = number
+        self.coords = coords
+        self.data = {}
+    
+    def addData(self,name,value):
+        self.data[name] = value;
+    
+    
+    def setCoords(self, coords):
+        self.coords = coords;
+    
+    def getCoords(self):
+        return self.coords;
+        
+class Node(INode):    
+    pass;
+
 class IElement(ABC): 
     @abstractmethod
     def get_faces(self, stringyfy, order):
@@ -35,7 +54,7 @@ class ElementCalculations():
         """
         centroid = [0,0,0]
         for n in self.ica:
-            coords = nodeMap[n]
+            coords = nodeMap[n].getCoords()
             for i in range(3):
                 centroid[i] += coords[i]
                 
@@ -111,7 +130,46 @@ class QuadElement(Element, IElement):
     def get_edges(self, stringyfy=True, order=True):
         edge_classification = [[0,1],[1,2],[2,3],[3,0]]
         return super().get_nodes_involved(edge_classification, stringyfy=stringyfy, order=order)
+    
+class MeshTransformations():
+    @staticmethod
+    def rotate_mesh(nodeMap, axis=0, degrees=90):
+        from math import pi,cos,sin
+        import numpy as np
+        deg = degrees*pi/180
+        if (axis == 0):
+            R = np.array([[1,0,0],[0, cos(deg), -1*sin(deg)],[0, sin(deg), cos(deg)]])      
+        if (axis == 1):
+            R = np.array([[cos(deg),0,sin(deg)],[0, 1, 0],[-1*sin(deg), 0, cos(deg)]])
+        if (axis == 2):
+            R = np.array([[cos(deg), -1*sin(deg), 0],[sin(deg), cos(deg), 0],[0, 0, 1]])
+        for n in nodeMap.values():
+            coords = n.getCoords();
+            newCoords = np.matmul(np.array(coords),R)
+            coords[0] = round(newCoords[0],3)
+            coords[1] = round(newCoords[1],3)
+            coords[2] = round(newCoords[2],3)
+    
+    @staticmethod            
+    def scale_mesh(nodeMap,scale=[1,1,1],reduce=True):
+        if reduce:
+            scale[0] = 1/scale[0]
+            scale[1] = 1/scale[1]
+            scale[2] = 1/scale[2]        
+        for n in nodeMap.values():
+            coords = n.getCoords();
+            coords[0] = coords[0]*scale[0]
+            coords[1] = coords[1]*scale[1]
+            coords[2] = coords[2]*scale[2]
 
+    @staticmethod
+    def translate_mesh(nodeMap,distance=[1,1,1]):        
+        for n in nodeMap.values():
+            coords = n.getCoords();
+            coords[0] = coords[0]+distance[0]
+            coords[1] = coords[1]+distance[1]
+            coords[2] = coords[2]+distance[2]
+    
 class MeshUtils():
 
     def create_elements_map(self, elements, elementsNotIncluded, elementsIncluded = []):
@@ -138,7 +196,6 @@ class MeshUtils():
         return elementMap
 
     def locate_boundary_element_map(self, elements, elementsNotIncluded = []):
-        print("Identifying boundary faces")
         print("Locating boundary elements")
         elementMap = self.create_elements_map(elements, elementsNotIncluded)
         face_to_elems_map = {}
@@ -167,7 +224,6 @@ class MeshUtils():
     
         
     def locate_elements_on_boundary(self, elements, elementsNotIncluded = []):
-        print("Identifying boundary elements")
         print("Locating elements on the boundary")
         elementMap = self.create_elements_map(elements, elementsNotIncluded)
         face_to_elems_map = {}
@@ -238,6 +294,8 @@ class MeshUtils():
                         edgesToElements_tmp[edge] = connectedElements
                     connectedElements.append(element.num)
         return edgesToElements_tmp
+    
+    
   
 class Mesh():
     
@@ -251,8 +309,29 @@ class Mesh():
         
     def addBoundaryElements(self,boundaryElementsMap):
         self.boundaryElements = self.boundaryElements | boundaryElementsMap;
-        
     
+    def getBoundingBox(self):
+        maxV = [-1000,-1000,-1000]
+        minV = [1000,1000,1000]        
+        for node in self.nodeMap.values():
+            n = node.getCoords();
+            for d in range(3):
+                if maxV[d]<n[d]:
+                    maxV[d] = n[d]
+                if minV[d]>n[d]:
+                    minV[d] = n[d]
+        return maxV + minV
+    
+    def locate_boundary_element_map(self,elementsNotIncluded=[]):
+        return self._meshUtils.locate_boundary_element_map(self.elements,elementsNotIncluded = elementsNotIncluded)
+        
+    def remove_region(self,region_value):
+            element_keys = list(self.elements.keys())    
+            for element_num in element_keys:
+                e = self.elements[element_num]
+                if e.getMaterial().count(region_value):
+                    self.delete_element(element_num)
+                    
     def create_mesh_from_Point_Cloud(self, pointData, voxel_size):
         [minX,minY,minZ] = pointData[:,:3].min(axis=0)
         [maxX,maxY,maxZ] = pointData[:,:3].max(axis=0)
@@ -273,21 +352,21 @@ class Mesh():
                 element_ica_tmp.append(newNode)
                 if not self.nodes.get(i,False):
                     coords = self.calculate_node_coords(elementX,elementY,elementZ,i,voxel_size)
-                    self.nodes[i] = coords
+                    self.nodes[i] = Node(i,coords)
                 if not self.nodes.get(newNode,False):
                     coords = self.calculate_node_coords(elementX,elementY,elementZ,newNode,voxel_size)
-                    self.nodes[newNode] = coords 
+                    self.nodes[newNode] = Node(newNode,coords) 
             element_ica += element_ica_tmp
             element = HexElement(elementNo, element_ica, mat=[m])
             self.elements[int(elementNo)] = element
             self.elementToPointCloud[int(elementNo)] = [x,y,z,m]
+        self.create_node_to_element_connectivity();
     
     
     def clean_mesh(self, elementsNotIncluded = [], replace=0):
         iteration = 0
         count = 1
         total_count = 0
-        self.create_node_to_element_connectivity();
         while ((count > 0) and (iteration<10)):
             count = 0;
             iteration += 1
@@ -309,7 +388,6 @@ class Mesh():
         
         
     def clean_mesh_nodes(self, elementsNotIncluded = [], replace=0):
-        print("Cleaning mesh node")
         cleaned_elements = []
         cleaned_nodes= []
         node_keys = list(self.nodes.keys())
@@ -362,7 +440,6 @@ class Mesh():
         element.setMaterial(replace)            
     
     def clean_mesh_edges(self, elementsNotIncluded = [], replace=0):
-        print("Cleaning mesh edges")
         edgesToElementsMap = self._meshUtils.create_edge_to_element_connectivity(self.elements, elementsNotIncluded)
         edgesToElements = self.get_edge_without_shared_face(edgesToElementsMap)
         old_node_to_new = {}
@@ -373,8 +450,8 @@ class Mesh():
                 element1 = self.elements[edgeConnectedElements[0]]
                 element2 = self.elements[edgeConnectedElements[1]] 
                 for n in nodes:
-                    if not old_node_to_new.get(n,False):
-                        nodeNum = n
+                    nodeNum = n
+                    if not old_node_to_new.get(nodeNum,False):                        
                         allConnectedElements = self.nodeToElements[nodeNum] 
                         connectedElements = []
                         for conn_element in allConnectedElements:
@@ -443,14 +520,7 @@ class Mesh():
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def write_to_file(self, path, filename, filetype="vtk"):
-        from Writer import Writer 
-        print("Writing mesh data to file in "+ filetype + " format") 
-        writer = Writer()
-        writer.openWriter(filetype, filename, path)
-        writer.initializeWriter(self)
-        writer.writeMeshData()
-        writer.closeWriter();
+
         
          
         
