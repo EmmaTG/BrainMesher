@@ -592,11 +592,10 @@ class BrainModel():
             structure1 = ndimage.generate_binary_structure(3,1)
             structure2 = ndimage.generate_binary_structure(3,3)
             
-            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=3).astype(int)
-            newData = ndimage.binary_erosion(newData, structure=structure1, iterations=3).astype(int)
-            newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
             newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
-            newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
+            newData = ndimage.binary_erosion(newData, structure=structure1, iterations=1).astype(int)
+            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
+            newData = ndimage.binary_erosion(newData, structure=structure2, iterations=2).astype(int)
             # newData = ndimage.binary_dilation(newData, structure=structure2, iterations=2).astype(int)
             # newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
         

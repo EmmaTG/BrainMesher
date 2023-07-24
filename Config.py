@@ -4,6 +4,7 @@ Created on Mon Jul 24 13:55:28 2023
 
 @author: grife
 """
+from Material_Label import Material_Label
 
 class ConfigFile():
     def __init__(self, inputPath, inputFileName):
