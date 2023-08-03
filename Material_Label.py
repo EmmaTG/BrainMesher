@@ -14,7 +14,7 @@ class Material_Label:
         self.labelsMap = {}
         self.inverseLabelsMap = {}
     
-    def clear_labels_mapself(self):
+    def clear_labels_map(self):
         self.labelsMap = {}
         self.inverseLabelsMap = {}
     
@@ -82,28 +82,28 @@ class Material_Label:
                                 
         return newData;
     
-    def create_material_sets(self, elements, file_format="abaqus"):
-        print("Creating material sets")        
-        if (file_format.lower() == "ucd" or file_format.lower() == "vtk"):
-            elementToMat = {}
-            for num,element in elements.items():
-                materials = element.getMaterial()
-                material_list = []
-                for material in materials:
-                    if self.inverseLabelsMap.get(material,False):
-                        material_list.append(material)
-                elementToMat[num] = material_list
-            return elementToMat               
-        else:            
-            materialToElements = {}
-            for materialName in self.inverseLabelsMap.values():
-                materialToElements[materialName] = []
+    # def create_material_sets(self, elements, file_format="abaqus"):
+    #     print("Creating material sets")        
+    #     if (file_format.lower() == "ucd" or file_format.lower() == "vtk"):
+    #         elementToMat = {}
+    #         for num,element in elements.items():
+    #             materials = element.getMaterial()
+    #             material_list = []
+    #             for material in materials:
+    #                 if self.inverseLabelsMap.get(material,False):
+    #                     material_list.append(material)
+    #             elementToMat[num] = material_list
+    #         return elementToMat               
+    #     else:            
+    #         materialToElements = {}
+    #         for materialName in self.inverseLabelsMap.values():
+    #             materialToElements[materialName] = []
                 
-            for num,element in elements.items():
-                materials = element.getMaterial()
-                for material in materials:
-                    if self.inverseLabelsMap.get(material,False):
-                        mat_name = self.inverseLabelsMap[material]
-                        materialToElements[mat_name].append(num)
-            return materialToElements
+    #         for num,element in elements.items():
+    #             materials = element.getMaterial()
+    #             for material in materials:
+    #                 if self.inverseLabelsMap.get(material,False):
+    #                     mat_name = self.inverseLabelsMap[material]
+    #                     materialToElements[mat_name].append(num)
+    #         return materialToElements
             

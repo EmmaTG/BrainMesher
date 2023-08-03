@@ -6,7 +6,7 @@ Created on Wed May 10 09:11:56 2023
 
 import numpy as np
 import MeshUtils as mu
-from BrainModel import BrainModel
+import VoxelDataUtils as bm
 from Maze_Solver import Maze_Solver
 from Mesh import Mesh, QuadElement
 
@@ -96,14 +96,13 @@ class BrainHexMesh():
         ----------
         Error raised if config file not initialized beforehand 
         """
-        assert self.configured, "Config file has not been set for this. Please run config(cf -> ConfigFile) before importing data"        
-        self.brainModel = BrainModel();
+        assert self.configured, "Config file has not been set for this. Please run config(cf -> ConfigFile) before importing data" 
         if self.config.readData:
             return self.config.data;
         if (path == "") and (file == ""):
             path = self.config.fileInPath
             file = self.config.fileIn
-        return self.brainModel.import_file(path,file)
+        return bm.import_file(path,file)
     
     
     def preprocess(self,data, lesion=False, edemicTissue=1, unusedLabel="unusedLabel"):
@@ -151,24 +150,24 @@ class BrainHexMesh():
         if self.config.Coarsen:
             print("########## Coarsening data ##########")
             self.VOXEL_SIZE = 2
-            data = self.brainModel.coarsen(self.VOXEL_SIZE, data)  
+            data = bm.coarsen(self.VOXEL_SIZE, data)  
             
         print("########## Performing cleaning operations on the data ##########")
         
         # Clean image removing isolated pixels and small holes
-        self.brainModel.clean_voxel_data(data); 
+        bm.clean_voxel_data(data); 
         if lesion:
             # Smooth and remove features of lesions
             lesion_label = self.material_labels.labelsMap.get("Lesion",[-1000])[0]
             assert lesion_label != -1000, "Lesion label not defined in materials label"
-            self.brainModel.clean_lesion(data,lesion_label)
+            bm.clean_lesion(data,lesion_label)
         if edemicTissue>0:
             # Add edemicTissue number of layers of tissue around lesion
             self.material_labels.addLabelToMap('EdemicTissue' , [29]);
-            self.brainModel.add_edemic_tissue(data, edemicTissue, lesion_label, 29)        
+            bm.add_edemic_tissue(data, edemicTissue, lesion_label, 29)        
         
         # Remove empty rows/columns and plains from 3D array
-        self.brainModel.trim_mesh(data)
+        bm.trim_data(data)
         
         # Find and fill erroneous voids within model
         print("########## Removing voids from data ##########")
@@ -178,7 +177,7 @@ class BrainHexMesh():
         # Create CSF layer around GM
         if self.config.Add_CSF:
             print("########## Adding layers of CSF ##########")
-            self.brainModel.add_CSF(data,layers=self.config.layers);
+            bm.add_CSF(data,layers=self.config.layers);
         return data       
         
     def make_mesh(self, pc_data):
@@ -342,7 +341,7 @@ class BrainHexMesh():
         """
         
         assert np.all(cc_data.shape == current_data.shape),"Region associated with added data is not the same size as the current data set"
-        self.brainModel.override_voxel_data(cc_data,current_data, region_value)
+        bm.override_voxel_data(cc_data,current_data, region_value)
     
     def smooth_mesh(self, mesh):
         """
