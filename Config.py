@@ -4,6 +4,7 @@ Created on Mon Jul 24 13:55:28 2023
 
 @author: grife
 """
+from Material_Label import Material_Label
 
 class ConfigFile():
     def __init__(self, inputPath, inputFileName):
@@ -20,11 +21,11 @@ class ConfigFile():
         self.Add_CSF = True
         self.layers = 1
         self.Smooth = True
-        self.iterations = 6
+        self.iterations = 2
         self.coeffs = [0.6,-0.4]
         
         self.Smooth_regions = ['Lesion']
-        self.region_iterations = [4]
+        self.region_iterations = [2]
         self.region_coeffs =[[0.6,-0.4]]
         
         self.material_labels  = Material_Label()

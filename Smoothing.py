@@ -78,11 +78,39 @@ def calculateCurvature(coords,currentNodeCoords):
         curvature[i] = curvature[i] - currentNodeCoords[i]
     return curvature
 
+def value_in_square_bounds(n_coords, bounds, inside=True):
+    """
+    Determines in 3D coordinates are within the given square bounds
+
+    Parameters
+    ----------
+    n_coords : array(float)
+        3D coordinates.
+    bounds : array(float)
+        3D square bounds.
+    inbounds : bool, optional
+        determine is check is for inside bounds given or outside bounds given.
+
+    Returns
+    -------
+    bool
+        Confirmation of in bounded square or not.
+
+    """
+    if inside:
+        if ( (n_coords[0] > bounds[0]) and (n_coords[0] < bounds[1]) and
+                (n_coords[1] > bounds[2]) and (n_coords[1] < bounds[3]) and
+                (n_coords[2] > bounds[4]) and (n_coords[2] < bounds[5]) ):
+                return True
+    else:
+        if ( ((n_coords[0] < bounds[0]) or (n_coords[0] > bounds[1])) or
+                ((n_coords[1] < bounds[2]) or (n_coords[1] > bounds[3])) or
+                ((n_coords[2] < bounds[4]) or (n_coords[2] > bounds[5])) ):
+                return True
+    return False
 
 def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementICAMap, nodeToElemMap,
                       bounds = [-100000,100000,-100000,100000,-100000,100000], inBounds=True):
-
-    from element_functions import value_in_square_bounds
     print("Iteration: " + str(iteration+1))    
     import numpy as np 
     newNodePositions = {}

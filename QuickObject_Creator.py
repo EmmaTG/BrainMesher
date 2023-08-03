@@ -14,7 +14,6 @@ from GridBox import GridBox
 from PointCloud import PointCloud
 from BrainModel import BrainModel
 from Mesh import Mesh, Element
-from element_functions import get_face_normal, calculate_element_centroid
 
 from Material_Label import Material_Label
 

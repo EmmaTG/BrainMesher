@@ -1,39 +1,66 @@
 # -*- coding: utf-8 -*-
 """
+Brain creator 
+
 Created on Thu Jun 15 09:34:00 2023
 
 @author: grife
+
+This script runs the full execution required to create a 3D brain model from a
+freesurfer aseg file.
+
+Input file given by path + fileIn
+Preferences for model creation are defined in ConigFile class
+Out put is writen to same path as input
+
+main - the main function of the script
 """
 
-from BrainHexMesh import BrainHexMesh
+from BrainHexMesh import BrainHexMesh;
+from PointCloud import PointCloud;
 from Config import ConfigFile;
 
+# def main():
 path = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher"
 fileIn = '\\mri\\aseg_tumor.mgz'
+## Preferences are defined in ConfigFile
 config = ConfigFile(path,fileIn);
 
 brainCreator = BrainHexMesh();
 brainCreator.config(config)
-config.openConfigFile();
+# Writes configuarion preferences to output location
+config.openConfigFile(); 
 
-data = brainCreator.import_data(config.fileInPath,config.fileIn);
-data = brainCreator.preprocess(data, lesion=True);
+# Gets aseg data as 3D of segmentation labels in voxels
+data = brainCreator.import_data(); 
+# Pre-processes data to ensure valid mesh, options: lesion; edemicTissue; ventricles
+data = brainCreator.preprocess(data, lesion=True); 
 
-pointCloud = brainCreator.make_point_cloud(data)
+# Creates point cloud from voxel data
+pointCloud = PointCloud();
+pointCloud.create_point_cloud_from_voxel(data); 
 
-mesh = brainCreator.make_mesh(pointCloud.pcd);
+# Creates mesh from pointcloud
+mesh = brainCreator.make_mesh(pointCloud.pcd); 
 brainCreator.clean_mesh(mesh);
-brainCreator.centerMesh(mesh);
+# Moves mesh to the center of the corpus callosum
+mesh.center_mesh(251); 
 
 all_labels = config.material_labels.get_homogenized_labels_map()
 label_for_unused = all_labels.get("Unused")
-mesh.remove_region(label_for_unused)
-        
+# Removes elements associated with a region to be excluded as defined in config file
+mesh.remove_region(label_for_unused) 
+
+# Laplacian smoothing         
 if config.Smooth:
-    mesh = brainCreator.smooth_mesh(mesh);       
+    brainCreator.smooth_mesh(mesh);       
 
+# Write mesh to file (ucd, vtk or abq inp as specified in config file)
 brainCreator.write_to_file(mesh)  
-config.closeConfigFile();    
+# Close config file write out  
+config.closeConfigFile();   
 
+# if __name__ == "__main__":
+#     main()
 
 
