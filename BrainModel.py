@@ -6,6 +6,7 @@ Created on Fri May 12 11:02:36 2023
 """
 
 import numpy as np
+import warnings
 # import collections.abc
 from scipy import stats
 from scipy import ndimage
@@ -60,8 +61,7 @@ class BrainModel():
                             if (new_data[x,y,z] == 1):
                                 current_data[x,y,z] = replacementValue;
         
-    def coarsen(self, new_voxel_size, original_data):        
-        from GridBox import GridBox
+    def coarsen(self, new_voxel_size, original_data):
         print("Coarsening mesh by a factor of " + str(new_voxel_size))
         current_dimensions = original_data.shape
         new_dimensions = [int(p) for p in np.floor(np.array(current_dimensions)/new_voxel_size)];
@@ -443,7 +443,6 @@ class BrainModel():
     def assign_materials_labels(self, labelled_data, end):
         assert labelled_data.shape == end.shape
         dimensions = labelled_data.shape;
-        problem_areas = []
         for x in range(dimensions[0]):
             for y in range(dimensions[1]):
                 for z in range(dimensions[2]):
@@ -583,11 +582,12 @@ class BrainModel():
                         else: 
                             break;
     
-    def clean_lesion(self,current_data):
-        
-        newData = self.create_binary_image(current_data, search=25)
-        if np.sum(newData) > 0:
-            print("Lesion element size before: {}".format(np.sum(newData)))
+    def clean_lesion(self,current_data, lesionLabel):
+        ## TODO: Better creation of featureless lesion (possibly the same way featurless csf is created)
+        newData = self.create_binary_image(current_data, search=lesionLabel)
+        lesionOGSize = np.sum(newData)
+        if lesionOGSize > 0:
+            print("Lesion element size before: {}".format(lesionOGSize))
         
             structure1 = ndimage.generate_binary_structure(3,1)
             structure2 = ndimage.generate_binary_structure(3,3)
@@ -596,8 +596,6 @@ class BrainModel():
             newData = ndimage.binary_erosion(newData, structure=structure1, iterations=1).astype(int)
             newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
             newData = ndimage.binary_erosion(newData, structure=structure2, iterations=2).astype(int)
-            # newData = ndimage.binary_dilation(newData, structure=structure2, iterations=2).astype(int)
-            # newData = ndimage.binary_erosion(newData, structure=structure2, iterations=1).astype(int)
         
             hit_structure1 = np.ones((2,2,2))
             hit_structure1[0,1,0] = 0
@@ -628,13 +626,13 @@ class BrainModel():
             count_removed = 0
             current_dimensions = current_data.shape
             for x in range(current_dimensions[0]):
-                if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == 25)):
+                if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == lesionLabel)):
                     for y in range(current_dimensions[1]):
-                        if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == 25)):
+                        if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == lesionLabel)):
                             for z in range(current_dimensions[2]):
                                 if newData[x,y,z] == 1:
-                                    current_data[x,y,z] = 25
-                                if newData[x,y,z] == 0 and (current_data[x,y,z] == 25):
+                                    current_data[x,y,z] = lesionLabel
+                                if newData[x,y,z] == 0 and (current_data[x,y,z] == lesionLabel):
                                     current_data[x,y,z] = 0;
                                     # box = GridBox(current_data,[x,y,z])
                                     # count_removed += 1
@@ -643,22 +641,28 @@ class BrainModel():
                                     # replacement_value = box.mode()
                                     # current_data[x,y,z] = replacement_value
             print("previous lesion replaced with non-lesion: {}".format(count_removed))
-            print("Lesion element size after: {}".format(np.sum(newData)))
-            assert (np.sum(newData) > 0)
+            finalSize = np.sum(newData)
+            print("Lesion element size after: {}".format(finalSize))
+            if (finalSize == 0):
+                warnings.warn("No lesion elements found in data after cleaning")
+        else:
+            warnings.warn("No lesion elements found in data")
     
-    def add_edemic_tissue(self,current_data):
-        newData = self.create_binary_image(current_data, search=25)    
-        structure2 = ndimage.generate_binary_structure(3,3)
-        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
-        edemic_count = 0
-        current_dimensions = current_data.shape
-        for x in range(current_dimensions[0]):
-            if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == 25)):
-                for y in range(current_dimensions[1]):
-                    if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == 25)):
-                        for z in range(current_dimensions[2]):
-                            if newData[x,y,z] == 1 and current_data[x,y,z] != 25:
-                                current_data[x,y,z] = 29
+    def add_edemic_tissue(self,current_data, layers, lesionLabel, edemicTissueLabel):
+        newData = self.create_binary_image(current_data, search=lesionLabel)   
+        if np.sum(newData)>0:            
+            structure2 = ndimage.generate_binary_structure(3,3)
+            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=layers).astype(int)
+            current_dimensions = current_data.shape
+            for x in range(current_dimensions[0]):
+                if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == lesionLabel)):
+                    for y in range(current_dimensions[1]):
+                        if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == lesionLabel)):
+                            for z in range(current_dimensions[2]):
+                                if newData[x,y,z] == 1 and current_data[x,y,z] != lesionLabel:
+                                    current_data[x,y,z] = edemicTissueLabel
+        else:
+            warnings.warn("No edemic tissue added as no lesion elements were found in data")
                             
     def trim_mesh(self, data):
         current_dimensions = data.shape
@@ -673,8 +677,6 @@ class BrainModel():
             if np.sum(data[x,:,:]) != 0:
                 end = x
                 break
-        # print("x trim")
-        # print(start,end)
         data = data[start-1:end+1,:,:]
         
         start = 0
@@ -688,8 +690,6 @@ class BrainModel():
             if np.sum(data[:,y,:]) != 0:
                 end = y
                 break
-        # print("y trim")
-        # print(start,end)
         data = data[:,start-1:end+1,:]
         
         start = 0
@@ -703,8 +703,6 @@ class BrainModel():
             if np.sum(data[:,:,z]) != 0:
                 end = z
                 break
-        # print("y trim")
-        # print(start,end)
         data = data[:,:,start-1:end+1]
         
         return data

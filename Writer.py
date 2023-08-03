@@ -32,14 +32,16 @@ class BaseWriter():
         self.__ext__ = ext;
         self.__tag__ = tag;
         
-    def openWriter(self, filename, path, mesh):
-        self.__path__ = path;
-        self.__filename__ = filename        
+    def openWriter(self, filename, path, mesh):                
         if (path[-1] != "\\"):
             path += "\\"
+        self.__path__ = path;
+        
         if len(filename.split('.'))>1:
             filename = filename.split('.')[0]
         filenameOUT = filename + "_" + self.__tag__.upper()
+        self.__filename__ = filenameOUT;
+        
         self.f = open(path + filenameOUT + "." + self.__ext__, 'w')
         self.initializeMesh(mesh)
 

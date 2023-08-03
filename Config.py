@@ -21,11 +21,11 @@ class ConfigFile():
         self.Add_CSF = True
         self.layers = 1
         self.Smooth = True
-        self.iterations = 6
+        self.iterations = 2
         self.coeffs = [0.6,-0.4]
         
         self.Smooth_regions = ['Lesion']
-        self.region_iterations = [4]
+        self.region_iterations = [2]
         self.region_coeffs =[[0.6,-0.4]]
         
         self.material_labels  = Material_Label()
