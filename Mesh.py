@@ -123,12 +123,11 @@ class Mesh():
         """Gets the boundary faces of the model if the element with materials values
         in 'elementsNotIncluded' are not considered.
         
-        Uses 'locate_boundary_element_map' method from MeshUtils module.
-
         Parameters
         ----------
-        elementsNotIncluded : Array(ints), optional, default= empty list
-            list of materials values to not be included when looking for boundary elements
+        elementsNotIncluded : Array(ints), optional
+            list of materials values to not be included when looking for boundary elements.
+            Default is an empty list
         
         Outputs
         ----------
@@ -137,8 +136,41 @@ class Mesh():
             Key: 'quadElement number'-'face number'
             Value: ica of boundary face
         """
-        return mu.locate_boundary_element_map(self.elements,elementsNotIncluded = elementsNotIncluded)
+        print("Locating boundary elements")
+        face_to_elems_map = {}
+        surface_face_to_elems_map = {}
+        for element in self.elements.values():
+            add = self.__element_included(element,elementsNotIncluded)
+            if add:
+                list_of_faces = element.get_faces(True,True)
+                for face_key in list_of_faces:                                             # Create map key 
+                    if face_to_elems_map.get(face_key,False):                            # Check if face key already in map
+                       face_to_elems_map[face_key].append(element)                    # key already in face so append element to array (NOT surface face)
+                       if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
+                           del surface_face_to_elems_map[face_key]
+                    else:
+                        face_to_elems_map[face_key] = [element]                                   # If not in map, add to map
+                        surface_face_to_elems_map[face_key] = element
+            
+        boundary_element_map = {}
+        for face_key,e in surface_face_to_elems_map.items():    
+            faces = e.get_faces(True,True)
+            for face_num,f in enumerate(faces):
+                if f == face_key:
+                    compound_key = "-".join([str(e.num),str(face_num)])
+                    boundary_element_map[compound_key] = e.get_faces(False,False)[face_num]
+                    break    
         
+        return boundary_element_map
+    
+    def __element_included(self,element,elementsNotIncluded):            
+        add = True
+        for el_types in elementsNotIncluded:
+            if element.getMaterial().count(el_types):
+                add=False
+                break
+        return add;
+     
     def remove_region(self,region_value):
         """Removes an elements with material properties 'region_values'
 
@@ -210,10 +242,12 @@ class Mesh():
 
         Parameters
         ----------
-        elementsNotIncluded : Array(ints), optional, default= empty list
+        elementsNotIncluded : Array(ints), optional
             list of materials values to not be included when looking for boundary elements
-        replace : int, optional, default = 0
-            material property to replace elements. If default, elements are deleted
+            Default is an empty list
+        replace : int, optional
+            material property to replace elements. If replace = 0, elements are deleted.
+            Default is 0
         """
         iteration = 0
         count = 1
@@ -261,10 +295,13 @@ class Mesh():
 
         Parameters
         ----------
-        elementsNotIncluded : Array(ints), optional, default= empty list
+        elementsNotIncluded : Array(ints), optional
             list of materials values to not be included when looking for boundary elements
-        replace : int, optional, default = 0
-            material property to replace elements. If default, elements are deleted
+            Default is an empty list
+            
+        replace : int, optional
+            material property to replace elements. If replace = 0, elements are deleted
+            Default is 0
         """
         cleaned_elements = []
         cleaned_nodes= []
@@ -275,11 +312,7 @@ class Mesh():
                 connectedElements = []
                 for conn_element in All_connectedElements:
                     element = self.elements[conn_element]
-                    add = True
-                    for el_types in elementsNotIncluded:
-                        if element.getMaterial().count(el_types):
-                            add=False
-                            break
+                    add = self.__element_included(element,elementsNotIncluded)
                     if add:
                         connectedElements.append(conn_element)
                 if len(connectedElements) == 2:
@@ -309,17 +342,19 @@ class Mesh():
         property of that element is changed to 'replace' (if replace != 0). 
         Elements with material value in 'elementsNotIncluded' are not considered.
         
-        Uses 'create_edge_to_element_connectivity' method from MeshUtils module.        
+        Uses '__create_edge_to_element_connectivity' method from MeshUtils module.        
         
 
         Parameters
         ----------
-        elementsNotIncluded : Array(ints), optional, default= empty list
+        elementsNotIncluded : Array(ints), optional
             list of materials values to not be included when looking for boundary elements
-        replace : int, optional, default = 0
-            material property to replace elements. If default, elements are deleted
+            Default is an empty list
+        replace : int, optional
+            material property to replace elements. If replace = 0, elements are deleted.
+            Default is 0
         """
-        edgesToElementsMap = mu.create_edge_to_element_connectivity(self.elements, elementsNotIncluded)
+        edgesToElementsMap = self.__create_edge_to_element_connectivity(elementsNotIncluded)
         edgesToElements = self.__get_edge_without_shared_face(edgesToElementsMap)
         old_node_to_new = {}
         cleaned_elements = []
@@ -335,11 +370,7 @@ class Mesh():
                         connectedElements = []
                         for conn_element in allConnectedElements:
                             element = self.elements[conn_element]
-                            add = True
-                            for el_types in elementsNotIncluded:
-                                if element.getMaterial().count(el_types):
-                                    add=False
-                                    break
+                            add = self.__element_included(element,elementsNotIncluded)
                             if add:
                                 connectedElements.append(conn_element)
                         if len(connectedElements) <= 4:
@@ -351,6 +382,45 @@ class Mesh():
                                     self.delete_element(element2.num)
         return len(cleaned_elements)
     
+    def __create_edge_to_element_connectivity(self,elementsNotIncluded= []):
+        edgesToElements_tmp = {}
+        for element in self.elements.values():
+            add = self.__element_included(element,elementsNotIncluded)
+            if add:
+                edges = element.get_edges(stringyfy=True, order=True)
+                for edge in edges:
+                    connectedElements = []
+                    if edgesToElements_tmp.get(edge,False):
+                        connectedElements = edgesToElements_tmp[edge]
+                    else:
+                        edgesToElements_tmp[edge] = connectedElements
+                    connectedElements.append(element.num)
+        return edgesToElements_tmp
+    
+    def locate_elements_on_boundary(self, elementsNotIncluded = []):
+        print("Locating elements on the boundary")
+        face_to_elems_map = {}
+        surface_face_to_elems_map = {}
+        for e,element in self.elements.items(): 
+            add = self.__element_included(element,elementsNotIncluded)
+            if add:
+                list_of_faces = element.get_faces(True,True)
+                for face_key in list_of_faces:                                             # Create map key 
+                    if face_to_elems_map.get(face_key,False):                            # Check if face key already in map
+                       connected_elements =  face_to_elems_map[face_key]                    # key already in face so append element to array (NOT surface face)
+                       connected_elements.append(e)
+                       if surface_face_to_elems_map.get(face_key,False):                   # If previously classified as a free surface; remove from this map
+                           del surface_face_to_elems_map[face_key]
+                    else:
+                        face_to_elems_map[face_key] = [e]                                   # If not in map, add to map
+                        surface_face_to_elems_map[face_key] = e
+            
+        elements_on_boundary = []
+        for face_key,e in surface_face_to_elems_map.items():    
+            if not elements_on_boundary.count(e):
+                    elements_on_boundary.append(e) 
+        
+        return elements_on_boundary
     def delete_element(self, element_number):
         """
         Deletes elements from the mesh. To do this elements are deleted from 
@@ -381,8 +451,9 @@ class Mesh():
         ----------
         element_number : int
             element number to be deleted
-        replace : int, optional, default=24
-            new material property
+        replace : int, optional
+            new material property.
+            Default is 24 (CSF)
         """
         element = self.elements[element_number]
         element.setMaterial(replace)   
@@ -512,6 +583,39 @@ class Mesh():
         middleOfCC = [ int(x/num_elements) for x in centroid]
         # Move mesh
         mt.translate_mesh(self.nodes,middleOfCC)
+        
+    def create_elements_map(self, elementsNotIncluded, elementsIncluded = []):
+        """
+        Creates a map of element numbers to elements of elements with material propeties not
+        included in 'elementsNotIncluded'. If only elements with certain material 
+        properties are to be selected these are specified in elementsIncluded.
+
+        Parameters
+        ----------
+        elements : Map(int, Element)
+            Dictionary of element numbers to 
+        elementsNotIncluded : TYPE
+            DESCRIPTION.
+        elementsIncluded : TYPE, optional
+            DESCRIPTION. The default is [].
+
+        Returns
+        -------
+        elementMap : TYPE
+            DESCRIPTION.
+
+        """
+        elementMap = {}
+        for elementNo, element in self.elements.items():
+            add = self.__element_included(element, elementsNotIncluded)
+            if add:                
+                if len(elementsIncluded)>0:
+                    for el_types in elementsIncluded:
+                        if element.getMaterial().count(el_types):
+                            elementMap[elementNo] = element
+                else:
+                    elementMap[elementNo] = element
+        return elementMap
     
 
         

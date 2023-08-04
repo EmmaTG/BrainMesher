@@ -9,47 +9,104 @@ import numpy as np
 import collections.abc
 
 class Material_Label:
+    """
+    A class used to store data about the materials/regions to be considered
+
+    Attributes
+    ----------
+    labelsMap : Map(string, arr(int))
+        Dictionary mapping material name to labels used to defien that region. 
+        Key: material name
+        Value: array of int labels
+    inverseLabelsMap : Map(int,string)
+         Dictionary mnapping a single material number to the name of the material 
+         Key: int material number
+         Value: name of material/region
+
+    Methods
+    -------
+    clear_labels_map()
+        clears labelsMap and inverseLabelsMap
+    removeLabel(name)
+        Removes label name from labelsMap and inverseLabelsMap
+    addLabelToMap(name, numbers)
+        Adds material 'name' with number 'numbers' to labelsMap and inverseLabelsMap
+    homogenize_material_labels(data, replace=0)
+        Homogenizes data so only one label is assigned to each region. The first label in the arr givenby labelsMap
+    get_homogenized_labels_map()
+        Returns labels map used when homogenizing material labels in data
+    
+    """
     
     def __init__(self):
         self.labelsMap = {}
         self.inverseLabelsMap = {}
     
     def clear_labels_map(self):
+        """
+        Clears labelsMap and inverseLabelsMap
+
+        """
         self.labelsMap = {}
         self.inverseLabelsMap = {}
     
     def removeLabel(self, name):
-        numbers = self.labelsMap.pop(name)
+        """
+        Removes a label name (region)
+
+        Parameters
+        ----------
+        name : string
+            Name of region.
+
+        """
+        numbers = self.labelsMap.pop(name,[])
         for n in numbers:
             self.inverseLabelsMap.pop(n)
         
     def addLabelToMap(self, name, numbers):
+        """
+        Adds material 'name' with number 'numbers' to labelsMap and inverseLabelsMap.
+        If number to added already exists, this key-value pair will not be added
+
+        Parameters
+        ----------
+        name : string
+            Region name.
+        numbers : arr or int
+            Adds elements of arr or int to labelsMap and inverseLabelsMap.
+
+        Returns
+        -------
+        int
+            number determining if label name was added to lists. 0 = success, otherwise failed.
+
+        """
         if not (hasattr(self, "labelsMap")):
             self.create_labels_map();
         
         storedLabelValues = []
         for x in list(self.labelsMap.values()):
             storedLabelValues += list(x)
-        labelsArr = []
-        if (self.labelsMap.get(name,False)):
-            labelsArr = self.labelsMap[name]
-        else:
-            self.labelsMap[name] = labelsArr;          
+            
         try:    
             if (isinstance(numbers, (collections.abc.Sequence, np.ndarray))):
                 for num in numbers:                    
                     num = int(num)
                     if storedLabelValues.count(num):
-                        self.labelsMap.pop(name)
                         print("Error. The value '{}' already exists in the map".format(num))
                         return -1
             else:
                 numbers = [int(numbers)]
         except ValueError or TypeError:
             print("Error: input number '{}' not compatible".format(numbers))
-            self.labelsMap.pop(name)
             return -1
-            
+        
+        labelsArr = []
+        if (self.labelsMap.get(name,False)):
+            labelsArr = self.labelsMap[name]
+        else:
+            self.labelsMap[name] = labelsArr;     
         
         labelsArr += list(numbers);
         for n in numbers:
@@ -57,6 +114,15 @@ class Material_Label:
         return 0;  
     
     def get_homogenized_labels_map(self):
+        """
+        Get labels map used when homogenizing material labels in data
+
+        Returns
+        -------
+        h_label_map : Map(string, int)
+            Materials mappign using only one label.
+
+        """
         h_label_map = {}
         for key,values in self.labelsMap.items():
             h_label_map[key]=values[0]
@@ -64,6 +130,23 @@ class Material_Label:
         
     
     def homogenize_material_labels(self, data, replace=0):
+        """
+        Homogenizes 'data' so only one label is assigned to each region. The first label in the arr givenby labelsMap
+
+        Parameters
+        ----------
+        data : array(int)
+            3D array fo data to be homogenized using labelsMap property.
+        replace : ine, optional
+            If data valeu is not in the LabelsProperty map the homogenized value is set to this valle.
+            The default is 0.
+
+        Returns
+        -------
+        TYPE
+            DESCRIPTION.
+
+        """
         print("Homogenizing data according to chosen labels")
         current_dimensions = data.shape
         newData = np.zeros(current_dimensions, int)
@@ -81,29 +164,4 @@ class Material_Label:
                                 newData[x,y,z] = replace
                                 
         return newData;
-    
-    # def create_material_sets(self, elements, file_format="abaqus"):
-    #     print("Creating material sets")        
-    #     if (file_format.lower() == "ucd" or file_format.lower() == "vtk"):
-    #         elementToMat = {}
-    #         for num,element in elements.items():
-    #             materials = element.getMaterial()
-    #             material_list = []
-    #             for material in materials:
-    #                 if self.inverseLabelsMap.get(material,False):
-    #                     material_list.append(material)
-    #             elementToMat[num] = material_list
-    #         return elementToMat               
-    #     else:            
-    #         materialToElements = {}
-    #         for materialName in self.inverseLabelsMap.values():
-    #             materialToElements[materialName] = []
-                
-    #         for num,element in elements.items():
-    #             materials = element.getMaterial()
-    #             for material in materials:
-    #                 if self.inverseLabelsMap.get(material,False):
-    #                     mat_name = self.inverseLabelsMap[material]
-    #                     materialToElements[mat_name].append(num)
-    #         return materialToElements
             

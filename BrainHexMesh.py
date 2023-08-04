@@ -120,12 +120,15 @@ class BrainHexMesh():
         ----------
         data : 3D array
             voxel data
-        lesion : boolean, optional, default=False
+        lesion : boolean, optional
             parameter to decide if lesion should be made featureless
-        edemicTissue : number, optional, default=1
+            Default is False
+        edemicTissue : number, optional
             parameter toif and then number of layers of edemic tissue to be added
-        unusedLabel : string, optional, default="unusedLabel"
+            Default is 1
+        unusedLabel : string, optional
             label name of voxel label numbers to be removed at the end of the model creation
+            Default is "unusedLabel"
             
         Outputs
         ----------
@@ -219,8 +222,9 @@ class BrainHexMesh():
         ----------
         mesh: Mesh
             Mesh object to be cleaned
-        wm: boolean, optional, default=True
+        wm: boolean, optional
             parameter to indiciate white matter boundary cleaning needed
+            Default is True
             
         """
         
@@ -228,7 +232,7 @@ class BrainHexMesh():
             # Clean grey matter boundary
             print("####### Cleaning grey matter boundary #######")
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
-            elementsOnBoundary = mu.locate_elements_on_boundary(mesh.elements)
+            elementsOnBoundary = mesh.locate_elements_on_boundary()
             mesh.replace_outer_region(3, 24, elementsOnBoundary)
             
         # Clean outer boundary
@@ -241,7 +245,7 @@ class BrainHexMesh():
             mesh.clean_mesh(elementsNotIncluded=[24,3], replace=2)
         
         # Replace any white matter on boundary with grey matter
-        elementsOnBoundary = mu.locate_elements_on_boundary(mesh.elements, elementsNotIncluded = [24])
+        elementsOnBoundary = mesh.locate_elements_on_boundary(elementsNotIncluded = [24])
         mesh.replace_outer_region(2, 3, elementsOnBoundary)        
 
         
@@ -359,7 +363,7 @@ class BrainHexMesh():
             non_whitematter_labels_map = self.material_labels.get_homogenized_labels_map()
             non_whitematter_labels_map.pop(region)
             non_whitematter_labels_map = list(non_whitematter_labels_map.values())
-            boundary_element_map = mu.locate_boundary_element_map(mesh.elements, elementsNotIncluded = non_whitematter_labels_map)
+            boundary_element_map = mesh.locate_boundary_element_map(elementsNotIncluded = non_whitematter_labels_map)
             coeffs = self.config.region_coeffs[count]
             iterations = self.config.region_iterations[count]
             mesh.smooth_mesh(coeffs, iterations, boundary_element_map)
@@ -369,13 +373,13 @@ class BrainHexMesh():
             print("########## Smoothing mesh excluding CSF ##########")
             # label = self.material_labels.get_homogenized_labels_map()
             # ventricles_label = label.pop("Ventricles")
-            boundary_element_map = mu.locate_boundary_element_map(mesh.elements, elementsNotIncluded=[24])
+            boundary_element_map = mesh.locate_boundary_element_map(elementsNotIncluded=[24])
             mesh.smooth_mesh(self.config.coeffs, self.config.iterations, boundary_element_map)
             
         # # Smoothing
         # Smooth outer surface of mesh (including CSF)
         print("########## Smoothing global mesh ##########")
-        boundary_element_map = mu.locate_boundary_element_map(mesh.elements)
+        boundary_element_map = mesh.locate_boundary_element_map()
         mesh.smooth_mesh(self.config.coeffs, self.config.iterations, boundary_element_map)        
         # return mesh    
         
