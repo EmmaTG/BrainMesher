@@ -4,11 +4,24 @@ Created on Thu Jul 13 08:18:00 2023
 
 @author: grife
 """
-from abc import ABC, abstractmethod, abstractproperty;
-from Mesh import Mesh,Element
-from Material_Label import Material_Label
+from abc import ABC, abstractmethod;
 
-class IWriter(ABC): #Product
+class IWriter(ABC):
+    
+    """
+    An abstract class used to define methods for mesh writers
+
+    Abstract Methods
+    -------
+    openWriter(filename, path)
+        open a file using the given path and filename
+    saveAndClose()
+        save and close the file
+    writeNodes(renumber)
+        write nodes and node data to file
+    writeElements(renumber)
+        write element and element data to file
+    """
 
     @abstractmethod
     def openWriter(self, filename, path):
@@ -28,11 +41,46 @@ class IWriter(ABC): #Product
     
 class BaseWriter():
     
+    """
+    An base class used to define methods for mesh writers
+
+    Methods
+    -------
+    openWriter(filename, path)
+        open a file using the given path and filename
+    saveAndClose()
+        save and close the file
+    initializeMesh(mesh)
+        Initialize mesh object to be written
+    mesh_statistics(renumber)
+        print out data for the mesh written
+    """
+    
     def __init__(self,ext,tag):
+        """
+        Parameters
+        ----------
+        ext : str
+            The extension of the file to be written
+        tag : str
+            The unique tag to identify the type of writer
+        """
         self.__ext__ = ext;
         self.__tag__ = tag;
         
-    def openWriter(self, filename, path, mesh):                
+    def openWriter(self, filename, path):
+        """Open file to be written to given path and filename.
+        If the path does not end if separtor characters thes are added.
+        If file name contains an extension, this is removed and replaced the 
+        tag of the writer '__tag__' and the correct extension '__ext__'
+
+        Parameters
+        ----------
+        filename : string
+            filename of writer
+        path : string
+            path to filename
+        """                
         if (path[-1] != "\\"):
             path += "\\"
         self.__path__ = path;
@@ -43,48 +91,87 @@ class BaseWriter():
         self.__filename__ = filenameOUT;
         
         self.f = open(path + filenameOUT + "." + self.__ext__, 'w')
-        self.initializeMesh(mesh)
 
-    def saveAndClose(self):
+    def saveAndClose(self):        
+        """
+        Saves and closed file.
+        """ 
         self.f.close()
         print("Completed")
-        print("New {} file written to ".format(self.__tag__ .upper()) + self.__path__ + self.__filename__)   
-    
-    
-    def initializeMesh(self, mesh):
-        self._mesh = mesh;
+        print("New {} file written to ".format(self.__tag__ .upper()) + self.__path__ + self.__filename__) 
         
-    
+    def initializeMesh(self, mesh):
+        """
+        Initialize mesh object to be written
+        Parameters
+        ----------
+        mesh : Mesh
+            Mesh object to be written
+        """
+        self.__mesh__ = mesh;
+        
     def mesh_statistics(self):
+        """
+        Prints the number of nodes, elemenst and boundary surfaces in the mesh object.
+        """
         print("MESH STATISTICS: ")
-        print("\tNumber of nodes: " + str(len(self._mesh.nodes)))
-        print("\tNumber of elements: " + str(len(self._mesh.elements)))
-        if (len(self._mesh.boundaryElements)>0):  
-            print("\tNumber of boundary surfaces: " + str(len(self._mesh.boundaryElements)))
+        print("\tNumber of nodes: " + str(len(self.__mesh__.nodes)))
+        print("\tNumber of elements: " + str(len(self.__mesh__.elements)))
+        if (len(self.__mesh__.boundaryElements)>0):  
+            print("\tNumber of boundary surfaces: " + str(len(self.__mesh__.boundaryElements)))
     
 class ABQWriter(BaseWriter,IWriter):
+    """
+    A class to write data in a format suitable for Abaqus.
+    This class inherits methos from the Base writer class.
+    This class implents the Iwriter interface
+
+    Methods
+    -------
+    openWriter(filename, path)
+        open a file using the given path and filename
+    saveAndClose()
+        save and close the file
+    """
     
     def __init__(self):
         super().__init__("inp","abq")
         
 
-    def openWriter(self, filename, path, mesh):
-        super().openWriter(filename, path, mesh)
+    def openWriter(self, filename, path):
+        """Open file to be written to given path and filename as defined
+        by the super class BaseWriter. The first line of this 
+        file is also written
+
+        Parameters
+        ----------
+        filename : string
+            filename of writer
+        path : string
+            path to filename
+        """  
+        super().openWriter(filename, path)
         from datetime import date
         firstLine = "# UCD SCRIPT\n" \
             + "# Inp file created using python script BrainHexMesh\n"\
             + "# Script developed by Emma Griffiths ca. 2022\n"\
             + "# UCD file created on " + date.today().isoformat() + "\n"
-        self.f.write(firstLine)
-
-    def saveAndClose(self):
-        super().saveAndClose()        
+        self.f.write(firstLine)        
     
     def writeNodes(self,  reNumber):
-        nodeMap =  self._mesh.nodes;
+        """
+        Write nodes in the abaqus format: 
+            'node number',  coord1,   coord2,...coordn
+        Parameters
+        ----------
+        reNumber : boolean
+            deteremines whetheer the node numbers shoudl be renumbered or not.
+        """ 
+        nodeMap =  self.__mesh__.nodes;
         self.f.write("*NODE\n")
         self.oldNumToNewNum = {}
         print("Writing node data")
+        count = 0;
         for count,n in enumerate(nodeMap.keys()):
             if reNumber:
                 nodeNum = count+1
@@ -94,7 +181,17 @@ class ABQWriter(BaseWriter,IWriter):
             self.f.write(str(nodeNum) + ",\t" + ",\t".join([str(round(i,6)) for i in nodeMap[n].getCoords()])+"\n")
     
     def writeElements(self, reNumber):
-        elementMap = self._mesh.elements;
+        """
+        Write elements in the abaqus format: 
+            'element number',  node1,   node2,...nodeN
+        This method calls the writeMaterialsData.    
+        
+        Parameters
+        ----------
+        reNumber : boolean
+            deteremines whether the element numbers should be renumbered or not.
+        """ 
+        elementMap = self.__mesh__.elements;
         self.oldELemTonewELem = {}
         self.f.write("*ELEMENT, TYPE=C3D8, ELSET=ALL\n")
         print("Writing element data")
@@ -110,7 +207,13 @@ class ABQWriter(BaseWriter,IWriter):
         self.writeMaterialsData();
             
     def writeMaterialsData(self):
-        elements = self._mesh.elements;
+        """
+        Write materials property of the elements.
+        This methods creates element sets of the material properties 
+        associated with the elements and writes the elset data to file.
+        
+        """ 
+        elements = self.__mesh__.elements;
         materialToElements = {}
         for num,element in elements.items():
             materials = element.getMaterial()
@@ -130,12 +233,35 @@ class ABQWriter(BaseWriter,IWriter):
         pass
     
 class VTKWriter(BaseWriter,IWriter):
+    """
+    A class to write data in a format suitable for Paraview usinf vtk version 2.0.
+    This class inherits methods from the Base writer class.
+    This class implents the Iwriter interface
+
+    Methods
+    -------
+    openWriter(filename, path)
+        open a file using the given path and filename
+    saveAndClose()
+        save and close the file
+    """
     
     def __init__(self):
         super().__init__("vtk","vtk")  
 
-    def openWriter(self, filename, path, mesh):
-        super().openWriter(filename, path, mesh)        
+    def openWriter(self, filename, path):
+        """Open file to be written to given path and filename as defined
+        by the super class BaseWriter. The first line of this 
+        file is also written
+
+        Parameters
+        ----------
+        filename : string
+            filename of writer
+        path : string
+            path to filename
+        """ 
+        super().openWriter(filename, path)        
         from datetime import date
         firstLine = "# vtk DataFile Version 2.0\n" \
         + "VTK file created using python script BrainHexMesh script developed by Emma Griffiths"\
@@ -144,12 +270,17 @@ class VTKWriter(BaseWriter,IWriter):
         + "ASCII\n" \
         + "DATASET UNSTRUCTURED_GRID\n\n"
         self.f.write(firstLine)  
-
-    def saveAndClose(self):
-        super().saveAndClose()
     
-    def writeNodes(self, renumber):
-        nodeMap = self._mesh.nodes;
+    def writeNodes(self, renumber):        
+        """
+        Write nodes in the vtk format: 
+            coord1 coord2 ... coordn
+        Parameters
+        ----------
+        reNumber : boolean
+            deteremines whetheer the node numbers shoudl be renumbered or not.
+        """ 
+        nodeMap = self.__mesh__.nodes;
         numNodes = len(nodeMap);
         self.f.write(" ".join(["\nPOINTS",str(numNodes),"float"]) + "\n")
         nodeKeys = nodeMap.keys()
@@ -163,8 +294,23 @@ class VTKWriter(BaseWriter,IWriter):
             count += 1
     
     def writeElements(self, renumber):
-        elementMap = self._mesh.elements
-        boundaryElementMap = self._mesh.boundaryElements;
+        """
+        Write elements in the vtk format:
+            - First line defining the total number elements and the 
+            total number of int to be written.
+            
+            - numnodes  node1   node2 ... nodeN
+            
+            - list fo cell types (12 for hex, 9 for quad)
+        This method calls the writeMaterialsData.    
+        
+        Parameters
+        ----------
+        reNumber : boolean
+            deteremines whether the element numbers should be renumbered or not.
+        """ 
+        elementMap = self.__mesh__.elements
+        boundaryElementMap = self.__mesh__.boundaryElements;
         # Writing cell data
         numHexElements = len(elementMap)
         numQuadElements = len(boundaryElementMap)
@@ -204,8 +350,14 @@ class VTKWriter(BaseWriter,IWriter):
         self.writeMaterialsData();
     
     def writeMaterialsData(self):
-        elementMap = self._mesh.elements
-        boundaryElementMap = self._mesh.boundaryElements;
+        """
+        Write materials property of the elements as scalar cell data.
+        
+        This methods calls the 'writePointData' method
+        
+        """ 
+        elementMap = self.__mesh__.elements
+        boundaryElementMap = self.__mesh__.boundaryElements;
         numHexElements = len(elementMap)
         numQuadElements = len(boundaryElementMap)
         num_elements = numHexElements + numQuadElements
@@ -226,9 +378,12 @@ class VTKWriter(BaseWriter,IWriter):
         self.writePointData()
     
     def writePointData(self):
+        """ 
+        This method writes any data stored at the nodes
+        """
         from re import sub
-        nodes = self._mesh.nodes
-        dataToWrite = self._mesh.dataToWrite
+        nodes = self.__mesh__.nodes
+        dataToWrite = self.__mesh__.dataToWrite
         
         #Writing point data
         for d in dataToWrite:
@@ -241,27 +396,57 @@ class VTKWriter(BaseWriter,IWriter):
                 self.f.write(line + "\n")
 
 class UCDWriter(BaseWriter,IWriter):
+    """
+    A class to write data in a format suitable for dealii import.
+    This class inherits methods from the Base writer class.
+    This class implents the Iwriter interface
+
+    Methods
+    -------
+    openWriter(filename, path)
+        open a file using the given path and filename
+    saveAndClose()
+        save and close the file
+    """
     
     def __init__(self):
         super().__init__("inp","ucd") 
 
-    def openWriter(self, filename, path, mesh):
-        super().openWriter(filename, path, mesh)
+    def openWriter(self, filename, path):
+        """Open file to be written to given path and filename as defined
+        by the super class BaseWriter. The first line of this 
+        file is also written as well as the lien summarizing the number of 
+        nodes and elements
+
+        Parameters
+        ----------
+        filename : string
+            filename of writer
+        path : string
+            path to filename
+        """ 
+        super().openWriter(filename, path)
         from datetime import date
         firstLine = "# UCD SCRIPT\n" \
             + "# Inp file created using python script BrainHexMesh\n"\
             + "# Script developed by Emma Griffiths ca. 2022\n"\
             + "# UCD file created on " + date.today().isoformat() + "\n"
         self.f.write(firstLine)
-        numNodes = len(self._mesh.nodes)
-        numElements = len(self._mesh.elements)+ len(self._mesh.boundaryElements)
+        numNodes = len(self.__mesh__.nodes)
+        numElements = len(self.__mesh__.elements)+ len(self.__mesh__.boundaryElements)
         self.f.write("\t".join([str(numNodes),str(numElements),'0','0','0']) + "\n") # Data summary row
-
-    def saveAndClose(self):
-        super().saveAndClose()
     
     def writeNodes(self, renumber):
-        nodeMap = self._mesh.nodes;
+               
+        """
+        Write nodes in the ucd format: 
+            nodenum   coord1   coord2   ...   coordn
+        Parameters
+        ----------
+        reNumber : boolean
+            deteremines whetheer the node numbers shoudl be renumbered or not.
+        """ 
+        nodeMap = self.__mesh__.nodes;
         nodeKeys = nodeMap.keys()
         nodeKeys = sorted(nodeKeys)
         count = 0
@@ -274,9 +459,19 @@ class UCDWriter(BaseWriter,IWriter):
         
     
     def writeElements(self, renumber):
+        """
+        Writes hex elements in the ucd format:
+            - element_num   material_num   hex   node1   node2 ... nodeN
+        This method calls the writeBoundaryElements.    
+        
+        Parameters
+        ----------
+        reNumber : boolean
+            deteremines whether the element numbers should be renumbered or not.
+        """ 
         element_count = 0
         
-        for e in self._mesh.elements.values():
+        for e in self.__mesh__.elements.values():
             element_count += 1
             material = material = e.getMaterial()[0]
                     
@@ -293,9 +488,19 @@ class UCDWriter(BaseWriter,IWriter):
         self.writeBoundaryElements(renumber);
     
     def writeBoundaryElements(self,renumber):
+        """
+        Write boundary elements in the ucd format:
+            - element_num   material_num   quad   node1   node2 ... nodeN
+        This method calls the writeBoundaryElements.    
+        
+        Parameters
+        ----------
+        reNumber : boolean
+            deteremines whether the element numbers should be renumbered or not.
+        """
         element_count = 0
         
-        for e in self._mesh.boundaryElements.values():
+        for e in self.__mesh__.boundaryElements.values():
             element_count += 1
             material = material = e.getMaterial()[0] 
             ica = e.ica;
@@ -306,24 +511,70 @@ class UCDWriter(BaseWriter,IWriter):
             self.f.write(str(e.num) + "\t" + str(int(material)) + "\t " + "quad" + "\t")
             self.f.write("\t".join([str(n) for n in renumber_ica])+ "\n")        
     
-class Writer():    
+class Writer(): 
     
-    def openWriter(self,filetype, filename,filePath, mesh):
+    """
+    A class to open and write data to a specific the writer as specificed.
+
+    Methods
+    -------
+    openWriter(filetype, filename,filePath, mesh)
+        create a writer object given the filetype specifed.
+        open a file using the given path and filename.
+    writeMeshData():
+        Write node and element data to file.
+    saveAndClose()
+        save and close the file
+    """
+    
+    def openWriter(self,filetype, filename,filePath):
+        """Open file to be written to given path and filename as defined
+        by the super class BaseWriter. The first line of this 
+        file is also written as well as the lien summarizing the number of 
+        nodes and elements
+
+        Parameters
+        ----------
+        filetype : string
+            filetype of writer
+        filename : string
+            filename of writer
+        path : string
+            path to filename
+        
+        Raises
+        ----------
+        Exception raised if unsupported filetype selected
+        """ 
         self.fileType = filetype
         if filetype == "abaqus":
             self.writer = ABQWriter();
-        if filetype == "vtk":
+        elif filetype == "vtk":
             self.writer = VTKWriter();
-        if filetype == "ucd":
+        elif filetype == "ucd":
             self.writer = UCDWriter();
-        self.writer.openWriter(filename,filePath, mesh)
+        else:
+            raise Exception("File writer of type {} is unsupported. Please select one from 'ucd','vtk' or 'abaqus'".format(filetype))
+        self.writer.openWriter(filename,filePath)
     
-    def writeMeshData(self):
+    def writeMeshData(self, mesh):
+        """
+        Writes data of mesh object to file
+
+        Parameters
+        ----------
+        mesh : Mesh
+            Mehs data
+        """ 
+        self.writer.initializeMesh(mesh)
         self.writer.writeNodes(True); 
         self.writer.writeElements(True); 
         self.writer.mesh_statistics()             
     
     def closeWriter(self):
+        """
+        Saves and Closes file.
+        """
         self.writer.saveAndClose();
         self.writer
         

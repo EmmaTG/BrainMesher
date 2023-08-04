@@ -9,12 +9,11 @@ import MeshUtils as mu
 import VoxelDataUtils as bm
 from Maze_Solver import Maze_Solver
 from Mesh import Mesh, QuadElement
+from Writer import Writer
 
 class BrainHexMesh():
     """
-    A class used to facilitate 3D brain model creation
-
-    ...
+    A class used to facilitate 3D brain model creation.
 
     Attributes
     ----------
@@ -391,12 +390,11 @@ class BrainHexMesh():
             Mesh object to be written
         """        
         # Write mesh to file
-        from Writer import Writer
         for fileType in self.config.fileoutTypes:
             print("########## Writing data as a " + fileType.upper() + " file ##########")             
             writer = Writer()
-            writer.openWriter(fileType, self.config.fileout, self.config.fileoutPath, mesh)
-            writer.writeMeshData()
+            writer.openWriter(fileType, self.config.fileout, self.config.fileoutPath)
+            writer.writeMeshData(mesh)
             writer.closeWriter();
 
 

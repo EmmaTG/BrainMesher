@@ -11,7 +11,7 @@ freesurfer aseg file.
 
 Input file given by path + fileIn
 Preferences for model creation are defined in ConigFile class
-Out put is writen to same path as input
+Output is writen to same path as input
 
 main - the main function of the script
 """

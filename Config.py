@@ -5,9 +5,76 @@ Created on Mon Jul 24 13:55:28 2023
 @author: grife
 """
 from Material_Label import Material_Label
+from numpy import array 
 
 class ConfigFile():
+    """
+    A class used to set up rpeferences for brain creation.
+
+    Attributes
+    ----------
+    readFile : boolean
+        Parameter to determine if data shoudl eb read in from file
+    fileInPath : string
+        Path to input file
+    fileIn : string
+        Input file name (.mgz)
+    readData : boolean
+        Parameter to determine if data should be given explicitly
+    data: 3D array 
+        Orginal data imported in 
+    writeToFile : boolean
+        Paremeter to determine if mesh should be written to file      
+    fileoutPath : string
+        Path to output file, deafault = 'fileInPath'
+    fileout : string
+        Output file name, deafault = 'fileIn'
+    fileoutTypes : array(string)
+        File types to which data must be written. Options: 'ucd' | 'vtk' | 'abaqus'
+    Coarsen : boolean
+        Parameter to determine if data should be corasened to element size = 2
+    Add_CSF : boolean
+        Parameter to determine if cerebrospinal fluid (CSF) should be added to brain
+    layers : int
+        Number of layers of CSF to be added
+    Smooth : boolean
+        Parameter to determine if mesh should be smoothed
+    iterations : int
+        Number of smoothing iteration to be performed
+    coeffs : array(int), len = 2
+        Coeeficients to be used in smoothing operation
+    Smooth_regions : array(string)
+        List of specific regions to smoothed
+    region_iterations : array(int)
+        List of the number of smoothing iteration to be performed on each region specified
+    region_coeffs : array(array(int)) 
+        List of the coefficients to be used in smoothing operation on each region specified
+    f: file
+        Output file of configuration settings
+    material_labels : Material_Label
+         Object describing material labels to be used in model creation
+
+    Methods
+    -------
+    add_data(importedData)
+        Method to add data explicitly
+    openConfigFile()
+        Opens configuarion log file and writes configuration setting
+    writeToConfig(name, value)
+        Method to write additionsl key-value pair data to config file
+    closeConfigFile()
+        Closes log file
+    """
     def __init__(self, inputPath, inputFileName):
+        """
+        Parameters
+        ----------
+        inputPath : string
+            Path to input file.
+        inputFileName : TYPE
+            Input file name (.mgz).
+
+        """
         self.readFile = True
         self.fileInPath = inputPath
         self.fileIn = inputFileName
@@ -54,11 +121,29 @@ class ConfigFile():
         # material_labels.addLabelToMap('Optic-Chiasm' , [85]);
         
     def add_data(self, importedData):
+        """
+        Adds external data to config file
+
+        Parameters
+        ----------
+        importedData : array
+            Array of data to be used
+
+        Raises
+        -------
+        Error raised if data is not a 3Dimensional array
+
+        """
         self.readFile = False
         self.readData = True
+        assert len(array(importedData).shape) == 3
         self.data = importedData
         
     def openConfigFile(self):
+        """
+        Opens and write data to config log file
+
+        """
         self.f = open(self.fileoutPath + self.fileout + ".txt", 'w')
         if self.readFile:
             self.f.write("Input file: " + self.fileInPath + self.fileIn + "\n")
@@ -82,8 +167,23 @@ class ConfigFile():
                          ", ".join([str(x) for x in self.region_coeffs[count]]) + "\n")
         
     def writeToConfig(self, name, value):
+        """
+        Write additionsl key-value pair data to config file.
+
+        Parameters
+        ----------
+        name : string
+            key string.
+        value : string
+            value string.
+
+        """
         self.f.write("{}: {}\n".format(name, str(value)))
         
-    def closeConfigFile(self):         
+    def closeConfigFile(self):
+        """
+        Closes config log file
+
+        """         
         self.f.write("COMPLETE\n")
         self.f.close();

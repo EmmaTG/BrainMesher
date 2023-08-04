@@ -12,7 +12,75 @@ from Node import Node
 from Element import Element, QuadElement, HexElement    
 
 class Mesh():
-    
+    """
+    A class used to store and manipulate mesh data
+
+    Attributes
+    ----------
+    elements : Map(int,Element)
+        Dictionary of elements. 
+        Key: element number
+        Value: Element object
+    nodes : Map(int,Node)
+         Dictionary of nodes. 
+         Key: node number
+         Value: Node object
+    boundaryElements : Map(int,Element)
+        Dictionary of elements. 
+        Key: element number
+        Value: Element object
+    elementToPointCloud: Map(int, array(int)
+        Dictionary between element numbers and the original point cloud values
+        Key: element number
+        Value: ARrayof length 4: x-coord, y-coord, z-coord, material
+    dataToWrite: Array(string)
+        Array of string of data stored at mesh nodes
+    nodeToElements: Map(int, array(int))
+        Dictionary giving the elements that are connected to one node
+        Key: node number
+        Value: Array of elements that are connected to it
+
+    Methods
+    -------
+    addBoundaryElements(boundaryElementsMap)
+        merges new boundary element map with existing one
+    getBoundingBox()
+        get bounding box of mesh
+    locate_boundary_element_map(elementsNotIncluded=[])
+        gets map of boundary element if elements with material value in 'elementsNotIncluded' are removed
+    remove_region(region_value)
+        removes elements with material label = region_value
+    create_mesh_from_Point_Cloud(pointData, voxel_size)
+        creates mesh from point cloud data with elements the size of 'voxel_size'
+    clean_mesh(elementsNotIncluded = [], replace=0)
+        cleans mesh by removing/replacing elements and nodes that are incorrectely joined. 
+        Elements with material value in 'elementsNotIncluded' are not considered. 
+        If 'replace' != 0 elements are not removed but thier material is changed to the value of 'replace'
+    replace_outer_region(white_matter_label, replace_label, elements_on_boundary)
+        replaced any element in 'elements_on_boundary' that have the value 'white_matter_label'
+        and are replcaed with 'replace_label'
+    __clean_mesh_nodes(elementsNotIncluded = [], replace=0), private
+        cleans mesh by removing/replacing elements that are joined by only one node,
+        Elements with material value in 'elementsNotIncluded' are not considered. 
+        If 'replace' != 0 elements are not removed but their material is changed to the value of 'replace' 
+    __clean_mesh_edges(elementsNotIncluded = [], replace=0), private
+        cleans mesh by removing/replacing elements that have edges connected to less than 4 other elements,
+        Elements with material value in 'elementsNotIncluded' are not considered. 
+        If 'replace' != 0 elements are not removed but their material is changed to the value of 'replace'
+    delete_element(element_number)
+        deletes element 'element_number' from mesh
+    replace_element(element_number, replace=24)
+        replace element 'element_number' with material specified by 'replace'
+    smooth_mesh(coeffs, iterations, boundary_element_map)
+        performed Laplacian smoothing on boundary surfaces of elements in 'boundary_element_map'
+    __get_edge_without_shared_face(edgesToElements_map), private
+        gets edges of elements that do not share a face with an ajoing element, i.e. only joined by edge and not face 
+    __calculate_node_coords(elementX,elementY,elementZ,i,size)
+        calculates the coordinates of a node given the number of elements in the x, y and z direction, 
+        the node number 'i' and the size of the voxels
+    center_mesh(region)
+        transalte mesh to be centered about teh given region 'region'
+    """
     def __init__(self):
         self.elements = {}
         self.nodes = {}
@@ -21,12 +89,28 @@ class Mesh():
         self.dataToWrite = {}
         
     def addBoundaryElements(self,boundaryElementsMap):
+        """Merges new boundary element map to existing map.
+
+        Parameters
+        ----------
+        boundaryElementsMap : Map(int,Element)
+            Dictionary of elements. 
+            Key: element number
+            Value: Element object
+        """
         self.boundaryElements = self.boundaryElements | boundaryElementsMap;
     
     def getBoundingBox(self):
+        """Gets the boundign box for the mesh.
+
+        Outputs
+        ----------
+        [maxX,maxY,maxZ,minX,minY,minZ]: array (ints):
+            list givign thmax and minimum vlaues fo the bounding box
+        """
         maxV = [-1000,-1000,-1000]
         minV = [1000,1000,1000]        
-        for node in self.nodeMap.values():
+        for node in self.nodes.values():
             n = node.getCoords();
             for d in range(3):
                 if maxV[d]<n[d]:
@@ -36,16 +120,55 @@ class Mesh():
         return maxV + minV
     
     def locate_boundary_element_map(self,elementsNotIncluded=[]):
+        """Gets the boundary faces of the model if the element with materials values
+        in 'elementsNotIncluded' are not considered.
+        
+        Uses 'locate_boundary_element_map' method from MeshUtils module.
+
+        Parameters
+        ----------
+        elementsNotIncluded : Array(ints), optional, default= empty list
+            list of materials values to not be included when looking for boundary elements
+        
+        Outputs
+        ----------
+        Map(string,array(ints))
+            Map with a compound key and a list of integers associated with the nodes
+            Key: 'quadElement number'-'face number'
+            Value: ica of boundary face
+        """
         return mu.locate_boundary_element_map(self.elements,elementsNotIncluded = elementsNotIncluded)
         
     def remove_region(self,region_value):
-            element_keys = list(self.elements.keys())    
-            for element_num in element_keys:
-                e = self.elements[element_num]
-                if e.getMaterial().count(region_value):
-                    self.delete_element(element_num)
+        """Removes an elements with material properties 'region_values'
+
+        Parameters
+        ----------
+        region_value : int
+            material property value of region to be removed
+        """
+        element_keys = list(self.elements.keys())    
+        for element_num in element_keys:
+            e = self.elements[element_num]
+            if e.getMaterial().count(region_value):
+                self.delete_element(element_num)
                     
     def create_mesh_from_Point_Cloud(self, pointData, voxel_size):
+        """Creates hexahedral elements from point cloud data.
+        Size of the element is deteremined by 'voxel_size'.
+        mesh data stored in elements and nodes properties
+        
+        Uses 'create_node_to_elem_map' and 'create_elements_ica_map' methods
+        from MeshUtils module.
+
+        Parameters
+        ----------
+        pointData : nx4 array
+            point data of n points with columns 0:3 specifying coordinates 
+            and column 3 giving the material label
+        voxel_size : int
+            length of edge of the element
+        """
         [minX,minY,minZ] = pointData[:,:3].min(axis=0)
         [maxX,maxY,maxZ] = pointData[:,:3].max(axis=0)
         
@@ -64,33 +187,61 @@ class Mesh():
                 newNode = int(i + (elementZ+1)*(elementY+1))
                 element_ica_tmp.append(newNode)
                 if not self.nodes.get(i,False):
-                    coords = self.calculate_node_coords(elementX,elementY,elementZ,i,voxel_size)
+                    coords = self.__calculate_node_coords(elementX,elementY,elementZ,i,voxel_size)
                     self.nodes[i] = Node(i,coords)
                 if not self.nodes.get(newNode,False):
-                    coords = self.calculate_node_coords(elementX,elementY,elementZ,newNode,voxel_size)
+                    coords = self.__calculate_node_coords(elementX,elementY,elementZ,newNode,voxel_size)
                     self.nodes[newNode] = Node(newNode,coords) 
             element_ica += element_ica_tmp
             element = HexElement(elementNo, element_ica, mat=[m])
             self.elements[int(elementNo)] = element
             self.elementToPointCloud[int(elementNo)] = [x,y,z,m]
-        self.create_node_to_element_connectivity();
+        self.nodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.elements));
     
     
     def clean_mesh(self, elementsNotIncluded = [], replace=0):
+        """
+        Cleans mesh by removing poorly connected edges and nodes. 
+        This process is done iteratively on the mesh until no more issues are found 
+        or max interation number (10) is reached.
+        Elements with material property specified in 'elementsNotIncluded' are
+        not considered. If 'replace' != 0, the element material property is changed 
+        otherwise element is deleted.
+
+        Parameters
+        ----------
+        elementsNotIncluded : Array(ints), optional, default= empty list
+            list of materials values to not be included when looking for boundary elements
+        replace : int, optional, default = 0
+            material property to replace elements. If default, elements are deleted
+        """
         iteration = 0
         count = 1
         total_count = 0
         while ((count > 0) and (iteration<10)):
             count = 0;
             iteration += 1
-            count += self.clean_mesh_edges(elementsNotIncluded = elementsNotIncluded, replace=replace);
-            count += self.clean_mesh_nodes(elementsNotIncluded = elementsNotIncluded, replace=replace);
+            count += self.__clean_mesh_edges(elementsNotIncluded = elementsNotIncluded, replace=replace);
+            count += self.__clean_mesh_nodes(elementsNotIncluded = elementsNotIncluded, replace=replace);
             if ((replace != 0) and (iteration == 1)):
                 elementsNotIncluded.append(replace);
             total_count += count;
         print(str(total_count) + " elements deleted/replaced due to poor node/edge connectivity in " + str(iteration) + " iterations")
         
     def replace_outer_region(self, white_matter_label, replace_label, elements_on_boundary):
+        """
+        Replaced any element in 'elements_on_boundary' list that have the value 'white_matter_label'
+        nd are replcaed with 'replace_label'
+
+        Parameters
+        ----------
+        white_matter_label : int
+            material property to be replaced
+        replace_label : int
+            material property to be used to replace 'white_matter_label'
+        elements_on_boundary : Array(ints)
+            list of element numbers
+        """
         print("Cleaning brain boundary")
         for elem in elements_on_boundary:
             element = self.elements[elem]
@@ -100,7 +251,21 @@ class Mesh():
                 materials.insert(0,replace_label)
         
         
-    def clean_mesh_nodes(self, elementsNotIncluded = [], replace=0):
+    def __clean_mesh_nodes(self, elementsNotIncluded = [], replace=0):
+        """
+        Private method used to identify elemnts that are joined by only one node.
+        These elements are then either deleted (if replace ==0) or the material 
+        property of that element is changed to 'replace' (if replace != 0). 
+        Elements with material value in 'elementsNotIncluded' are not considered. 
+        
+
+        Parameters
+        ----------
+        elementsNotIncluded : Array(ints), optional, default= empty list
+            list of materials values to not be included when looking for boundary elements
+        replace : int, optional, default = 0
+            material property to replace elements. If default, elements are deleted
+        """
         cleaned_elements = []
         cleaned_nodes= []
         node_keys = list(self.nodes.keys())
@@ -136,25 +301,26 @@ class Mesh():
         # print(str(len(cleaned_elements)) + " element deleted due to poor node connectivity")
         return len(cleaned_elements)
     
-    def delete_element(self, element_number):
-        if self.elements.get(element_number,False):    
-            element = self.elements[element_number]
-            ica = element.ica
-            for n in ica:
-                connectedElements = self.nodeToElements[n]
-                connectedElements.remove(element_number)
-                if len(connectedElements) == 0:
-                    self.nodeToElements.pop(n)
-                    self.nodes.pop(n)
-            self.elements.pop(element_number)
+    def __clean_mesh_edges(self, elementsNotIncluded = [], replace=0):
+        """
+        Private method used to identify elemnts that are joined by only one edge,
+        i.e. an edge that is connected to less than 4 other elements.
+        These elements are then either deleted (if replace ==0) or the material 
+        property of that element is changed to 'replace' (if replace != 0). 
+        Elements with material value in 'elementsNotIncluded' are not considered.
         
-    def replace_element(self, element_number, replace=24):
-        element = self.elements[element_number]
-        element.setMaterial(replace)            
-    
-    def clean_mesh_edges(self, elementsNotIncluded = [], replace=0):
+        Uses 'create_edge_to_element_connectivity' method from MeshUtils module.        
+        
+
+        Parameters
+        ----------
+        elementsNotIncluded : Array(ints), optional, default= empty list
+            list of materials values to not be included when looking for boundary elements
+        replace : int, optional, default = 0
+            material property to replace elements. If default, elements are deleted
+        """
         edgesToElementsMap = mu.create_edge_to_element_connectivity(self.elements, elementsNotIncluded)
-        edgesToElements = self.get_edge_without_shared_face(edgesToElementsMap)
+        edgesToElements = self.__get_edge_without_shared_face(edgesToElementsMap)
         old_node_to_new = {}
         cleaned_elements = []
         for edge, edgeConnectedElements in edgesToElements.items():
@@ -183,10 +349,70 @@ class Mesh():
                                     self.replace_element(element2.num,replace=replace)
                                 else:                                
                                     self.delete_element(element2.num)
-        return len(cleaned_elements)                 
+        return len(cleaned_elements)
+    
+    def delete_element(self, element_number):
+        """
+        Deletes elements from the mesh. To do this elements are deleted from 
+        the element map, nodes that are no longer connected to any elements are deleted
+        and these elements and, if applicable, nodes are removed from the nodeToElement connectivity map
+
+        Parameters
+        ----------
+        element_number : int
+            element number to be deleted
+        """
+        if self.elements.get(element_number,False):    
+            element = self.elements[element_number]
+            ica = element.ica
+            for n in ica:
+                connectedElements = self.nodeToElements[n]
+                connectedElements.remove(element_number)
+                if len(connectedElements) == 0:
+                    self.nodeToElements.pop(n)
+                    self.nodes.pop(n)
+            self.elements.pop(element_number)
+        
+    def replace_element(self, element_number, replace=24):
+        """
+        Changes an elements material property to that specified by 'replace'
+
+        Parameters
+        ----------
+        element_number : int
+            element number to be deleted
+        replace : int, optional, default=24
+            new material property
+        """
+        element = self.elements[element_number]
+        element.setMaterial(replace)   
+                     
             
     def smooth_mesh(self, coeffs, iterations, boundary_element_map):
+        """
+        Prepares information and performs Laplacian smoothing on mesh boundary
+        defined by the elements given in 'boundary_element_map'.
+        
+        Uses 'create_node_to_elem_map', 'create_elements_ica_map' and 'create_surface_connectivity'
+        methods from MeshUtils module. 
+
+        Parameters
+        ----------
+        coeffs : [float,float]
+            two Laplacian smoothing coefficients
+        iterations : int
+            number of iterations of Laplcians smoothing to performed
+        boundary_element_map: Map(string,array(ints))
+            Map with a compound key and a list of integers associated with the nodes
+            Key: 'quadElement number'-'face number'
+            Value: ica of boundary face
+        
+        Raises
+        ----------
+        Error raised if morethn or less than 2 coefficeints are given in 'coeffs'
+        """
         print("Starting mesh smoothing")
+        assert len(coeffs)==2, "Laplacian smoothing requires for two coefficients"
         if len(boundary_element_map)>0:
             node_to_boundary_element_map = mu.create_node_to_elem_map(boundary_element_map)
             surfaceNodeConnectivity = mu.create_surface_connectivity(boundary_element_map,node_to_boundary_element_map)
@@ -196,20 +422,28 @@ class Mesh():
                 smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementICAMap, nodeToElemMap=nodeToElemMap)
         else:
             print("No elements selected to smooth")
-    
-    def create_node_to_element_connectivity(self):
-        self.nodeToElements = {}
-        for element in self.elements.values():
-            for node in element.ica:
-                connectedElements = []
-                if self.nodeToElements.get(node,False):
-                    connectedElements = self.nodeToElements[node]
-                else:
-                    self.nodeToElements[node] = connectedElements
-                connectedElements.append(element.num)
                            
                 
-    def get_edge_without_shared_face(self,edgesToElements_map):
+    def __get_edge_without_shared_face(self,edgesToElements_map):
+        """
+        Locates edges that are have adjacents faces that are not shared between elements.
+        I.e. the elements are only joined by one shred edge.
+
+        Parameters
+        ----------
+        edgesToElements_map : Map(string,array(ints))
+            Map of edge icas concatenated into a string and the elemenst to which they are connected.
+            Key: string of two nodes making the edge
+            Value: list of element to which they are connected
+        
+        Outputs
+        ----------
+        edgesToElements : Map(string,array(ints))
+            Map of edge icas that do not share a face concatenated into a string 
+            and the two elements to which they are connected.
+            Key: string of two nodes making the edge
+            Value: list of 2 element to which they are connected
+        """
         edgesToElements = {}
         for edge, elements in edgesToElements_map.items():
             if len(elements) == 2:
@@ -226,7 +460,30 @@ class Mesh():
                     edgesToElements[edge]= list(elements)
         return edgesToElements
     
-    def calculate_node_coords(self,elementX,elementY,elementZ,i,size):
+    def __calculate_node_coords(self,elementX,elementY,elementZ,i,size):
+        """
+        Calculates the coordinates of a node based on the node number given by 'i'
+        and the maximum number of elements in a pointcloud. The characteristic 
+        length of the element length is given by 'size'.
+
+        Parameters
+        ----------
+        elementX : int
+            Total number of elements given in the X direction
+        elementY : int
+            Total number of elements given in the Y direction
+        elementZ : int
+            Total number of elements given in the Z direction
+        i: int
+            node number within grid fully populated rectabgular grid
+        sezie: float
+            characteristic size of an element
+        
+        Outputs
+        ----------
+        array(ints)
+            Array containing the x,y and z coordinates of a node
+        """
         coordx = int((i-1)/((elementZ+1)*(elementY+1)))
         tmp = i - (coordx*((elementZ+1)*(elementY+1)))
         coordy = int((tmp-1)/(elementZ+1))
@@ -234,6 +491,15 @@ class Mesh():
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
     def center_mesh(self,region):
+        """
+        Moves the center of the mesh to the center of the region specified by 'region'.
+        Uses 'translate_mesh' method from MeshTransformations module.
+
+        Parameters
+        ----------
+        region : int
+            material property of region about which mesh should be centered
+        """
         centroid = [0,0,0]
         num_elements = 0;
         # Find centroid of corpus callosum
