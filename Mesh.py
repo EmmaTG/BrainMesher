@@ -86,7 +86,7 @@ class Mesh():
         self.nodes = {}
         self.boundaryElements = {}
         self.elementToPointCloud = {}
-        self.dataToWrite = {}
+        self.dataToWrite = []
         
     def addBoundaryElements(self,boundaryElementsMap):
         """Merges new boundary element map to existing map.
@@ -100,17 +100,34 @@ class Mesh():
         """
         self.boundaryElements = self.boundaryElements | boundaryElementsMap;
     
-    def getBoundingBox(self):
+    def getBoundingBox(self, regions = -1):
         """Gets the boundign box for the mesh.
-
+        Parameters
+        ----------
+        region: array[int], Optional
+        Optional paremeter to boundary box around selected regions.
+        Default is an empty list
+        
         Outputs
         ----------
         [maxX,maxY,maxZ,minX,minY,minZ]: array (ints):
             list givign thmax and minimum vlaues fo the bounding box
         """
+        if (regions == -1):
+            nodeMap = list(self.nodes.values())
+        else:
+            nodeMap = []
+            nodesAdded = []
+            for e in self.elements.values():
+                if e.getMaterial().count(regions):
+                    for n in e.ica:
+                       if not nodesAdded.count(n.number):
+                           nodeMap.append(n);
+                           nodesAdded. append(n.number)
+                           
         maxV = [-1000,-1000,-1000]
         minV = [1000,1000,1000]        
-        for node in self.nodes.values():
+        for node in nodeMap:
             n = node.getCoords();
             for d in range(3):
                 if maxV[d]<n[d]:
@@ -139,6 +156,7 @@ class Mesh():
         print("Locating boundary elements")
         face_to_elems_map = {}
         surface_face_to_elems_map = {}
+        elementToOrderedFaces = {}
         for element in self.elements.values():
             add = self.__element_included(element,elementsNotIncluded)
             if add:
@@ -151,10 +169,11 @@ class Mesh():
                     else:
                         face_to_elems_map[face_key] = [element]                                   # If not in map, add to map
                         surface_face_to_elems_map[face_key] = element
+                        elementToOrderedFaces[element.num] = list_of_faces
             
         boundary_element_map = {}
         for face_key,e in surface_face_to_elems_map.items():    
-            faces = e.get_faces(True,True)
+            faces = elementToOrderedFaces[e.num]
             for face_num,f in enumerate(faces):
                 if f == face_key:
                     compound_key = "-".join([str(e.num),str(face_num)])
@@ -165,8 +184,8 @@ class Mesh():
     
     def __element_included(self,element,elementsNotIncluded):            
         add = True
-        for el_types in elementsNotIncluded:
-            if element.getMaterial().count(el_types):
+        for el_types in element.getMaterial():
+            if elementsNotIncluded.count(el_types):
                 add=False
                 break
         return add;
@@ -213,19 +232,29 @@ class Mesh():
             elementNo += 1
             [x,y,z,m] = p
             startNode = (z+1) + (elementZ+1)*y + ((elementZ+1)*(elementY+1))*x
-            element_ica = [int(startNode+1), int(startNode), int(startNode+(elementZ+1)) ,int(startNode+(elementZ+1)+1)]
+            element_ica_numbers = [int(startNode+1), int(startNode), int(startNode+(elementZ+1)) ,int(startNode+(elementZ+1)+1)]
             element_ica_tmp = []
-            for i in element_ica:   
-                newNode = int(i + (elementZ+1)*(elementY+1))
-                element_ica_tmp.append(newNode)
+            element_ica_nodes = []
+            for i in element_ica_numbers:                  
                 if not self.nodes.get(i,False):
                     coords = self.__calculate_node_coords(elementX,elementY,elementZ,i,voxel_size)
-                    self.nodes[i] = Node(i,coords)
+                    node = Node(i,coords)
+                    self.nodes[i] = node
+                else:
+                    node = self.nodes[i]
+                element_ica_nodes.append(node)
+                
+                newNode = int(i + (elementZ+1)*(elementY+1)) 
                 if not self.nodes.get(newNode,False):
                     coords = self.__calculate_node_coords(elementX,elementY,elementZ,newNode,voxel_size)
-                    self.nodes[newNode] = Node(newNode,coords) 
-            element_ica += element_ica_tmp
-            element = HexElement(elementNo, element_ica, mat=[m])
+                    node = Node(newNode,coords);
+                    self.nodes[newNode] = Node(newNode,coords)
+                else:
+                    node = self.nodes[newNode]
+                element_ica_tmp.append(node)
+                    
+            element_ica_nodes += element_ica_tmp
+            element = HexElement(elementNo, element_ica_nodes, mat=[m])
             self.elements[int(elementNo)] = element
             self.elementToPointCloud[int(elementNo)] = [x,y,z,m]
         self.nodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.elements));
@@ -318,15 +347,16 @@ class Mesh():
                 if len(connectedElements) == 2:
                     element1 = self.elements[connectedElements[0]]
                     element2 = self.elements[connectedElements[1]]
+                    ele2Ica = [int(n.number) for n in element2.ica]
                     numberSharedNodes = 0
                     for node1 in element1.ica:
-                        if element2.ica.count(node1)>0:
+                        if ele2Ica.count(node1.number)>0:
                             numberSharedNodes += 1
                     assert numberSharedNodes>0;
                     if numberSharedNodes == 1:
                         if not cleaned_elements.count(element2.num):
                             cleaned_elements.append(element2.num)
-                            cleaned_nodes = cleaned_nodes + element2.ica
+                            cleaned_nodes = cleaned_nodes + ele2Ica
                             if (replace != 0) or (len(elementsNotIncluded) != 0):
                                 self.replace_element(element2.num,replace=replace)
                             else:
@@ -432,15 +462,16 @@ class Mesh():
         element_number : int
             element number to be deleted
         """
+        boundaryNodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.boundaryElements));
         if self.elements.get(element_number,False):    
             element = self.elements[element_number]
-            ica = element.ica
-            for n in ica:
-                connectedElements = self.nodeToElements[n]
+            for n in element.ica:
+                connectedElements = self.nodeToElements[n.number]
                 connectedElements.remove(element_number)
-                if len(connectedElements) == 0:
-                    self.nodeToElements.pop(n)
-                    self.nodes.pop(n)
+                if (len(connectedElements) == 0):
+                    self.nodeToElements.pop(n.number)
+                    if not (boundaryNodeToElements.get(n.number,False)):
+                        self.nodes.pop(n.number)
             self.elements.pop(element_number)
         
     def replace_element(self, element_number, replace=24):
@@ -459,10 +490,11 @@ class Mesh():
         element.setMaterial(replace)   
                      
             
-    def smooth_mesh(self, coeffs, iterations, boundary_element_map):
+    def smooth_mesh(self, coeffs, iterations, elementsNotIncluded=[]):
         """
-        Prepares information and performs Laplacian smoothing on mesh boundary
-        defined by the elements given in 'boundary_element_map'.
+        Prepares information and performs Laplacian smoothing the boundary of a mesh
+        where the elements with material type given in 'elementsNotIncluded'
+        are not included.
         
         Uses 'create_node_to_elem_map', 'create_elements_ica_map' and 'create_surface_connectivity'
         methods from MeshUtils module. 
@@ -473,16 +505,17 @@ class Mesh():
             two Laplacian smoothing coefficients
         iterations : int
             number of iterations of Laplcians smoothing to performed
-        boundary_element_map: Map(string,array(ints))
-            Map with a compound key and a list of integers associated with the nodes
-            Key: 'quadElement number'-'face number'
-            Value: ica of boundary face
+        elementsNotIncluded : Array(ints), optional
+            list of materials values to not be included when looking for boundary elements
+            Default is an empty list
         
         Raises
         ----------
         Error raised if morethn or less than 2 coefficeints are given in 'coeffs'
         """
         print("Starting mesh smoothing")
+        
+        boundary_element_map = self.locate_boundary_element_map(elementsNotIncluded=elementsNotIncluded)
         assert len(coeffs)==2, "Laplacian smoothing requires for two coefficients"
         if len(boundary_element_map)>0:
             node_to_boundary_element_map = mu.create_node_to_elem_map(boundary_element_map)
@@ -563,7 +596,8 @@ class Mesh():
     
     def center_mesh(self,region):
         """
-        Moves the center of the mesh to the center of the region specified by 'region'.
+        Moves the center of the mesh to the center of the region specified by 'region'
+        to the nearest integer.
         Uses 'translate_mesh' method from MeshTransformations module.
 
         Parameters
@@ -571,18 +605,36 @@ class Mesh():
         region : int
             material property of region about which mesh should be centered
         """
+        middleOfCC = [int(x) for x in self.get_center_of_region(region)];
+        # Move mesh
+        mt.translate_mesh(self.nodes,middleOfCC)
+        
+        
+    def get_center_of_region(self,region):
+        """
+        Find center of a region in the mesh
+
+        Parameters
+        ----------
+        region : int
+            Rgeion material type.
+
+        Returns
+        -------
+        array[float]
+            Center of region
+
+        """
         centroid = [0,0,0]
         num_elements = 0;
         # Find centroid of corpus callosum
         for e in self.elements.values():
-            if (e.getMaterial()[0] == 251):
-                e_centroid = e.calculate_element_centroid(self.nodes);
+            if (e.getMaterial()[0] == region):
+                e_centroid = e.calculate_element_centroid();
                 num_elements += 1
                 for d in range(len(e_centroid)):
                   centroid[d] += e_centroid[d];
-        middleOfCC = [ int(x/num_elements) for x in centroid]
-        # Move mesh
-        mt.translate_mesh(self.nodes,middleOfCC)
+        return [float(x/num_elements) for x in centroid];        
         
     def create_elements_map(self, elementsNotIncluded, elementsIncluded = []):
         """

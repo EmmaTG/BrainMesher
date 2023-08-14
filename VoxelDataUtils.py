@@ -512,7 +512,7 @@ def add_CSF(data,layers=1):
         mid_y = int((int(ymin) +int(ymax+1))/2)
         for x in range(int(xmin),int(xmax+1)):
             for y in range(int(mid_y),int(ymin-1),-1):
-                if (data[x,y,z] == 0) and (y<ymax_tot):
+                if (data[x,y,z] == 0):
                     if in_hull([x,y], hull):
                         pointCloud.add_point_to_cloud([x,y,z,24])
                         data[x,y,z] = 24
@@ -520,7 +520,7 @@ def add_CSF(data,layers=1):
                     else:
                         break;
             for y in range(int(mid_y),int(ymax+1)):
-                if (data[x,y,z] == 0) and (y<ymax_tot):
+                if (data[x,y,z] == 0):
                     if in_hull([x,y], hull):
                         pointCloud.add_point_to_cloud([x,y,z,24])
                         data[x,y,z] = 24

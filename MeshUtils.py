@@ -10,7 +10,7 @@ Module of functions that us create maps and arrays from given mesh data
 def create_elements_ica_map(elements):
     elementMap = {}
     for elementNo, element in elements.items():
-        elementMap[elementNo] = element.ica
+        elementMap[elementNo] = [int(node.number) for node in element.ica]
     return elementMap
 
 def create_node_to_elem_map(elementICAMap):

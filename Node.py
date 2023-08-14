@@ -14,7 +14,9 @@ class INode():
     
     def addData(self,name,value):
         self.data[name] = value;
-    
+        
+    def getData(self,name):
+        return self.data.get(name,[]);    
     
     def setCoords(self, coords):
         self.coords = coords;

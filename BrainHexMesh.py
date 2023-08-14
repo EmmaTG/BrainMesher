@@ -249,7 +249,7 @@ class BrainHexMesh():
         mesh.replace_outer_region(2, 3, elementsOnBoundary)        
 
         
-    def createCSFBoundary(self,mesh,elementNUmber):
+    def createCSFBoundary(self,mesh,elementNUmber, fullyClosed=False):
         """
         Creates CSF boundary elements. 
         Does not create CSF Boundary elements below subcortical structures at base of brain
@@ -267,42 +267,45 @@ class BrainHexMesh():
             Map of boundary elements to thier element numbers        
             
         """
-        e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
-        count = 0
-        for e_num,element in mesh.elements.items():
-            element_centroid = element.calculate_element_centroid(mesh.nodes)
-            e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
-            count += 1
-        e_centroids = np.stack(e_centroids, axis = 0)
-        
-        # mesh.create_node_to_element_connectivity()
-        boundary_elements_map = {}
-        boundary_number = max(list(mesh.elements.keys()))
-        boundaryElementsOnCSF = mesh.locate_boundary_element_map() 
-        print("Locating CSF boundary")
-        for compoundKey,ica in boundaryElementsOnCSF.items():
-            boundary_number += 1;
-            boundary_element = QuadElement(boundary_number, ica, mat=[elementNUmber])
-            [element_num,face] = [int(x) for x in compoundKey.split("-")]
-            [xc,yc,zc,m] = e_centroids[element_num]    
-            Boundary = False
-            if m == 24:
-                boundary_number += 1             
-                elements_inline = e_centroids
-                elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
-                elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
-                elements_inline = elements_inline[elements_inline[:, 1].argsort()]
-                current_element_idx, = np.where(elements_inline[:,1]>=yc)
-                if len(current_element_idx)!= 0:
-                    current_element_idx = current_element_idx[0]
-                    elements_inline = elements_inline[:current_element_idx]
-                mats = list(elements_inline[:,3])
-                Boundary = self.__validCSFBoundary(mats);
-            if Boundary:
-                boundary_elements_map[boundary_number] = boundary_element
-            else:
-                boundary_number -= 1;
-        return boundary_elements_map;
+        if (self.config.Add_CSF):
+            e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
+            count = 0
+            for e_num,element in mesh.elements.items():
+                element_centroid = element.calculate_element_centroid()
+                e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
+                count += 1
+            e_centroids = np.stack(e_centroids, axis = 0)
+            
+            # mesh.create_node_to_element_connectivity()
+            boundary_elements_map = {}
+            boundary_number = max(list(mesh.elements.keys()))
+            boundaryElementsOnCSF = mesh.locate_boundary_element_map() 
+            print("Locating CSF boundary")
+            for compoundKey,ica in boundaryElementsOnCSF.items():
+                boundary_number += 1;
+                ica_nodes = [mesh.nodes[n] for n in ica]
+                boundary_element = QuadElement(boundary_number, ica_nodes, mat=[elementNUmber])
+                [element_num,face] = [int(x) for x in compoundKey.split("-")]
+                [xc,yc,zc,m] = e_centroids[element_num]    
+                Boundary = fullyClosed
+                if m == 24:
+                    boundary_number += 1             
+                    elements_inline = e_centroids
+                    elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
+                    elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
+                    elements_inline = elements_inline[elements_inline[:, 1].argsort()]
+                    current_element_idx, = np.where(elements_inline[:,1]>=yc)
+                    if len(current_element_idx)!= 0:
+                        current_element_idx = current_element_idx[0]
+                        elements_inline = elements_inline[:current_element_idx]
+                    mats = list(elements_inline[:,3])
+                    Boundary = self.__validCSFBoundary(mats);
+                if Boundary:
+                    boundary_elements_map[boundary_number] = boundary_element
+                else:
+                    boundary_number -= 1;
+            return boundary_elements_map;
+        return {};
                 
     def __validCSFBoundary(self, mats): 
         """
@@ -363,24 +366,21 @@ class BrainHexMesh():
             non_whitematter_labels_map = self.material_labels.get_homogenized_labels_map()
             non_whitematter_labels_map.pop(region)
             non_whitematter_labels_map = list(non_whitematter_labels_map.values())
-            boundary_element_map = mesh.locate_boundary_element_map(elementsNotIncluded = non_whitematter_labels_map)
             coeffs = self.config.region_coeffs[count]
             iterations = self.config.region_iterations[count]
-            mesh.smooth_mesh(coeffs, iterations, boundary_element_map)
+            mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded = non_whitematter_labels_map)
             count += 1
         # Smooth mesh (excluded CSF)
         if self.config.Add_CSF:
             print("########## Smoothing mesh excluding CSF ##########")
             # label = self.material_labels.get_homogenized_labels_map()
             # ventricles_label = label.pop("Ventricles")
-            boundary_element_map = mesh.locate_boundary_element_map(elementsNotIncluded=[24])
-            mesh.smooth_mesh(self.config.coeffs, self.config.iterations, boundary_element_map)
+            mesh.smooth_mesh(self.config.coeffs, self.config.iterations, elementsNotIncluded=[24])
             
         # # Smoothing
         # Smooth outer surface of mesh (including CSF)
         print("########## Smoothing global mesh ##########")
-        boundary_element_map = mesh.locate_boundary_element_map()
-        mesh.smooth_mesh(self.config.coeffs, self.config.iterations, boundary_element_map)        
+        mesh.smooth_mesh(self.config.coeffs, self.config.iterations)        
         # return mesh    
         
 

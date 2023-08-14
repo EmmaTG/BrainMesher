@@ -17,7 +17,7 @@ class IElement(ABC):
         pass
     
 class ElementCalculations():
-    def calculate_element_centroid(self,nodeMap):
+    def calculate_element_centroid(self):
         """
         Calculates element centroid
 
@@ -34,7 +34,7 @@ class ElementCalculations():
         """
         centroid = [0,0,0]
         for n in self.ica:
-            coords = nodeMap[n].getCoords()
+            coords = n.getCoords()
             for i in range(3):
                 centroid[i] += coords[i]
                 
@@ -67,7 +67,7 @@ class Element(ElementCalculations):
         for f in faces:
             new_face = []
             for n in f:
-                new_face.append(self.ica[n-1])                
+                new_face.append(self.ica[n-1].number)                
             if order:
                 new_face = sorted(new_face)
             if stringyfy:

@@ -68,6 +68,7 @@ class BaseWriter():
         self.__ext__ = ext;
         self.__tag__ = tag;
         
+        
     def openWriter(self, filename, path):
         """Open file to be written to given path and filename.
         If the path does not end if separtor characters thes are added.
@@ -151,12 +152,12 @@ class ABQWriter(BaseWriter,IWriter):
             path to filename
         """  
         super().openWriter(filename, path)
-        from datetime import date
-        firstLine = "# UCD SCRIPT\n" \
-            + "# Inp file created using python script BrainHexMesh\n"\
-            + "# Script developed by Emma Griffiths ca. 2022\n"\
-            + "# UCD file created on " + date.today().isoformat() + "\n"
-        self.f.write(firstLine)        
+        # from datetime import date
+        # firstLine = "# UCD SCRIPT\n" \
+        #     + "# Inp file created using python script BrainHexMesh\n"\
+        #     + "# Script developed by Emma Griffiths ca. 2022\n"\
+        #     + "# UCD file created on " + date.today().isoformat() + "\n"
+        # self.f.write(firstLine)        
     
     def writeNodes(self,  reNumber):
         """
@@ -202,7 +203,7 @@ class ABQWriter(BaseWriter,IWriter):
             else:
                 elemNum = e
             self.oldELemTonewELem[e] = elemNum
-            self.f.write(str(elemNum) + ",\t" + ", ".join([str(self.oldNumToNewNum[i]) for i in elementMap[e].ica])+"\n")           
+            self.f.write(str(elemNum) + ",\t" + ", ".join([str(self.oldNumToNewNum[i.number]) for i in elementMap[e].ica])+"\n")           
             
         self.writeMaterialsData();
             
@@ -281,6 +282,7 @@ class VTKWriter(BaseWriter,IWriter):
             deteremines whetheer the node numbers shoudl be renumbered or not.
         """ 
         nodeMap = self.__mesh__.nodes;
+        self.__nodeKeys__ = []
         numNodes = len(nodeMap);
         self.f.write(" ".join(["\nPOINTS",str(numNodes),"float"]) + "\n")
         nodeKeys = nodeMap.keys()
@@ -288,7 +290,8 @@ class VTKWriter(BaseWriter,IWriter):
         count = 0
         self.node_num_map_old_to_new = {}
         for n in nodeKeys:
-            nodeNum = count       
+            nodeNum = count 
+            self.__nodeKeys__.append(n);
             self.node_num_map_old_to_new[n] = nodeNum
             self.f.write(" ".join([str(float(coord)) for coord in nodeMap[n].getCoords()]) + "\n")
             count += 1
@@ -325,7 +328,7 @@ class VTKWriter(BaseWriter,IWriter):
             renumber_ica = []    
             
             for ica_node in element.ica:
-                renumber_ica.append(self.node_num_map_old_to_new[ica_node])
+                renumber_ica.append(self.node_num_map_old_to_new[ica_node.number])
             
             self.f.write("8 " + " ".join([str(node) for node in renumber_ica]) + "\n")
         # element_count = 0
@@ -336,7 +339,7 @@ class VTKWriter(BaseWriter,IWriter):
             renumber_ica = []    
             
             for ica_node in element.ica:
-                renumber_ica.append(self.node_num_map_old_to_new[ica_node])
+                renumber_ica.append(self.node_num_map_old_to_new[ica_node.number])
             
             self.f.write("4 " + " ".join([str(node) for node in renumber_ica]) + "\n")
             
@@ -383,15 +386,18 @@ class VTKWriter(BaseWriter,IWriter):
         """
         from re import sub
         nodes = self.__mesh__.nodes
+        nodeKeys = self.__nodeKeys__
         dataToWrite = self.__mesh__.dataToWrite
         
         #Writing point data
         for d in dataToWrite:
+            dataSize = len(nodes[list(nodes.keys())[0]].data.get(d))
             self.f.write("\nPOINT_DATA " + str(len(nodes)) + "\n")
             self.f.write("FIELD FieldData 1 \n")
-            self.f.write("{} 3 {} float\n".format(d, len(nodes)))
-            for nodeNum, n in nodes.items():
-                data = n.data.get(d,[0,0,0]);
+            self.f.write("{} {} {} float\n".format(d, dataSize, len(nodes)))
+            for nodeNum in nodeKeys:
+                n = nodes[nodeNum]
+                data = n.data.get(d,[0]*dataSize);
                 line = sub("[\[\]\(\),]*", '', str(data))
                 self.f.write(line + "\n")
 
@@ -426,15 +432,6 @@ class UCDWriter(BaseWriter,IWriter):
             path to filename
         """ 
         super().openWriter(filename, path)
-        from datetime import date
-        firstLine = "# UCD SCRIPT\n" \
-            + "# Inp file created using python script BrainHexMesh\n"\
-            + "# Script developed by Emma Griffiths ca. 2022\n"\
-            + "# UCD file created on " + date.today().isoformat() + "\n"
-        self.f.write(firstLine)
-        numNodes = len(self.__mesh__.nodes)
-        numElements = len(self.__mesh__.elements)+ len(self.__mesh__.boundaryElements)
-        self.f.write("\t".join([str(numNodes),str(numElements),'0','0','0']) + "\n") # Data summary row
     
     def writeNodes(self, renumber):
                
@@ -446,6 +443,17 @@ class UCDWriter(BaseWriter,IWriter):
         reNumber : boolean
             deteremines whetheer the node numbers shoudl be renumbered or not.
         """ 
+        
+        from datetime import date
+        firstLine = "# UCD SCRIPT\n" \
+            + "# Inp file created using python script BrainHexMesh\n"\
+            + "# Script developed by Emma Griffiths ca. 2022\n"\
+            + "# UCD file created on " + date.today().isoformat() + "\n"
+        self.f.write(firstLine)
+        numNodes = len(self.__mesh__.nodes)
+        numElements = len(self.__mesh__.elements)+ len(self.__mesh__.boundaryElements)
+        self.f.write("\t".join([str(numNodes),str(numElements),'0','0','0']) + "\n") # Data summary row
+        
         nodeMap = self.__mesh__.nodes;
         nodeKeys = nodeMap.keys()
         nodeKeys = sorted(nodeKeys)
@@ -475,7 +483,7 @@ class UCDWriter(BaseWriter,IWriter):
             element_count += 1
             material = material = e.getMaterial()[0]
                     
-            ica = e.ica
+            ica = [int(n.number) for n in e.ica]
             ica = list(ica[:4]) + list(ica[4:])  
             renumber_ica = []
             for ica_node in ica:
@@ -503,7 +511,7 @@ class UCDWriter(BaseWriter,IWriter):
         for e in self.__mesh__.boundaryElements.values():
             element_count += 1
             material = material = e.getMaterial()[0] 
-            ica = e.ica;
+            ica = [int(n.number) for n in e.ica];
             renumber_ica = []
             for ica_node in ica:
                 renumber_ica.append(self.node_num_map_old_to_new[ica_node])                
@@ -527,7 +535,7 @@ class Writer():
         save and close the file
     """
     
-    def openWriter(self,filetype, filename,filePath):
+    def openWriter(self, filetype, filename,filePath):
         """Open file to be written to given path and filename as defined
         by the super class BaseWriter. The first line of this 
         file is also written as well as the lien summarizing the number of 
@@ -576,7 +584,7 @@ class Writer():
         Saves and Closes file.
         """
         self.writer.saveAndClose();
-        self.writer
+        self.writer = None;
         
         
         
