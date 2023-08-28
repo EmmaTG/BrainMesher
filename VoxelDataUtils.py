@@ -126,18 +126,19 @@ def create_binary_image(current_data, search=-1):
 def clean_voxel_data(start_data):  
     print("Performing cleaning operations on data")
     cleaned = create_binary_image(start_data)
+    start = np.sum(cleaned)
     structure = ndimage.generate_binary_structure(3,3) 
     print("Filling in holes")
     cleaned = fill_in_holes(cleaned, structure)
     print("Hit and miss cleaning")
-    print(np.sum(cleaned))
     hit_and_miss_2d(cleaned)
-    print(np.sum(cleaned))
     hit_and_miss(cleaned) 
     print("Filling in holes")
-    cleaned = fill_in_holes(cleaned, structure)        
+    cleaned = fill_in_holes(cleaned, structure)  
+    end = np.sum(cleaned)      
     print("Complete")        
     assign_materials_labels(start_data,cleaned)
+    return (start != end)
 
 def hit_and_miss(data):
     
@@ -275,7 +276,7 @@ def hit_and_miss_2d(data):
                     count += 1
                     
                 test2 = ndimage.binary_hit_or_miss(old, structure1=hit_structure2).astype(int)
-                xh,yh = np.where(test1 == 1)
+                xh,yh = np.where(test2 == 1)
                 for [xs,ys] in np.column_stack((xh,yh)):
                     data[xs-1:xs+1,y,ys-1:ys+1] = np.zeros((2,2))
                     count += 1
@@ -309,7 +310,7 @@ def hit_and_miss_2d(data):
                     count += 1
                     
                 test2 = ndimage.binary_hit_or_miss(old, structure1=hit_structure2).astype(int)
-                xh,yh = np.where(test1 == 1)
+                xh,yh = np.where(test2 == 1)
                 for [xs,ys] in np.column_stack((xh,yh)):
                     data[xs-1:xs+1,ys-1:ys+1,z] = np.zeros((2,2))
                     count += 1 

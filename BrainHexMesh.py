@@ -174,8 +174,7 @@ class BrainHexMesh():
             data = bm.coarsen(self.VOXEL_SIZE, data)  
             
         print("########## Performing cleaning operations on the data ##########")
-        
-        # Clean image removing isolated pixels and small holes
+            # Clean image removing isolated pixels and small holes
         bm.clean_voxel_data(data); 
         if lesion:
             # Smooth and remove features of lesions
@@ -190,25 +189,32 @@ class BrainHexMesh():
         # Remove empty rows/columns and plains from 3D array
         # data = bm.trim_data(data)
         
-        # Find and fill erroneous voids within model
-        print("########## Removing voids from data ##########")
-        maze = Maze(data);
-        solver = Maze_Solver(maze);
-        voidsToFill = solver.find_voids();
-        data = solver.fill_voids(voidsToFill);
-        
-        print("########## Removing disconnected regions from data ##########")
-        cont_data = bm.create_binary_image(data);
-        cont_data = cont_data-1;
-        cont_data = cont_data*(-1);
-        
-        maze2 = InverseMaze(cont_data)
-        solver2 = Maze_Solver(maze2);
-        voidsToFill = solver2.find_voids();
-        
-        for key in voidsToFill:
-            [x,y,z]  = [int(x) for x in key.split("-")]
-            data[x,y,z] = 0
+        change = True;
+        iterationCount = 0;        
+        while(change):
+            iterationCount += 1
+            print("### Iteration number " + str(iterationCount))
+            # Find and fill erroneous voids within model
+            print("########## Removing voids from data ##########")
+            maze = Maze(data);
+            solver = Maze_Solver(maze);
+            voidsToFill = solver.find_voids();
+            data = solver.fill_voids(voidsToFill);
+            
+            print("########## Removing disconnected regions from data ##########")
+            cont_data = bm.create_binary_image(data);
+            cont_data = cont_data-1;
+            cont_data = cont_data*(-1);
+            
+            maze2 = InverseMaze(cont_data)
+            solver2 = Maze_Solver(maze2);
+            voidsToFill = solver2.find_voids(); 
+            
+            for key in voidsToFill:
+                [x,y,z]  = [int(x) for x in key.split("-")]
+                data[x,y,z] = 0
+                
+            change = bm.clean_voxel_data(data);
         
         # Create CSF layer around GM
         if self.config.Add_CSF:
