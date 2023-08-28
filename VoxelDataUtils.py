@@ -130,7 +130,9 @@ def clean_voxel_data(start_data):
     print("Filling in holes")
     cleaned = fill_in_holes(cleaned, structure)
     print("Hit and miss cleaning")
+    print(np.sum(cleaned))
     hit_and_miss_2d(cleaned)
+    print(np.sum(cleaned))
     hit_and_miss(cleaned) 
     print("Filling in holes")
     cleaned = fill_in_holes(cleaned, structure)        
@@ -339,107 +341,107 @@ def fill_in_holes( data, structure = None):
         structure = create_structure()
     return ndimage.binary_fill_holes(data, structure=structure).astype(int)
 
-def binary_dilation( data, structure=None):
+def binary_dilation( data, structure=None, iterations=1):
     if np.any(structure == None):
         structure = create_structure()
-    return ndimage.binary_dilation(data, structure=structure, iterations=2).astype(int)
+    return ndimage.binary_dilation(data, structure=structure, iterations=iterations).astype(int)
 
-def binary_erosion( data, structure=None):
+def binary_erosion( data, structure=None, iterations=1):
     if np.any(structure == None):
         structure = create_structure()
-    return ndimage.binary_erosion(data, structure=structure, iterations=2).astype(int)
+    return ndimage.binary_erosion(data, structure=structure, iterations=iterations).astype(int)
 
 def create_structure():       
     structure = ndimage.generate_binary_structure(3,3)
     return structure
 
-def two_d_cleaning(start_data):
-    print("Performing 2D cleaning operations on data")
-    cleaned = create_binary_image(start_data)
-    two_d_fill(cleaned)
-    assign_materials_labels(start_data,cleaned)
+# def two_d_cleaning(start_data):
+#     print("Performing 2D cleaning operations on data")
+#     cleaned = create_binary_image(start_data)
+#     two_d_fill(cleaned)
+#     assign_materials_labels(start_data,cleaned)
 
-def two_d_fill(cleaned):
-    hit_structure = np.ones((3,3))
-    hit_structure[1,1] = 0
-    hit_structureA = np.ones((2,2))
-    hit_structureA[0,0] = 0
-    hit_structureA[1,1] = 0
-    hit_structureB = np.ones((2,2))
-    hit_structureB[1,0] = 0
-    hit_structureB[0,1] = 0
+# def two_d_fill(cleaned):
+#     hit_structure = np.ones((3,3))
+#     hit_structure[1,1] = 0
+#     hit_structureA = np.ones((2,2))
+#     hit_structureA[0,0] = 0
+#     hit_structureA[1,1] = 0
+#     hit_structureB = np.ones((2,2))
+#     hit_structureB[1,0] = 0
+#     hit_structureB[0,1] = 0
     
-    for x in np.arange(0,(cleaned.shape[0])):
-        if (np.sum(cleaned[x,:,:]) > 0): 
-            old = cleaned[x,:,:]
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[x,px,py] = 1
+#     for x in np.arange(0,(cleaned.shape[0])):
+#         if (np.sum(cleaned[x,:,:]) > 0): 
+#             old = cleaned[x,:,:]
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[x,px,py] = 1
             
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[x,px,py-1] = 0
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[x,px,py-1] = 0
             
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[x,px,py] = 0
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[x,px,py] = 0
                 
-    for y in np.arange(0,(cleaned.shape[1])):
-        if (np.sum(cleaned[:,y,:]) > 0): 
-            old = cleaned[:,y,:]
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[px,y,py] = 1
+#     for y in np.arange(0,(cleaned.shape[1])):
+#         if (np.sum(cleaned[:,y,:]) > 0): 
+#             old = cleaned[:,y,:]
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[px,y,py] = 1
             
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[px,y,py-1] = 0
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[px,y,py-1] = 0
             
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[px,y,py] = 0
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[px,y,py] = 0
                 
-    for z in np.arange(0,(cleaned.shape[2])):
-        if (np.sum(cleaned[:,:,z]) > 0): 
-            old = cleaned[:,:,z]
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[px,py,z] = 1
+#     for z in np.arange(0,(cleaned.shape[2])):
+#         if (np.sum(cleaned[:,:,z]) > 0): 
+#             old = cleaned[:,:,z]
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structure).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[px,py,z] = 1
             
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[px,py-1,z] = 0
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structureA).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[px,py-1,z] = 0
             
-            g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
-            loc = np.where(g == 1)
-            for r in range(len(loc[0])):
-                px = loc[0][r]
-                py = loc[1][r]
-                cleaned[px,py,z] = 0
+#             g = ndimage.binary_hit_or_miss(old, structure1=hit_structureB).astype(int)
+#             loc = np.where(g == 1)
+#             for r in range(len(loc[0])):
+#                 px = loc[0][r]
+#                 py = loc[1][r]
+#                 cleaned[px,py,z] = 0
     
    
 def assign_materials_labels(labelled_data, end):
@@ -458,7 +460,7 @@ def assign_materials_labels(labelled_data, end):
                 elif (labelled_data[x,y,z] != 0) and (end[x,y,z] == 0):
                     labelled_data[x,y,z] = 0; 
             
-def add_CSF(data,layers=1):
+def add_CSF(data,layers=1, full=False):
     from PointCloud import PointCloud
     from scipy.spatial import Delaunay
     
@@ -480,16 +482,6 @@ def add_CSF(data,layers=1):
     xs,ys,zs = np.where(data == 57)
     for [x,y,z] in np.column_stack((xs,ys,zs)):
         newData[x,y,z] = 3
-
-    inflated_CSF = binary_dilation(newData)
-    for i in range(layers-1):
-        inflated_CSF = binary_dilation(inflated_CSF)
-
-    xs,ys,zs = np.where(inflated_CSF == 1)
-    current_dimensions = inflated_CSF.shape
-    for [x,y,z] in np.column_stack((xs,ys,zs)):
-        if newData[x,y,z] == 0:
-            newData[x,y,z] = 3 
         
     # Create point cloud
     pointCloud = PointCloud();
@@ -512,7 +504,7 @@ def add_CSF(data,layers=1):
         mid_y = int((int(ymin) +int(ymax+1))/2)
         for x in range(int(xmin),int(xmax+1)):
             for y in range(int(mid_y),int(ymin-1),-1):
-                if (data[x,y,z] == 0):
+                if (data[x,y,z] == 0 and (y<ymax_tot)):
                     if in_hull([x,y], hull):
                         pointCloud.add_point_to_cloud([x,y,z,24])
                         data[x,y,z] = 24
@@ -520,7 +512,7 @@ def add_CSF(data,layers=1):
                     else:
                         break;
             for y in range(int(mid_y),int(ymax+1)):
-                if (data[x,y,z] == 0):
+                if (data[x,y,z] == 0 and (y<ymax_tot)):
                     if in_hull([x,y], hull):
                         pointCloud.add_point_to_cloud([x,y,z,24])
                         data[x,y,z] = 24
@@ -583,21 +575,26 @@ def add_CSF(data,layers=1):
                         newData[x,y,z] = 24 
                     else: 
                         break;
-def create_binary_image(current_data, search=-1):
-    current_dimensions = current_data.shape
-    newData = np.zeros(current_dimensions, int)
-    for x in range(current_dimensions[0]):
-        if (np.sum(current_data[x,:,:]) > 0):
-            for y in range(current_dimensions[1]):
-                if (np.sum(current_data[x,y,:]) > 0):
-                    for z in range(current_dimensions[2]):
-                        if (search== -1) and (current_data[x,y,z] != 0):
-                            newData[x,y,z] = 1
-                        elif (search != -1) and (current_data[x,y,z] == search):
-                            newData[x,y,z] = 1
-                            
-    return newData
-     
+                        
+                        
+            
+    # if full:
+    #     xs,ys,zs = np.where(data == 57)
+    #     for [x,y,z] in np.column_stack((xs,ys,zs)):
+    #         newData[x,y,z] = 3
+
+    inflated_CSF = binary_dilation(data)
+    for i in range(layers-1):
+        inflated_CSF = binary_dilation(inflated_CSF)
+
+    xs,ys,zs = np.where(inflated_CSF == 1)
+    current_dimensions = inflated_CSF.shape
+    for [x,y,z] in np.column_stack((xs,ys,zs)):
+        if data[x,y,z] == 0:
+            data[x,y,z] = 24; 
+            
+            
+    
 def get_bounding_box(data):
     maxValues = [-100000,-100000,-100000]
     minValues = [100000,100000,100000]
@@ -711,7 +708,7 @@ def trim_data(data):
         if np.sum(data[x,:,:]) != 0:
             end = x
             break
-    data = data[start-1:end+1,:,:]
+    data = data[start-1:end+2,:,:]
     
     start = 0
     end = current_dimensions[1]
@@ -724,7 +721,7 @@ def trim_data(data):
         if np.sum(data[:,y,:]) != 0:
             end = y
             break
-    data = data[:,start-1:end+1,:]
+    data = data[:,start-1:end+2,:]
     
     start = 0
     end = current_dimensions[2]
@@ -737,7 +734,7 @@ def trim_data(data):
         if np.sum(data[:,:,z]) != 0:
             end = z
             break
-    data = data[:,:,start-1:end+1]
+    data = data[:,:,start-1:end+2]
     
     return data
         

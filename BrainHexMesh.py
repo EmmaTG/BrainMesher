@@ -5,6 +5,8 @@ Created on Wed May 10 09:11:56 2023
 """
 
 import numpy as np
+from Maze import Maze
+from InverseMaze import InverseMaze
 import MeshUtils as mu
 import VoxelDataUtils as bm
 from Maze_Solver import Maze_Solver
@@ -103,11 +105,35 @@ class BrainHexMesh():
             file = self.config.fileIn
         return bm.import_file(path,file)
     
+    def homogenize_data(self, data, unusedLabel):
+        """
+        Homogenizes data based on materials labels
+
+        Parameters
+        ----------
+        data : 3D array
+            voxel data
+        unusedLabel : string
+            label name of voxel label numbers to be removed at the end of the model creation
+            
+        Outputs
+        ----------
+        3D array:
+            3D data array of voxels with label numbers
+        """
+        # Homogenize labels
+        label_number = 0
+        if self.material_labels.labelsMap.get(unusedLabel,False):
+            label_number = self.material_labels.labelsMap[unusedLabel][0]
+                    
+        # Replace regions with multiple labels with only one label, if label is not required replace with unused/0
+        data = self.material_labels.homogenize_material_labels(data, replace = label_number); 
+        return data;
+        
     
     def preprocess(self,data, lesion=False, edemicTissue=1, unusedLabel="unusedLabel"):
         """
         Performs all preprocessing steps on voxel data:\n
-        1. Homogenize data labels\n
         2. Corasen model, if requested\n
         3. Clean voxel data\n
         4. Clean lesion, if requested\n
@@ -138,14 +164,7 @@ class BrainHexMesh():
         Errors
         ----------
         Error raised lesion smoothing requested but no lesion material exists in mateirls labels object
-        """        
-        # Homogenize labels
-        label_number = 0
-        if self.material_labels.labelsMap.get(unusedLabel,False):
-            label_number = self.material_labels.labelsMap[unusedLabel][0]
-                    
-        # Replace regions with multiple labels with only one label, if label is not required replace with unused/0
-        data = self.material_labels.homogenize_material_labels(data, replace = label_number);             
+        """                     
         
         # Coarsen the brain model
         self.VOXEL_SIZE= 1;
@@ -169,17 +188,38 @@ class BrainHexMesh():
             bm.add_edemic_tissue(data, edemicTissue, lesion_label, 29)        
         
         # Remove empty rows/columns and plains from 3D array
-        bm.trim_data(data)
+        # data = bm.trim_data(data)
         
         # Find and fill erroneous voids within model
         print("########## Removing voids from data ##########")
-        solver = Maze_Solver(data);
-        data = solver.find_and_fill_voids();
+        maze = Maze(data);
+        solver = Maze_Solver(maze);
+        voidsToFill = solver.find_voids();
+        data = solver.fill_voids(voidsToFill);
+        
+        print("########## Removing disconnected regions from data ##########")
+        cont_data = bm.create_binary_image(data);
+        cont_data = cont_data-1;
+        cont_data = cont_data*(-1);
+        
+        maze2 = InverseMaze(cont_data)
+        solver2 = Maze_Solver(maze2);
+        voidsToFill = solver2.find_voids();
+        
+        for key in voidsToFill:
+            [x,y,z]  = [int(x) for x in key.split("-")]
+            data[x,y,z] = 0
         
         # Create CSF layer around GM
         if self.config.Add_CSF:
             print("########## Adding layers of CSF ##########")
             bm.add_CSF(data,layers=self.config.layers);
+            
+            print("########## Checking for voids in csf data ##########")
+            csfMaze = Maze(data)
+            solver3 = Maze_Solver(csfMaze);
+            voidsToFill = solver3.find_voids();
+            data = solver3.fill_voids(voidsToFill);
         return data       
         
     def make_mesh(self, pc_data):
@@ -286,22 +326,24 @@ class BrainHexMesh():
                 ica_nodes = [mesh.nodes[n] for n in ica]
                 boundary_element = QuadElement(boundary_number, ica_nodes, mat=[elementNUmber])
                 [element_num,face] = [int(x) for x in compoundKey.split("-")]
-                [xc,yc,zc,m] = e_centroids[element_num]    
+                [xc,yc,zc,m] = e_centroids[element_num]
                 Boundary = fullyClosed
                 if m == 24:
-                    boundary_number += 1             
-                    elements_inline = e_centroids
-                    elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
-                    elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
-                    elements_inline = elements_inline[elements_inline[:, 1].argsort()]
-                    current_element_idx, = np.where(elements_inline[:,1]>=yc)
-                    if len(current_element_idx)!= 0:
-                        current_element_idx = current_element_idx[0]
-                        elements_inline = elements_inline[:current_element_idx]
-                    mats = list(elements_inline[:,3])
-                    Boundary = self.__validCSFBoundary(mats);
-                if Boundary:
-                    boundary_elements_map[boundary_number] = boundary_element
+                    if not fullyClosed:
+                        if m == 24:
+                            boundary_number += 1             
+                            elements_inline = e_centroids
+                            elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
+                            elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
+                            elements_inline = elements_inline[elements_inline[:, 1].argsort()]
+                            current_element_idx, = np.where(elements_inline[:,1]>=yc)
+                            if len(current_element_idx)!= 0:
+                                current_element_idx = current_element_idx[0]
+                                elements_inline = elements_inline[:current_element_idx]
+                            mats = list(elements_inline[:,3])
+                            Boundary = self.__validCSFBoundary(mats);
+                    if Boundary:
+                        boundary_elements_map[boundary_number] = boundary_element
                 else:
                     boundary_number -= 1;
             return boundary_elements_map;

@@ -27,8 +27,9 @@ from os.path import exists
 from Mesh import Node, Element, Mesh;
 from Writer import Writer;
 
-inputPath = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\Tumor_growth\\"
-f = "output_test_slice_x"
+# inputPath = "C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\Tumor_growth\\"
+inputPath = "C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\Atrophy_Results\OAS1_0004_csfTest\\"
+f = "OAS1_0004_csfTest_Slice_long"
 dataMap = {}
 grid = readVtk(inputPath, f);
 
@@ -48,6 +49,7 @@ for k in range(grid.GetNumberOfCells()):
     grid.GetCellPoints(k, cellIds)
     ica = []
     mat = 0
+    displacement_tot = [0,0,0];
     for i in range(8):
         pointId = cellIds.GetId(i)
         pointPosition = grid.GetPoint(pointId)        
@@ -56,22 +58,27 @@ for k in range(grid.GetNumberOfCells()):
         nodeValue = point_position_to_nodes.get(position_key,-1)
         if nodeValue != -1:
             cell_point_to_nodes[pointId] = nodeValue
+            node = nodeMap[int(nodeValue)]
+            displacement = disp_data[nodeValue];
             assert [disp_data.get(nodeValue,-1) != -1]
         else:
-            nodeValue = pointId
-            cell_point_to_nodes[pointId] = nodeValue
-            point_position_to_nodes[position_key] = pointId
-            displacement = displacementArray.GetTuple(pointId)
-            disp_data[pointId] = displacement
-            newPosition = [0,0,0]
-            for d in range(len(displacement)):
+           nodeValue = pointId
+           cell_point_to_nodes[pointId] = nodeValue
+           point_position_to_nodes[position_key] = pointId
+           displacement = [round(y,6) for y in displacementArray.GetTuple(pointId)]
+           disp_data[pointId] = displacement
+           newPosition = [round(y,6) for y in pointPosition]
+           for d in range(len(displacement)):
                 newPosition[d] = pointPosition[d]+displacement[d]
-            node = Node(int(nodeValue),newPosition)
-            node.addData("displacement", [round(y,6) for y in displacement])
-            nodeMap[int(nodeValue)] = node;
-        ica.append(nodeValue)
+           node = Node(int(nodeValue),newPosition)
+           node.addData("displacement", displacement)
+           nodeMap[int(nodeValue)] = node;
+        for d in range(3):
+            displacement_tot[d] += displacement[d];
+        ica.append(node)
     element = Element(k,ica)
-    element.setMaterial(int(mat/8))
+    element.setMaterial((mat/8))
+    element.properties['displacement'] = [d/8. for d in displacement_tot]
     elementsMap[k] = element
     
 mesh.nodes = nodeMap
@@ -79,10 +86,10 @@ mesh.elements = elementsMap
 
 ## Write deformed mesh to new vtk
 path = inputPath
-filename = "output_"+f
+filename = f + "_output_deformed"
 writer = Writer()
-writer.openWriter("vtk", filename, path, mesh)
-writer.writeMeshData()
+writer.openWriter("vtk", filename, path)
+writer.writeMeshData(mesh)
 writer.closeWriter()
 
 

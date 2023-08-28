@@ -10,6 +10,8 @@ import MeshUtils as mu
 import MeshTransformations as mt
 from Node import Node
 from Element import Element, QuadElement, HexElement    
+from abc import ABC, abstractmethod;
+
 
 class Mesh():
     """
@@ -462,7 +464,8 @@ class Mesh():
         element_number : int
             element number to be deleted
         """
-        boundaryNodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.boundaryElements));
+        if not (hasattr(self, "boundaryNodeToElements")):
+            self.boundaryNodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.boundaryElements));
         if self.elements.get(element_number,False):    
             element = self.elements[element_number]
             for n in element.ica:
@@ -470,7 +473,7 @@ class Mesh():
                 connectedElements.remove(element_number)
                 if (len(connectedElements) == 0):
                     self.nodeToElements.pop(n.number)
-                    if not (boundaryNodeToElements.get(n.number,False)):
+                    if not (self.boundaryNodeToElements.get(n.number,False)):
                         self.nodes.pop(n.number)
             self.elements.pop(element_number)
         

@@ -5,6 +5,7 @@ Created on Thu Jul 13 08:18:00 2023
 @author: grife
 """
 from abc import ABC, abstractmethod;
+from re import sub
 
 class IWriter(ABC):
     
@@ -377,14 +378,26 @@ class VTKWriter(BaseWriter,IWriter):
         for num,e in boundaryElementMap.items():
             material = e.getMaterial()[0]
             self.f.write(str(int(material)) + "\n")            
-            
+        
+        self.writeCellData()
         self.writePointData()
-    
+        
+    def writeCellData(self):
+        elementMap = self.__mesh__.elements
+        d  = "displacement"
+        if (elementMap[list(elementMap.keys())[0]].properties.get(d,False)):
+            dataSize = 3
+            self.f.write("FIELD FieldData 1\n")
+            self.f.write("{}_centroid {} {} float\n".format(d, dataSize, len(elementMap)))
+            for num,e in elementMap.items():
+                data = e.properties.get(d,[0]*dataSize)
+                line = sub("[\[\]\(\),]*", '', str(data))
+                self.f.write(line + "\n")
+            
     def writePointData(self):
         """ 
         This method writes any data stored at the nodes
         """
-        from re import sub
         nodes = self.__mesh__.nodes
         nodeKeys = self.__nodeKeys__
         dataToWrite = self.__mesh__.dataToWrite

@@ -11,7 +11,13 @@ class Maze():
     
     def __init__(self, grid):
         self.grid = grid
-        self.shape = grid.shape
+    
+    def get_end_point(self,x,y,z):
+        current_dimensions = self.grid.shape
+        xEnd = 0 if (x < (current_dimensions[0]-x)) else (current_dimensions[0]-1);
+        yEnd = 0 if (y < (current_dimensions[1]-y)) else (current_dimensions[1]-1);
+        zEnd = 0 if (z < (current_dimensions[2]-z)) else (current_dimensions[2]-1);
+        return [xEnd,yEnd,zEnd];        
         
     def find_zero_neighbours(self, x, y, z):
         neighbours = [];
@@ -60,11 +66,11 @@ class Maze():
     
     def isExit(self,x,y,z):
         if (( np.sum(self.grid[0:x,y,z]) == 0 ) or
-                ( np.sum(self.grid[x+1:,y,z]) == 0 ) or
+                ( np.sum(self.grid[x:,y,z]) == 0 ) or
                 ( np.sum(self.grid[x,0:y,z]) == 0 ) or
-                ( np.sum(self.grid[x,y+1:,z]) == 0 ) or
+                ( np.sum(self.grid[x,y:,z]) == 0 ) or
                 ( np.sum(self.grid[x,y,0:z]) == 0 ) or
-                ( np.sum(self.grid[x,y,z+1:]) == 0 )):
+                ( np.sum(self.grid[x,y,z:]) == 0 )):
             return True
         return False
         
