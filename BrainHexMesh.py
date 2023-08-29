@@ -14,12 +14,24 @@ from Writer import Writer
 from abc import ABC, abstractmethod;
 
 class IpreProcessAction(ABC):
+    """
+    Command interface for additional preprocessing step outisde of cleaning
+    """
+    
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'performAction') and 
+                callable(subclass.performAction) or 
+                NotImplemented)
     
     @abstractmethod 
     def performAction(self, data, **kwargs):
-        pass;
+        raise NotImplementedError;
         
 class CleanLesion(IpreProcessAction):
+    """
+    Cleans added lesion to ensure smooth lesion boundary
+    """
     
     def __init__(self,lesion_label):
         self.label = lesion_label
@@ -29,8 +41,11 @@ class CleanLesion(IpreProcessAction):
         bm.clean_lesion(data, self.label)
         
 class AddEdemicTissue(IpreProcessAction):
+    """
+    Add layers of edemic tissue to outside of lesion
+    """
     
-    def __init__(self, lesion_label=25, edemic_tissue_label=29, layers = 1 ):
+    def __init__(self, lesion_label = 25, edemic_tissue_label = 29, layers = 1 ):
         self.label = lesion_label
         self.edemic_tissue_label = edemic_tissue_label
         self.layers = layers;
@@ -44,28 +59,29 @@ class ICSFBoundaryTest(ABC):
     Interface for tests on CSF boundaries. If certain criteria have to be met for a boundary element to be added.
     """
     
+    @classmethod
+    def __subclasshook__(cls, subclass):
+        return (hasattr(subclass, 'validElement') and 
+                callable(subclass.validElement) or 
+                NotImplemented)
+    
     @abstractmethod
     def validElement(self, element_num):
-        pass;
-
+        raise NotImplementedError
+ 
         
-class OnlyCSF(ICSFBoundaryTest):
+class OnlyOnLabel(ICSFBoundaryTest):
     """
     Boundary test to add elements that are only attached to CSF elements 
     """
     
-    def __init__(self, mesh):
-        e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
-        count = 0
-        for e_num,element in mesh.elements.items():
-            element_centroid = element.calculate_element_centroid()
-            e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
-            count += 1
-        self.e_centroids = np.stack(e_centroids, axis = 0)
+    def __init__(self, mesh, label):
+        self.mesh = mesh;
+        self.label = label;
     
     def validElement(self, element_num):
-        [xc,yc,zc,m] = self.e_centroids[element_num]
-        if m == 24:            
+        mat = self.mesh.elements[element_num].getMaterial();
+        if mat.count(self.label):            
             return True;
         return False; 
     
@@ -301,7 +317,7 @@ class BrainHexMesh():
         # Create CSF layer around GM
         if (self.config.Add_CSF) and (not add_CSF_Function is None):
             print("########## Adding layers of CSF ##########")
-            add_CSF_Function(data,layers=self.config.layers)
+            add_CSF_Function(data, layers=self.config.layers)
             
             print("########## Checking for voids in csf data ##########")
             csfMaze = Maze(data)
@@ -376,12 +392,12 @@ class BrainHexMesh():
         elementsOnBoundary = mesh.locate_elements_on_boundary(elementsNotIncluded = [24])
         mesh.replace_outer_region(2, 3, elementsOnBoundary)        
 
-        
-    def createCSFBoundary(self,mesh, elementNUmber, boundaryTest=None):
+
+    def createBoundary(self, mesh, elementNUmber, elementNotIncluded = [], boundaryTest=None):
         """
         Creates CSF boundary elements. 
         Does not create CSF Boundary elements below subcortical structures at base of brain
-
+    
         Parameters
         ----------
         mesh: Mesh
@@ -394,28 +410,26 @@ class BrainHexMesh():
         boundary_elements_map: Map(int,QuadElement)
             Map of boundary elements to thier element numbers        
             
-        """
-        if (self.config.Add_CSF):            
-            # mesh.create_node_to_element_connectivity()
-            boundary_elements_map = {}
-            boundary_number = max(list(mesh.elements.keys()))
-            boundaryElementsOnCSF = mesh.locate_boundary_element_map() 
-            print("Locating CSF boundary")
-            for compoundKey,ica in boundaryElementsOnCSF.items():
-                boundary_number += 1;
-                ica_nodes = [mesh.nodes[n] for n in ica]
-                boundary_element = QuadElement(boundary_number, ica_nodes, mat=[elementNUmber])
-                [element_num,face] = [int(x) for x in compoundKey.split("-")]
-                # [xc,yc,zc,m] = e_centroids[element_num]
-                Boundary = True;
-                if not boundaryTest is None:
-                    Boundary = boundaryTest.validElement(element_num)
-                if Boundary:
-                    boundary_elements_map[boundary_number] = boundary_element
-                else:
-                    boundary_number -= 1;
-            return boundary_elements_map;
-        return {};
+        """            
+        # mesh.create_node_to_element_connectivity()
+        boundary_elements_map = {}
+        boundary_number = max(mesh.elements.keys()) if len(mesh.boundaryElements) == 0 else max(mesh.boundaryElements.keys())
+        boundaryElements = mesh.locate_boundary_element_map(elementsNotIncluded=elementNotIncluded) 
+        print("Locating CSF boundary")
+        for compoundKey,ica in boundaryElements.items():
+            boundary_number += 1;
+            ica_nodes = [mesh.nodes[n] for n in ica]
+            boundary_element = QuadElement(boundary_number, ica_nodes, mat=[elementNUmber])
+            [element_num,face] = [int(x) for x in compoundKey.split("-")]
+            # [xc,yc,zc,m] = e_centroids[element_num]
+            Boundary = True;
+            if not boundaryTest is None:
+                Boundary = boundaryTest.validElement(element_num)
+            if Boundary:
+                boundary_elements_map[boundary_number] = boundary_element
+            else:
+                boundary_number -= 1;
+        return boundary_elements_map;
         
     def add_region(self,cc_data,current_data, region_value):
         """
