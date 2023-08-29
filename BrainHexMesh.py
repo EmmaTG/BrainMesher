@@ -7,11 +7,102 @@ Created on Wed May 10 09:11:56 2023
 import numpy as np
 from Maze import Maze
 from InverseMaze import InverseMaze
-import MeshUtils as mu
 import VoxelDataUtils as bm
 from Maze_Solver import Maze_Solver
 from Mesh import Mesh, QuadElement
-from Writer import Writer
+from Writer import Writer    
+from abc import ABC, abstractmethod;
+
+class IpreProcessAction(ABC):
+    
+    @abstractmethod 
+    def performAction(self, data, **kwargs):
+        pass;
+        
+class CleanLesion(IpreProcessAction):
+    
+    def __init__(self,lesion_label):
+        self.label = lesion_label
+    
+    def performAction(self, data):
+        print("########## Cleaning Lesion ##########")
+        bm.clean_lesion(data, self.label)
+        
+class AddEdemicTissue(IpreProcessAction):
+    
+    def __init__(self, lesion_label=25, edemic_tissue_label=29, layers = 1 ):
+        self.label = lesion_label
+        self.edemic_tissue_label = edemic_tissue_label
+        self.layers = layers;
+    
+    def performAction(self, data):
+        print("########## Creating edemic Tissue ##########")
+        bm.add_edemic_tissue(data, self.layers, self.label, self.edemic_tissue_label)
+        
+class ICSFBoundaryTest(ABC):
+    """
+    Interface for tests on CSF boundaries. If certain criteria have to be met for a boundary element to be added.
+    """
+    
+    @abstractmethod
+    def validElement(self, element_num):
+        pass;
+
+        
+class OnlyCSF(ICSFBoundaryTest):
+    """
+    Boundary test to add elements that are only attached to CSF elements 
+    """
+    
+    def __init__(self, mesh):
+        e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
+        count = 0
+        for e_num,element in mesh.elements.items():
+            element_centroid = element.calculate_element_centroid()
+            e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
+            count += 1
+        self.e_centroids = np.stack(e_centroids, axis = 0)
+    
+    def validElement(self, element_num):
+        [xc,yc,zc,m] = self.e_centroids[element_num]
+        if m == 24:            
+            return True;
+        return False; 
+    
+class OpenBottomCSF(ICSFBoundaryTest):
+    """
+    Boundary test to add elements that are attached to CSF elements and also are not directly below the subcortical structures
+    """
+    
+    def __init__(self, mesh):
+        e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
+        count = 0
+        for e_num,element in mesh.elements.items():
+            element_centroid = element.calculate_element_centroid()
+            e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
+            count += 1
+        self.e_centroids = np.stack(e_centroids, axis = 0)
+    
+    def validElement(self, element_num):
+        [xc,yc,zc,m] = self.e_centroids[element_num]
+        if m == 24:            
+            elements_inline = self.e_centroids
+            elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
+            elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
+            elements_inline = elements_inline[elements_inline[:, 1].argsort()]
+            current_element_idx, = np.where(elements_inline[:,1]>=yc)
+            if len(current_element_idx)!= 0:
+                current_element_idx = current_element_idx[0]
+                elements_inline = elements_inline[:current_element_idx]
+            mats = list(elements_inline[:,3])
+            
+            grey_matter_label = 3
+            white_matter_label = 2
+            csf_label = 24
+            
+            valid_element = ((mats.count(csf_label) + mats.count(grey_matter_label) + mats.count(white_matter_label)) == len(mats))
+            return valid_element;
+        return False;
 
 class BrainHexMesh():
     """
@@ -131,7 +222,7 @@ class BrainHexMesh():
         return data;
         
     
-    def preprocess(self,data, lesion=False, edemicTissue=1, unusedLabel="unusedLabel"):
+    def preprocess(self, data, *args, unusedLabel="unusedLabel", add_CSF_Function=None):
         """
         Performs all preprocessing steps on voxel data:\n
         2. Corasen model, if requested\n
@@ -176,18 +267,9 @@ class BrainHexMesh():
         print("########## Performing cleaning operations on the data ##########")
             # Clean image removing isolated pixels and small holes
         bm.clean_voxel_data(data); 
-        if lesion:
-            # Smooth and remove features of lesions
-            lesion_label = self.material_labels.labelsMap.get("Lesion",[-1000])[0]
-            assert lesion_label != -1000, "Lesion label not defined in materials label"
-            bm.clean_lesion(data,lesion_label)
-        if edemicTissue>0:
-            # Add edemicTissue number of layers of tissue around lesion
-            self.material_labels.addLabelToMap('EdemicTissue' , [29]);
-            bm.add_edemic_tissue(data, edemicTissue, lesion_label, 29)        
         
-        # Remove empty rows/columns and plains from 3D array
-        # data = bm.trim_data(data)
+        for a in args:
+            a.performAction(data);
         
         change = True;
         iterationCount = 0;        
@@ -217,9 +299,9 @@ class BrainHexMesh():
             change = bm.clean_voxel_data(data);
         
         # Create CSF layer around GM
-        if self.config.Add_CSF:
+        if (self.config.Add_CSF) and (not add_CSF_Function is None):
             print("########## Adding layers of CSF ##########")
-            bm.add_CSF(data,layers=self.config.layers);
+            add_CSF_Function(data,layers=self.config.layers)
             
             print("########## Checking for voids in csf data ##########")
             csfMaze = Maze(data)
@@ -295,7 +377,7 @@ class BrainHexMesh():
         mesh.replace_outer_region(2, 3, elementsOnBoundary)        
 
         
-    def createCSFBoundary(self,mesh,elementNUmber, fullyClosed=False):
+    def createCSFBoundary(self,mesh, elementNUmber, boundaryTest=None):
         """
         Creates CSF boundary elements. 
         Does not create CSF Boundary elements below subcortical structures at base of brain
@@ -313,15 +395,7 @@ class BrainHexMesh():
             Map of boundary elements to thier element numbers        
             
         """
-        if (self.config.Add_CSF):
-            e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
-            count = 0
-            for e_num,element in mesh.elements.items():
-                element_centroid = element.calculate_element_centroid()
-                e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
-                count += 1
-            e_centroids = np.stack(e_centroids, axis = 0)
-            
+        if (self.config.Add_CSF):            
             # mesh.create_node_to_element_connectivity()
             boundary_elements_map = {}
             boundary_number = max(list(mesh.elements.keys()))
@@ -332,49 +406,16 @@ class BrainHexMesh():
                 ica_nodes = [mesh.nodes[n] for n in ica]
                 boundary_element = QuadElement(boundary_number, ica_nodes, mat=[elementNUmber])
                 [element_num,face] = [int(x) for x in compoundKey.split("-")]
-                [xc,yc,zc,m] = e_centroids[element_num]
-                Boundary = fullyClosed
-                if m == 24:
-                    if not fullyClosed:
-                        if m == 24:
-                            boundary_number += 1             
-                            elements_inline = e_centroids
-                            elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
-                            elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
-                            elements_inline = elements_inline[elements_inline[:, 1].argsort()]
-                            current_element_idx, = np.where(elements_inline[:,1]>=yc)
-                            if len(current_element_idx)!= 0:
-                                current_element_idx = current_element_idx[0]
-                                elements_inline = elements_inline[:current_element_idx]
-                            mats = list(elements_inline[:,3])
-                            Boundary = self.__validCSFBoundary(mats);
-                    if Boundary:
-                        boundary_elements_map[boundary_number] = boundary_element
+                # [xc,yc,zc,m] = e_centroids[element_num]
+                Boundary = True;
+                if not boundaryTest is None:
+                    Boundary = boundaryTest.validElement(element_num)
+                if Boundary:
+                    boundary_elements_map[boundary_number] = boundary_element
                 else:
                     boundary_number -= 1;
             return boundary_elements_map;
         return {};
-                
-    def __validCSFBoundary(self, mats): 
-        """
-        Private method to determine if elements in selected row are valid to be added to boundary elements
-    
-        Parameters
-        ----------
-        mats : array(int)
-            array of ints defining element material in row normal to boundary element
-            
-        Outputs
-        ----------
-        valid_element: boolean
-            
-        """   
-        grey_matter_label = self.material_labels.get_homogenized_labels_map()['GreyMatter']
-        white_matter_label = self.material_labels.get_homogenized_labels_map()['WhiteMatter']
-        csf_label = self.material_labels.get_homogenized_labels_map()['CSF']
-        
-        valid_element = ((mats.count(csf_label) + mats.count(grey_matter_label) + mats.count(white_matter_label)) == len(mats))
-        return valid_element;
         
     def add_region(self,cc_data,current_data, region_value):
         """

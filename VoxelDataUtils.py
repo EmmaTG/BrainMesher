@@ -18,6 +18,7 @@ from GridBox import GridBox
 """
 A module of functions to assist with manipulating voxel data
 """
+
     
 def in_hull(p, hull):
     """
@@ -461,7 +462,7 @@ def assign_materials_labels(labelled_data, end):
                 elif (labelled_data[x,y,z] != 0) and (end[x,y,z] == 0):
                     labelled_data[x,y,z] = 0; 
             
-def add_CSF(data,layers=1, full=False):
+def add_full_CSF(data,layers=1):
     from PointCloud import PointCloud
     from scipy.spatial import Delaunay
     
@@ -594,7 +595,131 @@ def add_CSF(data,layers=1, full=False):
         if data[x,y,z] == 0:
             data[x,y,z] = 24; 
             
+def add_partial_CSF(data,layers=1):
+    from PointCloud import PointCloud
+    from scipy.spatial import Delaunay
+    
+    current_dimensions = data.shape
+    newData = np.zeros(current_dimensions, int)
+    
+    xs,ys,zs = np.where(data == 3)
+    for [x,y,z] in np.column_stack((xs,ys,zs)):
+        newData[x,y,z] = 3
+    
+    xs,ys,zs = np.where(data == 2)
+    for [x,y,z] in np.column_stack((xs,ys,zs)):
+        newData[x,y,z] = 3
+        
+    xs,ys,zs = np.where(data == 25)
+    for [x,y,z] in np.column_stack((xs,ys,zs)):
+        newData[x,y,z] = 3
+        
+    xs,ys,zs = np.where(data == 57)
+    for [x,y,z] in np.column_stack((xs,ys,zs)):
+        newData[x,y,z] = 3
+
+    inflated_CSF = binary_dilation(newData)
+    for i in range(layers-1):
+        inflated_CSF = binary_dilation(inflated_CSF)
+
+    xs,ys,zs = np.where(inflated_CSF == 1)
+    current_dimensions = inflated_CSF.shape
+    for [x,y,z] in np.column_stack((xs,ys,zs)):
+        if newData[x,y,z] == 0:
+            newData[x,y,z] = 3 
+        
+    # Create point cloud
+    pointCloud = PointCloud();
+    pc = pointCloud.create_point_cloud_from_voxel(newData);
+
+    xmin_tot,ymin_tot,zmin_tot = [int(p) for p in np.min(pc[:,:3],axis=0)]
+    xmax_tot,ymax_tot,zmax_tot = [int(p) for p in np.max(pc[:,:3],axis=0)]
+
+    # ymax_tot = 70
+
+    print("Filling in CSF z-dim")
+    for z in range(zmin_tot,zmax_tot+1):
+        points = pointCloud.get_slice(2,z);
+        points = points[:,:2]    
+        hull = Delaunay(points)
+        
+        xmin,ymin = np.min(points, axis=0)
+        xmax,ymax_slice = np.max(points, axis=0)
+        ymax = min([ymax_tot,ymax_slice])
+        mid_y = int((int(ymin) +int(ymax+1))/2)
+        for x in range(int(xmin),int(xmax+1)):
+            for y in range(int(mid_y),int(ymin-1),-1):
+                if (data[x,y,z] == 0) and (y<ymax_tot):
+                    if in_hull([x,y], hull):
+                        pointCloud.add_point_to_cloud([x,y,z,24])
+                        data[x,y,z] = 24
+                        newData[x,y,z] = 24
+                    else:
+                        break;
+            for y in range(int(mid_y),int(ymax+1)):
+                if (data[x,y,z] == 0) and (y<ymax_tot):
+                    if in_hull([x,y], hull):
+                        pointCloud.add_point_to_cloud([x,y,z,24])
+                        data[x,y,z] = 24
+                        newData[x,y,z] = 24                        
+                    else:
+                        break;
+
+    print("Filling in CSF x-dim")
+    for x in range(xmin_tot,xmax_tot+1):
+        points = pointCloud.get_slice(0,x);
+        points = points[:,1:3]    
+        hull = Delaunay(points)
+        
+        min1d,min2d = np.min(points, axis=0)
+        max1d_slice,max2d = np.max(points, axis=0)
+        max1d = min([ymax_tot,max1d_slice])
+        mid_2d = int((int(min2d) +int(max2d+1))/2)
+        for y in range(int(min1d),int(max1d+1)):
+            for z in range(int(mid_2d),int(min2d-1),-1):
+                if (data[x,y,z] == 0) and (y<ymax_tot):
+                    if in_hull([y,z], hull):
+                        pointCloud.add_point_to_cloud([x,y,z,24])
+                        data[x,y,z] = 24  
+                        newData[x,y,z] = 24 
+                    else:
+                        break;
             
+            for z in range(int(mid_2d),int(max2d+1)):
+                if (data[x,y,z] == 0) and (y<ymax_tot):
+                    if in_hull([y,z], hull):
+                        pointCloud.add_point_to_cloud([x,y,z,24])
+                        data[x,y,z] = 24  
+                        newData[x,y,z] = 24 
+                    else:
+                        break;
+        
+    print("Filling in CSF y-dim")
+    for y in range(ymin_tot,ymax_tot+1):
+        points = pointCloud.get_slice(1,y);
+        points = points[:,[0,2]]    
+        hull = Delaunay(points)
+        
+        min1d,min2d = np.min(points, axis=0)
+        max1d,max2d = np.max(points, axis=0)
+        mid_2d = int((int(min2d) +int(max2d+1))/2)
+        for x in range(int(min1d),int(max1d+1)):
+            for z in range(int(mid_2d),int(min2d-1),-1):
+                if (data[x,y,z] == 0) and (y<ymax_tot):
+                    if in_hull([x,z], hull):     
+                        pointCloud.add_point_to_cloud([x,y,z,24])
+                        data[x,y,z] = 24 
+                        newData[x,y,z] = 24 
+                    else: 
+                        break;
+            for z in range(int(mid_2d),int(max2d+1)):
+                if (data[x,y,z] == 0) and (y<ymax_tot):
+                    if in_hull([x,z], hull):     
+                        pointCloud.add_point_to_cloud([x,y,z,24])
+                        data[x,y,z] = 24 
+                        newData[x,y,z] = 24 
+                    else: 
+                        break;           
     
 def get_bounding_box(data):
     maxValues = [-100000,-100000,-100000]
