@@ -132,8 +132,8 @@ def clean_voxel_data(start_data):
     print("Filling in holes")
     cleaned = fill_in_holes(cleaned, structure)
     print("Hit and miss cleaning")
-    hit_and_miss_2d(cleaned)
-    hit_and_miss(cleaned) 
+    __hit_and_miss_2d(cleaned)
+    __hit_and_miss(cleaned) 
     print("Filling in holes")
     cleaned = fill_in_holes(cleaned, structure)  
     end = np.sum(cleaned)      
@@ -141,7 +141,7 @@ def clean_voxel_data(start_data):
     assign_materials_labels(start_data,cleaned)
     return (start != end)
 
-def hit_and_miss(data):
+def __hit_and_miss(data):
     
     hit_structureA_Z = np.ones((2,2,2))
     hit_structureA_Z[0,1,0] = 0
@@ -217,7 +217,7 @@ def hit_and_miss_3d_2x2x2(data, hit_structure, fill=0):
     return count
     
     
-def hit_and_miss_2d(data):
+def __hit_and_miss_2d(data):
     total_count = 0
     count = 1
     iteration= 0        
@@ -738,88 +738,6 @@ def get_bounding_box(data):
                                 if (minValues[d] > coords[d]):
                                     minValues[d] = coords[d]
     return maxValues + minValues
-
-def clean_lesion(current_data, lesionLabel):
-    ## TODO: Better creation of featureless lesion (possibly the same way featurless csf is created)
-    newData = create_binary_image(current_data, search=lesionLabel)
-    lesionOGSize = np.sum(newData)
-    if lesionOGSize > 0:
-        print("Lesion element size before: {}".format(lesionOGSize))
-    
-        structure1 = ndimage.generate_binary_structure(3,1)
-        structure2 = ndimage.generate_binary_structure(3,3)
-        
-        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
-        newData = ndimage.binary_erosion(newData, structure=structure1, iterations=1).astype(int)
-        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
-        newData = ndimage.binary_erosion(newData, structure=structure2, iterations=2).astype(int)
-    
-        hit_structure1 = np.ones((2,2,2))
-        hit_structure1[0,1,0] = 0
-        hit_structure2 = np.rot90(hit_structure1)
-        hit_structure3 = np.rot90(hit_structure1, k= 2)
-        hit_structure4 = np.rot90(hit_structure1, k= 3)
-        hit_structure5 = np.rot90(hit_structure1,axes=(1,2))
-        hit_structure6 = np.rot90(hit_structure5, k= 1)
-        hit_structure7 = np.rot90(hit_structure5, k= 2)
-        hit_structure8 = np.rot90(hit_structure5, k= 3)
-        total_count = 0;
-        count = 1
-        iteration = 0
-        while (count > 0 and iteration < 10):
-            iteration += 1
-            count = 0
-            count += hit_and_miss_3d_2x2x2(newData, hit_structure1, fill=1)
-            count += hit_and_miss_3d_2x2x2(newData, hit_structure2, fill=1)
-            count += hit_and_miss_3d_2x2x2(newData, hit_structure3, fill=1)
-            count += hit_and_miss_3d_2x2x2(newData, hit_structure4, fill=1)
-            count += hit_and_miss_3d_2x2x2(newData, hit_structure5, fill=1)
-            count += hit_and_miss_3d_2x2x2(newData, hit_structure6, fill=1)
-            count += hit_and_miss_3d_2x2x2(newData, hit_structure7, fill=1)
-            count += hit_and_miss_3d_2x2x2(newData, hit_structure8, fill=1)
-            total_count += count
-        print("Lesion cleaned after {} iterations and {} elements added".format(iteration,total_count))
-        
-        count_removed = 0
-        current_dimensions = current_data.shape
-        for x in range(current_dimensions[0]):
-            if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == lesionLabel)):
-                for y in range(current_dimensions[1]):
-                    if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == lesionLabel)):
-                        for z in range(current_dimensions[2]):
-                            if newData[x,y,z] == 1:
-                                current_data[x,y,z] = lesionLabel
-                            if newData[x,y,z] == 0 and (current_data[x,y,z] == lesionLabel):
-                                current_data[x,y,z] = 0;
-                                # box = GridBox(current_data,[x,y,z])
-                                # count_removed += 1
-                                # idx, = np.where(box.gridBox == 25)
-                                # box.gridBox = np.delete(box.gridBox,idx)
-                                # replacement_value = box.mode()
-                                # current_data[x,y,z] = replacement_value
-        print("previous lesion replaced with non-lesion: {}".format(count_removed))
-        finalSize = np.sum(newData)
-        print("Lesion element size after: {}".format(finalSize))
-        if (finalSize == 0):
-            warnings.warn("No lesion elements found in data after cleaning")
-    else:
-        warnings.warn("No lesion elements found in data")
-
-def add_edemic_tissue(current_data, layers, lesionLabel, edemicTissueLabel):
-    newData = create_binary_image(current_data, search=lesionLabel)   
-    if np.sum(newData)>0:            
-        structure2 = ndimage.generate_binary_structure(3,3)
-        newData = ndimage.binary_dilation(newData, structure=structure2, iterations=layers).astype(int)
-        current_dimensions = current_data.shape
-        for x in range(current_dimensions[0]):
-            if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == lesionLabel)):
-                for y in range(current_dimensions[1]):
-                    if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == lesionLabel)):
-                        for z in range(current_dimensions[2]):
-                            if newData[x,y,z] == 1 and current_data[x,y,z] != lesionLabel:
-                                current_data[x,y,z] = edemicTissueLabel
-    else:
-        warnings.warn("No edemic tissue added as no lesion elements were found in data")
                         
 def trim_data(data):
     current_dimensions = data.shape

@@ -16,9 +16,10 @@ Output is writen to same path as input
 main - the main function of the script
 """
 
-from BrainHexMesh import BrainHexMesh;
+from BrainHexMesh import BrainHexMesh, OpenBottomCSF, OnlyOnLabel, CleanLesion, AddEdemicTissue;
 from PointCloud import PointCloud;
 from Config import ConfigFile;
+import VoxelDataUtils as bm 
 
 # def main():
 path = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher"
@@ -33,8 +34,14 @@ config.openConfigFile();
 
 # Gets aseg data as 3D of segmentation labels in voxels
 data = brainCreator.import_data(); 
+data = brainCreator.homogenize_data(data, unusedLabel="Unused") 
+
 # Pre-processes data to ensure valid mesh, options: lesion; edemicTissue; ventricles
-data = brainCreator.preprocess(data, lesion=True); 
+lesion_label = brainCreator.material_labels.labelsMap.get("Lesion",[-1000])[0]
+assert lesion_label != -1000, "Lesion label not defined in materials label"
+lesion_cleaner = CleanLesion(lesion_label)
+
+data = brainCreator.preprocess(data, lesion_cleaner, add_CSF_Function=bm.add_full_CSF);
 
 # Creates point cloud from voxel data
 pointCloud = PointCloud();

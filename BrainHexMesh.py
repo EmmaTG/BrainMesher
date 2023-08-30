@@ -12,6 +12,8 @@ from Maze_Solver import Maze_Solver
 from Mesh import Mesh, QuadElement
 from Writer import Writer    
 from abc import ABC, abstractmethod;
+from scipy import ndimage, stats
+import warnings
 
 class IpreProcessAction(ABC):
     """
@@ -36,9 +38,66 @@ class CleanLesion(IpreProcessAction):
     def __init__(self,lesion_label):
         self.label = lesion_label
     
-    def performAction(self, data):
+    def performAction(self, current_data):
         print("########## Cleaning Lesion ##########")
-        bm.clean_lesion(data, self.label)
+        ## TODO: Better creation of featureless lesion (possibly the same way featurless csf is created)
+        newData = bm.create_binary_image(current_data, search=self.label)
+        lesionOGSize = np.sum(newData)
+        if lesionOGSize > 0:
+            print("Lesion element size before: {}".format(lesionOGSize))
+        
+            structure1 = ndimage.generate_binary_structure(3,1)
+            structure2 = ndimage.generate_binary_structure(3,3)
+            
+            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
+            newData = ndimage.binary_erosion(newData, structure=structure1, iterations=1).astype(int)
+            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
+            newData = ndimage.binary_erosion(newData, structure=structure2, iterations=2).astype(int)
+        
+            hit_structure1 = np.ones((2,2,2))
+            hit_structure1[0,1,0] = 0
+            hit_structure2 = np.rot90(hit_structure1)
+            hit_structure3 = np.rot90(hit_structure1, k= 2)
+            hit_structure4 = np.rot90(hit_structure1, k= 3)
+            hit_structure5 = np.rot90(hit_structure1,axes=(1,2))
+            hit_structure6 = np.rot90(hit_structure5, k= 1)
+            hit_structure7 = np.rot90(hit_structure5, k= 2)
+            hit_structure8 = np.rot90(hit_structure5, k= 3)
+            total_count = 0;
+            count = 1
+            iteration = 0
+            while (count > 0 and iteration < 10):
+                iteration += 1
+                count = 0
+                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure1, fill=1)
+                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure2, fill=1)
+                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure3, fill=1)
+                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure4, fill=1)
+                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure5, fill=1)
+                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure6, fill=1)
+                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure7, fill=1)
+                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure8, fill=1)
+                total_count += count
+            print("Lesion cleaned after {} iterations and {} elements added".format(iteration,total_count))
+            
+            count_removed = 0
+            current_dimensions = current_data.shape
+            for x in range(current_dimensions[0]):
+                if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == self.label)):
+                    for y in range(current_dimensions[1]):
+                        if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == self.label)):
+                            for z in range(current_dimensions[2]):
+                                if newData[x,y,z] == 1:
+                                    current_data[x,y,z] = self.label
+                                if newData[x,y,z] == 0 and (current_data[x,y,z] == self.label):
+                                    current_data[x,y,z] = 0;
+            print("previous lesion replaced with non-lesion: {}".format(count_removed))
+            finalSize = np.sum(newData)
+            print("Lesion element size after: {}".format(finalSize))
+            if (finalSize == 0):
+                warnings.warn("No lesion elements found in data after cleaning")
+        else:
+            warnings.warn("No lesion elements found in data")
         
 class AddEdemicTissue(IpreProcessAction):
     """
@@ -50,11 +109,77 @@ class AddEdemicTissue(IpreProcessAction):
         self.edemic_tissue_label = edemic_tissue_label
         self.layers = layers;
     
-    def performAction(self, data):
+    def performAction(self, current_data):
         print("########## Creating edemic Tissue ##########")
-        bm.add_edemic_tissue(data, self.layers, self.label, self.edemic_tissue_label)
+        newData = bm.create_binary_image(current_data, search = self.label)   
+        if np.sum(newData)>0:            
+            structure2 = ndimage.generate_binary_structure(3,3)
+            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=self.layers).astype(int)
+            current_dimensions = current_data.shape
+            for x in range(current_dimensions[0]):
+                if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == self.label)):
+                    for y in range(current_dimensions[1]):
+                        if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == self.label)):
+                            for z in range(current_dimensions[2]):
+                                if newData[x,y,z] == 1 and current_data[x,y,z] != self.label:
+                                    current_data[x,y,z] = self.edemic_tissue_label
+        else:
+            warnings.warn("No edemic tissue added as no lesion elements were found in data")
+            
+class CoarsenData(IpreProcessAction):
+    """
+    Coarsen voxels in data
+    """
+    
+    def __init__(self, voxel_size = 2):
+        self.voxel_size = voxel_size
+    
+    def performAction(self, data):
+        print("Coarsening mesh by a factor of " + str(self.voxel_size))
+        original_data = np.copy(data);
+        current_dimensions = original_data.shape
+        new_dimensions = [int(p) for p in np.floor(np.array(current_dimensions)/self.voxel_size)];
+        data *= 0;
+        for x in np.arange(0,(current_dimensions[0]-1),self.voxel_size):
+            top_x = x + self.voxel_size
+            if (np.sum(original_data[x:top_x,:,:]) > 0):
+                for y in np.arange(0,(current_dimensions[1]-1),self.voxel_size):
+                    top_y = y + self.voxel_size
+                    if (np.sum(original_data[x:top_x,y:top_y,:]) > 0):
+                        for z in np.arange(0,(current_dimensions[2]-1),self.voxel_size):
+                            top_z = z + self.voxel_size
+                            gridBox = original_data[x:top_x, y:top_y, z:top_z].reshape(-1)
+                            if (np.sum(gridBox) > 0):
+                                [modes,count] = stats.find_repeats(gridBox)
+                                modeIndices, = np.where(count == max(count))
+                                modeIndex = modeIndices[0]
+                                replacedValue = modes[modeIndex]
+                                unique, counts = np.unique(gridBox, return_counts=True)
+                                num_values = dict(zip(unique, counts))
+                                if num_values.get(4,False):
+                                    replacedValue = 4 
+                                elif num_values.get(251,False):
+                                    replacedValue = 251                                       
+                                elif (len(modes)>1) and (len(modeIndices)>1):
+                                    if (modeIndices[0]==0) or (modeIndices[1]==0):
+                                        if (modeIndices[0]==0):
+                                            replacedValue = modes[modeIndices[1]]
+                                        elif (modeIndices[1]==0):
+                                            replacedValue = modes[modeIndices[0]]
+                                    else:
+                                        xbot = x-1 if x>0 else 0
+                                        ybot = y-1 if y>0 else 0
+                                        zbot = z-1 if z>0 else 0
+                                        gridBox = original_data[xbot:top_x, ybot:top_y, zbot:top_z].reshape(-1)
+                                        [modes,count] = stats.find_repeats(gridBox)
+                                        modeIndices, = np.where(count == max(count)) 
+                                        modeIndex = modeIndices[0]                                
+                                        replacedValue = modes[modeIndex]                                 
+                                data[int(x/self.voxel_size),int(y/self.voxel_size),int(z/self.voxel_size)] = replacedValue
         
-class ICSFBoundaryTest(ABC):
+
+
+class IBoundaryTest(ABC):
     """
     Interface for tests on CSF boundaries. If certain criteria have to be met for a boundary element to be added.
     """
@@ -67,10 +192,9 @@ class ICSFBoundaryTest(ABC):
     
     @abstractmethod
     def validElement(self, element_num):
-        raise NotImplementedError
- 
+        raise NotImplementedError 
         
-class OnlyOnLabel(ICSFBoundaryTest):
+class OnlyOnLabel(IBoundaryTest):
     """
     Boundary test to add elements that are only attached to CSF elements 
     """
@@ -85,7 +209,7 @@ class OnlyOnLabel(ICSFBoundaryTest):
             return True;
         return False; 
     
-class OpenBottomCSF(ICSFBoundaryTest):
+class OpenBottomCSF(IBoundaryTest):
     """
     Boundary test to add elements that are attached to CSF elements and also are not directly below the subcortical structures
     """
@@ -119,6 +243,8 @@ class OpenBottomCSF(ICSFBoundaryTest):
             valid_element = ((mats.count(csf_label) + mats.count(grey_matter_label) + mats.count(white_matter_label)) == len(mats))
             return valid_element;
         return False;
+
+
 
 class BrainHexMesh():
     """
@@ -393,7 +519,7 @@ class BrainHexMesh():
         mesh.replace_outer_region(2, 3, elementsOnBoundary)        
 
 
-    def createBoundary(self, mesh, elementNUmber, elementNotIncluded = [], boundaryTest=None):
+    def createBoundary(self, mesh, elementNUmber, elementsNotIncluded = [], boundaryTest=None):
         """
         Creates CSF boundary elements. 
         Does not create CSF Boundary elements below subcortical structures at base of brain
@@ -414,7 +540,7 @@ class BrainHexMesh():
         # mesh.create_node_to_element_connectivity()
         boundary_elements_map = {}
         boundary_number = max(mesh.elements.keys()) if len(mesh.boundaryElements) == 0 else max(mesh.boundaryElements.keys())
-        boundaryElements = mesh.locate_boundary_element_map(elementsNotIncluded=elementNotIncluded) 
+        boundaryElements = mesh.locate_boundary_element_map(elementsNotIncluded = elementsNotIncluded) 
         print("Locating CSF boundary")
         for compoundKey,ica in boundaryElements.items():
             boundary_number += 1;
