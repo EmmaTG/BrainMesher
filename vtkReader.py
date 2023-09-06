@@ -5,6 +5,13 @@ Created on Wed Mar  8 10:40:35 2023
 @author: grife
 """
 
+
+from vtk import vtkIdList,vtkUnstructuredGridReader
+from os.path import exists 
+from Mesh import Node, Element, Mesh;
+from Writer import Writer;
+
+
 def readVtk(path,filename):
     fullFilename1 = path + filename + ".vtk"
     filenameData = {}
@@ -22,75 +29,78 @@ def readVtk(path,filename):
         
     return None
 
-from vtk import vtkIdList,vtkUnstructuredGridReader
-from os.path import exists 
-from Mesh import Node, Element, Mesh;
-from Writer import Writer;
-
 # inputPath = "C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\Tumor_growth\\"
-inputPath = "C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\Atrophy_Results\OAS1_0004_csfTest\\"
-f = "OAS1_0004_csfTest_Slice_long"
-dataMap = {}
-grid = readVtk(inputPath, f);
-
-mesh = Mesh();
-mesh.dataToWrite = ["displacement"]
-displacementArray = grid.GetPointData().GetArray("displacement")
-materialsArray = grid.GetPointData().GetArray("material_ids")
-
-disp_data = {} # Key = starting position, displacement
-point_position_to_nodes = {} # Key= point position, value  = node value
-cell_point_to_nodes = {} # Key= cell pointId, value  = node value
-nodeMap = {}
-elementsMap = {}
-elementToMaterial = {}
-for k in range(grid.GetNumberOfCells()):
-    cellIds = vtkIdList() 
-    grid.GetCellPoints(k, cellIds)
-    ica = []
-    mat = 0
-    displacement_tot = [0,0,0];
-    for i in range(8):
-        pointId = cellIds.GetId(i)
-        pointPosition = grid.GetPoint(pointId)        
-        mat += materialsArray.GetValue(pointId)
-        position_key = "-".join([str(x) for x in pointPosition])
-        nodeValue = point_position_to_nodes.get(position_key,-1)
-        if nodeValue != -1:
-            cell_point_to_nodes[pointId] = nodeValue
-            node = nodeMap[int(nodeValue)]
-            displacement = disp_data[nodeValue];
-            assert [disp_data.get(nodeValue,-1) != -1]
-        else:
-           nodeValue = pointId
-           cell_point_to_nodes[pointId] = nodeValue
-           point_position_to_nodes[position_key] = pointId
-           displacement = [round(y,6) for y in displacementArray.GetTuple(pointId)]
-           disp_data[pointId] = displacement
-           newPosition = [round(y,6) for y in pointPosition]
-           for d in range(len(displacement)):
-                newPosition[d] = pointPosition[d]+displacement[d]
-           node = Node(int(nodeValue),newPosition)
-           node.addData("displacement", displacement)
-           nodeMap[int(nodeValue)] = node;
-        for d in range(3):
-            displacement_tot[d] += displacement[d];
-        ica.append(node)
-    element = Element(k,ica)
-    element.setMaterial((mat/8))
-    element.properties['displacement'] = [d/8. for d in displacement_tot]
-    elementsMap[k] = element
+inputPath = "C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\Atrophy_Results\OAS1_0004\\"
+for t in range(0,35,2):
+    f = "Slice_" + str(t)
+    dataMap = {}
+    grid = readVtk(inputPath, f);
     
-mesh.nodes = nodeMap
-mesh.elements = elementsMap
-
-## Write deformed mesh to new vtk
-path = inputPath
-filename = f + "_output_deformed"
-writer = Writer()
-writer.openWriter("vtk", filename, path)
-writer.writeMeshData(mesh)
-writer.closeWriter()
+    mesh = Mesh();
+    mesh.dataToWrite = ["displacement"]
+    mesh.cellData = ["displacement_centroid", "von_mises"]
+    displacementArray = grid.GetPointData().GetArray("displacement")
+    materialsArray = grid.GetPointData().GetArray("material_ids")
+    vonMisesArray = grid.GetPointData().GetArray("von_mises")
+    
+    disp_data = {} # Key = starting position, displacement
+    point_position_to_nodes = {} # Key= point position, value  = node value
+    cell_point_to_nodes = {} # Key= cell pointId, value  = node value
+    nodeMap = {}
+    elementsMap = {}
+    elementToMaterial = {}
+    for k in range(grid.GetNumberOfCells()):
+        cellIds = vtkIdList() 
+        grid.GetCellPoints(k, cellIds)
+        ica = []
+        mat = 0
+        displacement_tot = [0,0,0];
+        von_Mises = 0
+        for i in range(8):
+            pointId = cellIds.GetId(i)
+            pointPosition = grid.GetPoint(pointId)        
+            mat += materialsArray.GetValue(pointId)
+            position_key = "-".join([str(x) for x in pointPosition])
+            nodeValue = point_position_to_nodes.get(position_key,-1)
+            if nodeValue != -1:
+                cell_point_to_nodes[pointId] = nodeValue
+                node = nodeMap[int(nodeValue)]
+                displacement = disp_data[nodeValue];
+                assert [disp_data.get(nodeValue,-1) != -1]
+            else:
+               nodeValue = pointId
+               cell_point_to_nodes[pointId] = nodeValue
+               point_position_to_nodes[position_key] = pointId
+               displacement = [round(y,6) for y in displacementArray.GetTuple(pointId)]
+               von_Mises += round(vonMisesArray.GetTuple(pointId)[0],6)
+               disp_data[pointId] = displacement
+               newPosition = [round(y,6) for y in pointPosition]
+               for d in range(len(displacement)):
+                    newPosition[d] = pointPosition[d]+displacement[d]
+                    if d == 2:
+                        newPosition[d] += 4
+               node = Node(int(nodeValue),newPosition)
+               node.addData("displacement", displacement)
+               nodeMap[int(nodeValue)] = node;
+            for d in range(3):
+                displacement_tot[d] += displacement[d];
+            ica.append(node)
+        element = Element(k,ica)
+        element.setMaterial((mat/8))
+        element.properties['displacement_centroid'] = [d/8. for d in displacement_tot]
+        element.properties['von_mises'] = [von_Mises/8.]
+        elementsMap[k] = element
+        
+    mesh.nodes = nodeMap
+    mesh.elements = elementsMap
+    
+    ## Write deformed mesh to new vtk
+    path = inputPath
+    filename = f + "_output_deformed"
+    writer = Writer()
+    writer.openWriter("vtk", filename, path)
+    writer.writeMeshData(mesh)
+    writer.closeWriter()
 
 
 

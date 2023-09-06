@@ -89,6 +89,7 @@ class Mesh():
         self.boundaryElements = {}
         self.elementToPointCloud = {}
         self.dataToWrite = []
+        self.cellData = []
         
     def addBoundaryElements(self,boundaryElementsMap):
         """Merges new boundary element map to existing map.

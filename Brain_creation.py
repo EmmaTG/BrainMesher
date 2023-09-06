@@ -16,7 +16,7 @@ Output is writen to same path as input
 main - the main function of the script
 """
 
-from BrainHexMesh import BrainHexMesh, OpenBottomCSF, OnlyOnLabel, CleanLesion, AddEdemicTissue;
+from BrainHexMesh import BrainHexMesh
 from PointCloud import PointCloud;
 from Config import ConfigFile;
 import VoxelDataUtils as bm 
@@ -37,11 +37,7 @@ data = brainCreator.import_data();
 data = brainCreator.homogenize_data(data, unusedLabel="Unused") 
 
 # Pre-processes data to ensure valid mesh, options: lesion; edemicTissue; ventricles
-lesion_label = brainCreator.material_labels.labelsMap.get("Lesion",[-1000])[0]
-assert lesion_label != -1000, "Lesion label not defined in materials label"
-lesion_cleaner = CleanLesion(lesion_label)
-
-data = brainCreator.preprocess(data, lesion_cleaner, add_CSF_Function=bm.add_full_CSF);
+data = brainCreator.preprocessBasic(data);
 
 # Creates point cloud from voxel data
 pointCloud = PointCloud();
@@ -50,12 +46,13 @@ pointCloud.create_point_cloud_from_voxel(data);
 # Creates mesh from pointcloud
 mesh = brainCreator.make_mesh(pointCloud.pcd); 
 brainCreator.clean_mesh(mesh);
+
 # Moves mesh to the center of the corpus callosum
 mesh.center_mesh(251); 
 
+# Removes elements associated with a region to be excluded as defined in config file
 all_labels = config.material_labels.get_homogenized_labels_map()
 label_for_unused = all_labels.get("Unused")
-# Removes elements associated with a region to be excluded as defined in config file
 mesh.remove_region(label_for_unused) 
 
 # Laplacian smoothing         
@@ -64,10 +61,8 @@ if config.Smooth:
 
 # Write mesh to file (ucd, vtk or abq inp as specified in config file)
 brainCreator.write_to_file(mesh)  
-# Close config file write out  
-config.closeConfigFile();   
 
-# if __name__ == "__main__":
-#     main()
+# Close config file write out  
+config.closeConfigFile();
 
 

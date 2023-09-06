@@ -90,6 +90,7 @@ class ConfigFile():
         self.Smooth = True
         self.iterations = 2
         self.coeffs = [0.6,-0.4]
+        self.lesion = True
         
         self.Smooth_regions = ['Lesion']
         self.region_iterations = [2]

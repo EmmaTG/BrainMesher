@@ -384,15 +384,18 @@ class VTKWriter(BaseWriter,IWriter):
         
     def writeCellData(self):
         elementMap = self.__mesh__.elements
-        d  = "displacement"
-        if (elementMap[list(elementMap.keys())[0]].properties.get(d,False)):
-            dataSize = 3
-            self.f.write("FIELD FieldData 1\n")
-            self.f.write("{}_centroid {} {} float\n".format(d, dataSize, len(elementMap)))
-            for num,e in elementMap.items():
-                data = e.properties.get(d,[0]*dataSize)
-                line = sub("[\[\]\(\),]*", '', str(data))
-                self.f.write(line + "\n")
+        cell_data = self.__mesh__.cellData
+        if len(cell_data)>0:
+            self.f.write("FIELD FieldData {}\n".format(len(cell_data)))
+        for d in cell_data: 
+            data = elementMap[list(elementMap.keys())[0]].properties.get(d,False)
+            if (data):
+                dataSize = len(data);
+                self.f.write("{} {} {} float\n".format(d, dataSize, len(elementMap)))
+                for num,e in elementMap.items():
+                    data = e.properties.get(d,[0]*dataSize)
+                    line = sub("[\[\]\(\),]*", '', str(data))
+                    self.f.write(line + "\n")
             
     def writePointData(self):
         """ 

@@ -6,13 +6,8 @@ Created on Fri May 12 11:02:36 2023
 """
 
 import numpy as np
-import warnings
-# import collections.abc
 from scipy import stats
 from scipy import ndimage
-import nibabel
-# from Maze_Solver import Maze_Solver
-# from Vertex import Vertex 
 from GridBox import GridBox
 
 """
@@ -34,18 +29,6 @@ def in_hull(p, hull):
         hull = Delaunay(hull)
 
     return hull.find_simplex(p)>=0
-    
-def import_file(fileInPath, fileIn):
-    try:
-        # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
-        t1_file = "\\".join([fileInPath,fileIn])
-        t1 = nibabel.load(t1_file)
-        # t1.orthoview()
-        data = np.asarray(t1.dataobj)
-        return data
-    except:
-        print("Error importing file from {}\{}".format(fileInPath, fileIn))
-        return []
     
 def check_data_dims(data):        
     if len(data.shape) == 3:

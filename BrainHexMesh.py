@@ -11,240 +11,8 @@ import VoxelDataUtils as bm
 from Maze_Solver import Maze_Solver
 from Mesh import Mesh, QuadElement
 from Writer import Writer    
-from abc import ABC, abstractmethod;
-from scipy import ndimage, stats
-import warnings
-
-class IpreProcessAction(ABC):
-    """
-    Command interface for additional preprocessing step outisde of cleaning
-    """
-    
-    @classmethod
-    def __subclasshook__(cls, subclass):
-        return (hasattr(subclass, 'performAction') and 
-                callable(subclass.performAction) or 
-                NotImplemented)
-    
-    @abstractmethod 
-    def performAction(self, data, **kwargs):
-        raise NotImplementedError;
-        
-class CleanLesion(IpreProcessAction):
-    """
-    Cleans added lesion to ensure smooth lesion boundary
-    """
-    
-    def __init__(self,lesion_label):
-        self.label = lesion_label
-    
-    def performAction(self, current_data):
-        print("########## Cleaning Lesion ##########")
-        ## TODO: Better creation of featureless lesion (possibly the same way featurless csf is created)
-        newData = bm.create_binary_image(current_data, search=self.label)
-        lesionOGSize = np.sum(newData)
-        if lesionOGSize > 0:
-            print("Lesion element size before: {}".format(lesionOGSize))
-        
-            structure1 = ndimage.generate_binary_structure(3,1)
-            structure2 = ndimage.generate_binary_structure(3,3)
-            
-            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
-            newData = ndimage.binary_erosion(newData, structure=structure1, iterations=1).astype(int)
-            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=1).astype(int)
-            newData = ndimage.binary_erosion(newData, structure=structure2, iterations=2).astype(int)
-        
-            hit_structure1 = np.ones((2,2,2))
-            hit_structure1[0,1,0] = 0
-            hit_structure2 = np.rot90(hit_structure1)
-            hit_structure3 = np.rot90(hit_structure1, k= 2)
-            hit_structure4 = np.rot90(hit_structure1, k= 3)
-            hit_structure5 = np.rot90(hit_structure1,axes=(1,2))
-            hit_structure6 = np.rot90(hit_structure5, k= 1)
-            hit_structure7 = np.rot90(hit_structure5, k= 2)
-            hit_structure8 = np.rot90(hit_structure5, k= 3)
-            total_count = 0;
-            count = 1
-            iteration = 0
-            while (count > 0 and iteration < 10):
-                iteration += 1
-                count = 0
-                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure1, fill=1)
-                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure2, fill=1)
-                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure3, fill=1)
-                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure4, fill=1)
-                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure5, fill=1)
-                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure6, fill=1)
-                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure7, fill=1)
-                count += bm.hit_and_miss_3d_2x2x2(newData, hit_structure8, fill=1)
-                total_count += count
-            print("Lesion cleaned after {} iterations and {} elements added".format(iteration,total_count))
-            
-            count_removed = 0
-            current_dimensions = current_data.shape
-            for x in range(current_dimensions[0]):
-                if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == self.label)):
-                    for y in range(current_dimensions[1]):
-                        if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == self.label)):
-                            for z in range(current_dimensions[2]):
-                                if newData[x,y,z] == 1:
-                                    current_data[x,y,z] = self.label
-                                if newData[x,y,z] == 0 and (current_data[x,y,z] == self.label):
-                                    current_data[x,y,z] = 0;
-            print("previous lesion replaced with non-lesion: {}".format(count_removed))
-            finalSize = np.sum(newData)
-            print("Lesion element size after: {}".format(finalSize))
-            if (finalSize == 0):
-                warnings.warn("No lesion elements found in data after cleaning")
-        else:
-            warnings.warn("No lesion elements found in data")
-        
-class AddEdemicTissue(IpreProcessAction):
-    """
-    Add layers of edemic tissue to outside of lesion
-    """
-    
-    def __init__(self, lesion_label = 25, edemic_tissue_label = 29, layers = 1 ):
-        self.label = lesion_label
-        self.edemic_tissue_label = edemic_tissue_label
-        self.layers = layers;
-    
-    def performAction(self, current_data):
-        print("########## Creating edemic Tissue ##########")
-        newData = bm.create_binary_image(current_data, search = self.label)   
-        if np.sum(newData)>0:            
-            structure2 = ndimage.generate_binary_structure(3,3)
-            newData = ndimage.binary_dilation(newData, structure=structure2, iterations=self.layers).astype(int)
-            current_dimensions = current_data.shape
-            for x in range(current_dimensions[0]):
-                if (np.any(newData[x,:,:] == 1) or np.any(current_data[x,:,:] == self.label)):
-                    for y in range(current_dimensions[1]):
-                        if (np.any(newData[x,y,:] == 1) or np.any(current_data[x,y,:] == self.label)):
-                            for z in range(current_dimensions[2]):
-                                if newData[x,y,z] == 1 and current_data[x,y,z] != self.label:
-                                    current_data[x,y,z] = self.edemic_tissue_label
-        else:
-            warnings.warn("No edemic tissue added as no lesion elements were found in data")
-            
-class CoarsenData(IpreProcessAction):
-    """
-    Coarsen voxels in data
-    """
-    
-    def __init__(self, voxel_size = 2):
-        self.voxel_size = voxel_size
-    
-    def performAction(self, data):
-        print("Coarsening mesh by a factor of " + str(self.voxel_size))
-        original_data = np.copy(data);
-        current_dimensions = original_data.shape
-        new_dimensions = [int(p) for p in np.floor(np.array(current_dimensions)/self.voxel_size)];
-        data *= 0;
-        for x in np.arange(0,(current_dimensions[0]-1),self.voxel_size):
-            top_x = x + self.voxel_size
-            if (np.sum(original_data[x:top_x,:,:]) > 0):
-                for y in np.arange(0,(current_dimensions[1]-1),self.voxel_size):
-                    top_y = y + self.voxel_size
-                    if (np.sum(original_data[x:top_x,y:top_y,:]) > 0):
-                        for z in np.arange(0,(current_dimensions[2]-1),self.voxel_size):
-                            top_z = z + self.voxel_size
-                            gridBox = original_data[x:top_x, y:top_y, z:top_z].reshape(-1)
-                            if (np.sum(gridBox) > 0):
-                                [modes,count] = stats.find_repeats(gridBox)
-                                modeIndices, = np.where(count == max(count))
-                                modeIndex = modeIndices[0]
-                                replacedValue = modes[modeIndex]
-                                unique, counts = np.unique(gridBox, return_counts=True)
-                                num_values = dict(zip(unique, counts))
-                                if num_values.get(4,False):
-                                    replacedValue = 4 
-                                elif num_values.get(251,False):
-                                    replacedValue = 251                                       
-                                elif (len(modes)>1) and (len(modeIndices)>1):
-                                    if (modeIndices[0]==0) or (modeIndices[1]==0):
-                                        if (modeIndices[0]==0):
-                                            replacedValue = modes[modeIndices[1]]
-                                        elif (modeIndices[1]==0):
-                                            replacedValue = modes[modeIndices[0]]
-                                    else:
-                                        xbot = x-1 if x>0 else 0
-                                        ybot = y-1 if y>0 else 0
-                                        zbot = z-1 if z>0 else 0
-                                        gridBox = original_data[xbot:top_x, ybot:top_y, zbot:top_z].reshape(-1)
-                                        [modes,count] = stats.find_repeats(gridBox)
-                                        modeIndices, = np.where(count == max(count)) 
-                                        modeIndex = modeIndices[0]                                
-                                        replacedValue = modes[modeIndex]                                 
-                                data[int(x/self.voxel_size),int(y/self.voxel_size),int(z/self.voxel_size)] = replacedValue
-        
-
-
-class IBoundaryTest(ABC):
-    """
-    Interface for tests on CSF boundaries. If certain criteria have to be met for a boundary element to be added.
-    """
-    
-    @classmethod
-    def __subclasshook__(cls, subclass):
-        return (hasattr(subclass, 'validElement') and 
-                callable(subclass.validElement) or 
-                NotImplemented)
-    
-    @abstractmethod
-    def validElement(self, element_num):
-        raise NotImplementedError 
-        
-class OnlyOnLabel(IBoundaryTest):
-    """
-    Boundary test to add elements that are only attached to CSF elements 
-    """
-    
-    def __init__(self, mesh, label):
-        self.mesh = mesh;
-        self.label = label;
-    
-    def validElement(self, element_num):
-        mat = self.mesh.elements[element_num].getMaterial();
-        if mat.count(self.label):            
-            return True;
-        return False; 
-    
-class OpenBottomCSF(IBoundaryTest):
-    """
-    Boundary test to add elements that are attached to CSF elements and also are not directly below the subcortical structures
-    """
-    
-    def __init__(self, mesh):
-        e_centroids = np.zeros((max(mesh.elements.keys())+1,4))
-        count = 0
-        for e_num,element in mesh.elements.items():
-            element_centroid = element.calculate_element_centroid()
-            e_centroids[e_num] = list(element_centroid) + [element.getMaterial()[0]]
-            count += 1
-        self.e_centroids = np.stack(e_centroids, axis = 0)
-    
-    def validElement(self, element_num):
-        [xc,yc,zc,m] = self.e_centroids[element_num]
-        if m == 24:            
-            elements_inline = self.e_centroids
-            elements_inline = elements_inline[np.where(elements_inline[:,0]==xc)[0],:]
-            elements_inline = elements_inline[np.where(elements_inline[:,2]==zc)[0],:]
-            elements_inline = elements_inline[elements_inline[:, 1].argsort()]
-            current_element_idx, = np.where(elements_inline[:,1]>=yc)
-            if len(current_element_idx)!= 0:
-                current_element_idx = current_element_idx[0]
-                elements_inline = elements_inline[:current_element_idx]
-            mats = list(elements_inline[:,3])
-            
-            grey_matter_label = 3
-            white_matter_label = 2
-            csf_label = 24
-            
-            valid_element = ((mats.count(csf_label) + mats.count(grey_matter_label) + mats.count(white_matter_label)) == len(mats))
-            return valid_element;
-        return False;
-
-
+import PreProcessingActions as pp
+import Importer as inp
 
 class BrainHexMesh():
     """
@@ -336,7 +104,8 @@ class BrainHexMesh():
         if (path == "") and (file == ""):
             path = self.config.fileInPath
             file = self.config.fileIn
-        return bm.import_file(path,file)
+        importer = inp.ImportFromFile(path, file)
+        return importer.getData();
     
     def homogenize_data(self, data, unusedLabel):
         """
@@ -362,9 +131,29 @@ class BrainHexMesh():
         # Replace regions with multiple labels with only one label, if label is not required replace with unused/0
         data = self.material_labels.homogenize_material_labels(data, replace = label_number); 
         return data;
+    
+    def preprocessLesion(self,data):
+        lesion_label = self.material_labels.labelsMap.get("Lesion",[-1000])[0]
+        assert lesion_label != -1000, "Lesion label not defined in materials label"
+        # Add edemicTissue number of layers of tissue around lesion
+        self.material_labels.addLabelToMap('EdemicTissue' , [29]);
+        return self.__preprocess__(data, pp.CleanLesion(lesion_label), pp.AddEdemicTissue(), add_CSF_Function=bm.add_full_CSF);
         
     
-    def preprocess(self, data, *args, unusedLabel="unusedLabel", add_CSF_Function=None):
+    
+    def preprocessAtrophy(self,data):
+        return self.__preprocess__(data, add_CSF_Function=bm.add_partial_CSF);    
+
+    
+    def preprocessBasic(self,data):
+        if self.config.lesion:
+            lesion_label = self.material_labels.labelsMap.get("Lesion",[-1000])[0]
+            assert lesion_label != -1000, "Lesion label not defined in materials label"
+            return self.__preprocess__(data, pp.CleanLesion(lesion_label));
+        return self.__preprocess__(data);
+                
+    
+    def __preprocess__(self, data, *args, unusedLabel="unusedLabel", add_CSF_Function=None):
         """
         Performs all preprocessing steps on voxel data:\n
         2. Corasen model, if requested\n
