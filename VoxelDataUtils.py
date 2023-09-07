@@ -62,31 +62,32 @@ def coarsen(new_voxel_size, original_data):
                         top_z = z+new_voxel_size
                         gridBox = original_data[x:top_x, y:top_y, z:top_z].reshape(-1)
                         if (np.sum(gridBox) > 0):
-                            [modes,count] = stats.find_repeats(gridBox)
-                            modeIndices, = np.where(count == max(count))
-                            modeIndex = modeIndices[0]
-                            replacedValue = modes[modeIndex]
                             unique, counts = np.unique(gridBox, return_counts=True)
                             num_values = dict(zip(unique, counts))
                             if num_values.get(4,False):
                                 replacedValue = 4 
                             elif num_values.get(251,False):
-                                replacedValue = 251                                       
-                            elif (len(modes)>1) and (len(modeIndices)>1):
-                                if (modeIndices[0]==0) or (modeIndices[1]==0):
-                                    if (modeIndices[0]==0):
-                                        replacedValue = modes[modeIndices[1]]
-                                    elif (modeIndices[1]==0):
-                                        replacedValue = modes[modeIndices[0]]
-                                else:
-                                    xbot = x-1 if x>0 else 0
-                                    ybot = y-1 if y>0 else 0
-                                    zbot = z-1 if z>0 else 0
-                                    gridBox = original_data[xbot:top_x, ybot:top_y, zbot:top_z].reshape(-1)
-                                    [modes,count] = stats.find_repeats(gridBox)
-                                    modeIndices, = np.where(count == max(count)) 
-                                    modeIndex = modeIndices[0]                                
-                                    replacedValue = modes[modeIndex]
+                                replacedValue = 251
+                            else:
+                                [modes, count] = stats.find_repeats(gridBox)
+                                modeIndices, = np.where(count == max(count))
+                                modeIndex = modeIndices[0]
+                                replacedValue = modes[modeIndex]
+                                if (len(modes)>1) and (len(modeIndices)>1):
+                                    if (modeIndices[0]==0) or (modeIndices[1]==0):
+                                        if (modeIndices[0]==0):
+                                            replacedValue = modes[modeIndices[1]]
+                                        elif (modeIndices[1]==0):
+                                            replacedValue = modes[modeIndices[0]]
+                                    else:
+                                        xbot = x-1 if x>0 else 0
+                                        ybot = y-1 if y>0 else 0
+                                        zbot = z-1 if z>0 else 0
+                                        gridBox = original_data[xbot:top_x, ybot:top_y, zbot:top_z].reshape(-1)
+                                        [modes,count] = stats.find_repeats(gridBox)
+                                        modeIndices, = np.where(count == max(count))
+                                        modeIndex = modeIndices[0]
+                                        replacedValue = modes[modeIndex]
                                 
                                 
                             newData[int(x/new_voxel_size),int(y/new_voxel_size),int(z/new_voxel_size)] = replacedValue

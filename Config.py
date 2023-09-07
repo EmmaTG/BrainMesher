@@ -5,7 +5,8 @@ Created on Mon Jul 24 13:55:28 2023
 @author: grife
 """
 from Material_Label import Material_Label
-from numpy import array 
+from numpy import array
+from HeterogeneityConverter import Heterogeneity
 
 class ConfigFile():
     """
@@ -88,13 +89,15 @@ class ConfigFile():
         self.Add_CSF = True
         self.layers = 1
         self.Smooth = True
-        self.iterations = 2
+        self.iterations = 4
         self.coeffs = [0.6,-0.4]
         self.lesion = True
         
         self.Smooth_regions = ['Lesion']
-        self.region_iterations = [2]
+        self.region_iterations = [4]
         self.region_coeffs =[[0.6,-0.4]]
+
+        self.converter_type = Heterogeneity.NINER
         
         self.material_labels  = Material_Label()
         self.material_labels.addLabelToMap('BrainStem', 16)
@@ -120,7 +123,10 @@ class ConfigFile():
         # material_labels.addLabelToMap('Left-choroid-plexus' , [31]);
         # material_labels.addLabelToMap('Right-choroid-plexus' , [63]);
         # material_labels.addLabelToMap('Optic-Chiasm' , [85]);
-        
+
+    def set_materials_label(self, newLabels):
+        self.material_labels = newLabels
+
     def add_data(self, importedData):
         """
         Adds external data to config file

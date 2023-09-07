@@ -101,7 +101,7 @@ class Mesh():
             Key: element number
             Value: Element object
         """
-        self.boundaryElements = self.boundaryElements | boundaryElementsMap;
+        self.boundaryElements = {**self.boundaryElements, **boundaryElementsMap};
     
     def getBoundingBox(self, regions = -1):
         """Gets the boundign box for the mesh.

@@ -4,7 +4,7 @@ Created on Thu Jul 13 08:18:00 2023
 
 @author: grife
 """
-from abc import ABC, abstractmethod;
+from abc import ABC, abstractmethod
 from re import sub
 
 class IWriter(ABC):
@@ -326,10 +326,11 @@ class VTKWriter(BaseWriter,IWriter):
             # element_count += 1
             # elements = list(elements[:4]) + list(elements[4:])        
             # elementNum = element_count
-            renumber_ica = []    
+            renumber_ica = []
             
             for ica_node in element.ica:
                 renumber_ica.append(self.node_num_map_old_to_new[ica_node.number])
+
             
             self.f.write("8 " + " ".join([str(node) for node in renumber_ica]) + "\n")
         # element_count = 0
@@ -588,11 +589,10 @@ class Writer():
         Parameters
         ----------
         mesh : Mesh
-            Mehs data
         """ 
         self.writer.initializeMesh(mesh)
-        self.writer.writeNodes(True); 
-        self.writer.writeElements(True); 
+        self.writer.writeNodes(True)
+        self.writer.writeElements(True)
         self.writer.mesh_statistics()             
     
     def closeWriter(self):

@@ -14,9 +14,7 @@ from Writer import Writer;
 
 def readVtk(path,filename):
     fullFilename1 = path + filename + ".vtk"
-    filenameData = {}
     if (exists(fullFilename1)):
-
         print("##Reading: " + filename)
         
         # Set up poly data reader for result set 1
@@ -101,10 +99,6 @@ for t in range(0,35,2):
     writer.openWriter("vtk", filename, path)
     writer.writeMeshData(mesh)
     writer.closeWriter()
-
-
-
-
 
 
 

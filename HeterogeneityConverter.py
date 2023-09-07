@@ -1,8 +1,16 @@
+from enum import Enum
+
+class Heterogeneity(Enum):
+    ONER = 1
+    TWOR = 2
+    FOURR = 4
+    NINER = 9
+
 class MaterialsConverter:
 
     def __init__(self):
         self.converter = {}
-        self.materials = [2,3,4,7,10,11,16,17,18,24,25,29, 251];
+        self.materials = [2,3,4,7,10,11,16,17,18,24,25,29,251];
 
     def add_conversion(self, original_values, new_value):
         try:
@@ -79,12 +87,18 @@ class MaterialsConverterFactory:
 
     @staticmethod
     def get_converter(converter_type):
-        converter_type = converter_type.upper()
-        if converter_type == "1R":
+        """Returns homogeneity converter
+
+        Parameters
+        ----------
+        converter_type : Heterogeneity
+            Enum of heterogeneity type. Options : ONER | TWOR | FOURR | NINER
+        """
+        if converter_type == Heterogeneity.ONER:
             return HomogenousConverter()
-        elif converter_type == "2R":
+        elif converter_type == Heterogeneity.TWOR:
             return TwoRegionConverter()
-        elif converter_type == "4R":
+        elif converter_type == Heterogeneity.FOURR:
             return FourRegionConverter()
         else:
             return NineRegionConverter()

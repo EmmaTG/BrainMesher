@@ -63,6 +63,27 @@ class Material_Label:
         numbers = self.labelsMap.pop(name,[])
         for n in numbers:
             self.inverseLabelsMap.pop(n)
+
+    def updateLabelInMap(self, name, numbers):
+
+        if not (hasattr(self, "labelsMap")):
+            self.create_labels_map()
+
+        storedLabelValues = []
+        for x in list(self.labelsMap.values()):
+            storedLabelValues += list(x)
+        if not (isinstance(numbers, (collections.abc.Sequence, np.ndarray))):
+            numbers = [numbers]
+
+        for num in numbers:
+            if storedLabelValues.count(num):
+                oldName = self.inverseLabelsMap.get(num)
+                self.labelsMap.get(oldName).remove(num)
+                self.inverseLabelsMap.pop(num)
+
+        self.addLabelToMap(name,numbers)
+
+
         
     def addLabelToMap(self, name, numbers):
         """
@@ -83,7 +104,7 @@ class Material_Label:
 
         """
         if not (hasattr(self, "labelsMap")):
-            self.create_labels_map();
+            self.create_labels_map()
         
         storedLabelValues = []
         for x in list(self.labelsMap.values()):

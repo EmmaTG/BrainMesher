@@ -21,7 +21,7 @@ A .prm file
 def readConfigFile(path,simulationsName):
     radius = 0;
     center = [0,0,0]
-    with (open(path + simulationsName + ".txt") as configReader):
+    with open(path + simulationsName + ".txt") as configReader:
         line = configReader.readline();
         while line != '':
             if (line[:22] == "Concentration radius: "):

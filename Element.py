@@ -80,7 +80,7 @@ class Element(ElementCalculations):
 class HexElement(Element, IElement):
     
     def __init__(self, number, ica, **kwargs): 
-        Element.__init__(self, number, ica, **kwargs);
+        Element.__init__(self, number, ica, **kwargs)
     
     def get_faces(self, stringyfy=True, order=True):
         face_ABQ = [[1,2,3,4],

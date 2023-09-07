@@ -20,7 +20,7 @@ class ImportFromFile(IImport):
         
     def __init__(self, path, filename):        
         self.fullPath = "\\".join([path, filename])
-        assert exists(self.fullPath), "Path to file does not exist."
+        assert exists(self.fullPath), "Path {} does not exist.".format(self.fullPath)
     
     def getData(self):
         try:

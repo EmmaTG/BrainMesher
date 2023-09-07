@@ -13,6 +13,12 @@ def create_elements_ica_map(elements):
         elementMap[elementNo] = [int(node.number) for node in element.ica]
     return elementMap
 
+def create_node_coords_map(nodes):
+    nodeMap = {}
+    for nodeNo, node in nodes.items():
+        nodeMap[nodeNo] = node.getCoords()
+    return nodeMap
+
 def create_node_to_elem_map(elementICAMap):
     "Creating node to element connectivity"
     nodeToElemMap = {}

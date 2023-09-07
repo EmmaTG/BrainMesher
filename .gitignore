@@ -11,3 +11,5 @@ Brain_creation_atrophy.py
 /Lesion/*
 /Atrophy/*
 .idea/*
+venv/*
+vtkReader*
