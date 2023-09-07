@@ -245,6 +245,8 @@ class BrainHexMesh():
             solver3 = Maze_Solver(csfMaze)
             voidsToFill = solver3.find_voids()
             data = solver3.fill_voids(voidsToFill)
+        else:
+            self.config.Add_CSF = False
         return data       
         
     def make_mesh(self, pc_data):
