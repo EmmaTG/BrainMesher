@@ -19,6 +19,7 @@ main - the main function of the script
 from BrainHexMesh import BrainHexMesh
 from point_cloud.PointCloud import PointCloud
 from config.Config import ConfigFile
+from mesh.refinement.Refiner import Refiner
 from dotenv import load_dotenv
 import os
 
@@ -64,7 +65,15 @@ mesh.center_mesh(251)
 # Removes elements associated with a region to be excluded as defined in config file
 all_labels = config.material_labels.get_homogenized_labels_map()
 label_for_unused = all_labels.get("Unused")
-mesh.remove_region(label_for_unused) 
+mesh.remove_region(label_for_unused)
+
+### Optional local refinement
+# meshRefiner = Refiner(mesh)
+# bounds = [245, 255, 187, 195, 153, 165]
+# meshRefiner.refine_within_region(bounds)
+# element_to_refine = list(mesh.elements.keys())[:10]
+# meshRefiner.refine_elements(element_to_refine)
+# meshRefiner.refine_around_point([272, 190, 192],5)
 
 # Laplacian smoothing         
 if config.Smooth:
