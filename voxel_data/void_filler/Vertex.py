@@ -30,8 +30,8 @@ class Vertex():
         if hasattr(compareVertex, 'key'):
             vertex_location = np.array(self.get_location());
             compare_vertex_location = np.array(compareVertex.get_location());
-            if ((vertex_location[0] == compare_vertex_location[0]) or
-                (vertex_location[1] == compare_vertex_location[1]) or
+            if ((vertex_location[0] == compare_vertex_location[0]) and
+                (vertex_location[1] == compare_vertex_location[1]) and
                 (vertex_location[2] == compare_vertex_location[2])):
                 return True  
             return False

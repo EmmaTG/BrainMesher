@@ -6,9 +6,10 @@ Created on Wed May 24 14:02:00 2023
 """
 import numpy as np
 import pyvista as pv
-from matplotlib.colors import ListedColormap
+# from matplotlib.colors import ListedColormap
 
-class PointCloud():        
+
+class PointCloud:
     
     def create_point_cloud_from_voxel(self, data):
         current_data = data
@@ -21,19 +22,18 @@ class PointCloud():
                     if (np.sum(current_data[x,y,:]) > 0):
                         for z in range(current_dimensions[2]):
                             if (current_data[x,y,z] != 0):
-                                pointCloudData[count,:] = [x,y,z,current_data[x,y,z]] # co-ordinate data and material type (used in colouring pointCloud)
+                                pointCloudData[count,:] = [x,y,z,current_data[x,y,z]] # co-ordinate data and material type (used in colouring point_cloud)
                                 count += 1;
         self.pcd = pointCloudData[0:count,:]
         self.set_colour_map(data)
         return self.pcd
     
     def create_point_cloud_from_mesh(self, elements, nodes):
-        from element_functions import calculate_element_centroid
         pointCloudData = np.zeros((len(elements)+1,4));
-        for e in elements.values():
+        for e in elements.items():
             m = e.properties['mat'][0]
             ica = e.ica
-            [x,y,z] = calculate_element_centroid(ica, nodes)
+            [x,y,z] = e.calculate_element_centroid(ica, nodes)
             pointCloudData[e.num,:] = [x,y,z,m]
         self.pcd = pointCloudData;
         return self.pcd

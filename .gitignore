@@ -5,4 +5,12 @@ tester*
 *.txt
 OAS*
 /Images/*
-Brain_creation_personal.py
+brain_creation_personal.py
+brain_creation_lesion.py
+brain_creation_atrophy.py
+/Lesion/*
+/Atrophy/*
+.idea/*
+venv/*
+vtkReader*
+.env
