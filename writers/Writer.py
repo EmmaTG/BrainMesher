@@ -66,9 +66,8 @@ class BaseWriter():
         tag : str
             The unique tag to identify the type of writer
         """
-        self.__ext__ = ext;
-        self.__tag__ = tag;
-        
+        self.__ext__ = ext
+        self.__tag__ = tag
         
     def openWriter(self, filename, path):
         """Open file to be written to given path and filename.
@@ -83,14 +82,14 @@ class BaseWriter():
         path : string
             path to filename
         """                
-        if (path[-1] != "\\"):
-            path += "\\"
-        self.__path__ = path;
+        if (path[-1] != "/"):
+            path += "/"
+        self.__path__ = path
         
         if len(filename.split('.'))>1:
             filename = filename.split('.')[0]
         filenameOUT = filename + "_" + self.__tag__.upper()
-        self.__filename__ = filenameOUT;
+        self.__filename__ = filenameOUT
         
         self.f = open(path + filenameOUT + "." + self.__ext__, 'w')
 
@@ -108,9 +107,9 @@ class BaseWriter():
         Parameters
         ----------
         mesh : Mesh
-            Mesh object to be written
+            mesh object to be written
         """
-        self.__mesh__ = mesh;
+        self.__mesh__ = mesh
         
     def mesh_statistics(self):
         """
@@ -169,11 +168,11 @@ class ABQWriter(BaseWriter,IWriter):
         reNumber : boolean
             deteremines whetheer the node numbers shoudl be renumbered or not.
         """ 
-        nodeMap =  self.__mesh__.nodes;
+        nodeMap =  self.__mesh__.nodes
         self.f.write("*NODE\n")
         self.oldNumToNewNum = {}
         print("Writing node data")
-        count = 0;
+        count = 0
         for count,n in enumerate(nodeMap.keys()):
             if reNumber:
                 nodeNum = count+1
@@ -193,7 +192,7 @@ class ABQWriter(BaseWriter,IWriter):
         reNumber : boolean
             deteremines whether the element numbers should be renumbered or not.
         """ 
-        elementMap = self.__mesh__.elements;
+        elementMap = self.__mesh__.elements
         self.oldELemTonewELem = {}
         self.f.write("*ELEMENT, TYPE=C3D8, ELSET=ALL\n")
         print("Writing element data")
@@ -206,7 +205,7 @@ class ABQWriter(BaseWriter,IWriter):
             self.oldELemTonewELem[e] = elemNum
             self.f.write(str(elemNum) + ",\t" + ", ".join([str(self.oldNumToNewNum[i.number]) for i in elementMap[e].ica])+"\n")           
             
-        self.writeMaterialsData();
+        self.writeMaterialsData()
             
     def writeMaterialsData(self):
         """
@@ -215,7 +214,7 @@ class ABQWriter(BaseWriter,IWriter):
         associated with the elements and writes the elset data to file.
         
         """ 
-        elements = self.__mesh__.elements;
+        elements = self.__mesh__.elements
         materialToElements = {}
         for num,element in elements.items():
             materials = element.getMaterial()
@@ -282,9 +281,9 @@ class VTKWriter(BaseWriter,IWriter):
         reNumber : boolean
             deteremines whetheer the node numbers shoudl be renumbered or not.
         """ 
-        nodeMap = self.__mesh__.nodes;
+        nodeMap = self.__mesh__.nodes
         self.__nodeKeys__ = []
-        numNodes = len(nodeMap);
+        numNodes = len(nodeMap)
         self.f.write(" ".join(["\nPOINTS",str(numNodes),"float"]) + "\n")
         nodeKeys = nodeMap.keys()
         nodeKeys = sorted(nodeKeys)
@@ -292,7 +291,7 @@ class VTKWriter(BaseWriter,IWriter):
         self.node_num_map_old_to_new = {}
         for n in nodeKeys:
             nodeNum = count 
-            self.__nodeKeys__.append(n);
+            self.__nodeKeys__.append(n)
             self.node_num_map_old_to_new[n] = nodeNum
             self.f.write(" ".join([str(float(coord)) for coord in nodeMap[n].getCoords()]) + "\n")
             count += 1
@@ -314,7 +313,7 @@ class VTKWriter(BaseWriter,IWriter):
             deteremines whether the element numbers should be renumbered or not.
         """ 
         elementMap = self.__mesh__.elements
-        boundaryElementMap = self.__mesh__.boundaryElements;
+        boundaryElementMap = self.__mesh__.boundaryElements
         # Writing cell data
         numHexElements = len(elementMap)
         numQuadElements = len(boundaryElementMap)
@@ -352,7 +351,7 @@ class VTKWriter(BaseWriter,IWriter):
         for cell in range(numQuadElements):
             self.f.write("9\n")
         
-        self.writeMaterialsData();
+        self.writeMaterialsData()
     
     def writeMaterialsData(self):
         """
@@ -362,7 +361,7 @@ class VTKWriter(BaseWriter,IWriter):
         
         """ 
         elementMap = self.__mesh__.elements
-        boundaryElementMap = self.__mesh__.boundaryElements;
+        boundaryElementMap = self.__mesh__.boundaryElements
         numHexElements = len(elementMap)
         numQuadElements = len(boundaryElementMap)
         num_elements = numHexElements + numQuadElements
@@ -391,7 +390,7 @@ class VTKWriter(BaseWriter,IWriter):
         for d in cell_data: 
             data = elementMap[list(elementMap.keys())[0]].properties.get(d,False)
             if (data):
-                dataSize = len(data);
+                dataSize = len(data)
                 self.f.write("{} {} {} float\n".format(d, dataSize, len(elementMap)))
                 for num,e in elementMap.items():
                     data = e.properties.get(d,[0]*dataSize)
@@ -414,7 +413,7 @@ class VTKWriter(BaseWriter,IWriter):
             self.f.write("{} {} {} float\n".format(d, dataSize, len(nodes)))
             for nodeNum in nodeKeys:
                 n = nodes[nodeNum]
-                data = n.data.get(d,[0]*dataSize);
+                data = n.data.get(d,[0]*dataSize)
                 line = sub("[\[\]\(\),]*", '', str(data))
                 self.f.write(line + "\n")
 
@@ -471,7 +470,7 @@ class UCDWriter(BaseWriter,IWriter):
         numElements = len(self.__mesh__.elements)+ len(self.__mesh__.boundaryElements)
         self.f.write("\t".join([str(numNodes),str(numElements),'0','0','0']) + "\n") # Data summary row
         
-        nodeMap = self.__mesh__.nodes;
+        nodeMap = self.__mesh__.nodes
         nodeKeys = nodeMap.keys()
         nodeKeys = sorted(nodeKeys)
         count = 0
@@ -510,7 +509,7 @@ class UCDWriter(BaseWriter,IWriter):
             self.f.write(str(e.num) + "\t" + str(int(material)) + "\t " + "hex" + "\t")
             self.f.write("\t".join([str(n) for n in renumber_ica])+ "\n")
             
-        self.writeBoundaryElements(renumber);
+        self.writeBoundaryElements(renumber)
     
     def writeBoundaryElements(self,renumber):
         """
@@ -528,7 +527,7 @@ class UCDWriter(BaseWriter,IWriter):
         for e in self.__mesh__.boundaryElements.values():
             element_count += 1
             material = material = e.getMaterial()[0] 
-            ica = [int(n.number) for n in e.ica];
+            ica = [int(n.number) for n in e.ica]
             renumber_ica = []
             for ica_node in ica:
                 renumber_ica.append(self.node_num_map_old_to_new[ica_node])                
@@ -573,11 +572,11 @@ class Writer():
         """ 
         self.fileType = filetype
         if filetype == "abaqus":
-            self.writer = ABQWriter();
+            self.writer = ABQWriter()
         elif filetype == "vtk":
-            self.writer = VTKWriter();
+            self.writer = VTKWriter()
         elif filetype == "ucd":
-            self.writer = UCDWriter();
+            self.writer = UCDWriter()
         else:
             raise Exception("File writer of type {} is unsupported. Please select one from 'ucd','vtk' or 'abaqus'".format(filetype))
         self.writer.openWriter(filename,filePath)
@@ -599,54 +598,5 @@ class Writer():
         """
         Saves and Closes file.
         """
-        self.writer.saveAndClose();
-        self.writer = None;
-        
-        
-        
-
-# if __name__ == "__main__":
-#     path = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher"
-#     filename = "writer_test"
-#     elements = {}
-#     elements[1] = Element(1, [269992, 269991, 270077, 270078, 278506, 278505, 278591, 278592], mat=[1])
-#     elements[2] = Element(2, [269993, 269992, 270078, 270079, 278507, 278506, 278592, 278593], mat=[1])
-#     elements[3] = Element(3, [269994, 269993, 270079, 270080, 278508, 278507, 278593, 278594], mat=[1])
-    
-#     nodes = {}
-#     nodes[269991] = [62.54884263644444, 140.53209928444446, 72.53209928444446]
-#     nodes[269992] = [62.396075723333325, 140.40006344666668, 73.99759119666666]
-#     nodes[269993] = [62.40417773333333, 140.40485708333335, 75.98512558333333]
-#     nodes[269994] = [62.4101889, 140.4100377, 77.9990292]
-#     nodes[270077] = [62.39607347333333, 141.99760019666667, 72.40006119666667]
-#     nodes[270078] = [61.98393933666667, 141.97769256666666, 73.97768581666666]
-#     nodes[270079] = [61.972787649999994, 141.98392084999998, 75.98560610000001]
-#     nodes[270080] = [61.98429660000001, 141.9846935, 78.0003105]
-#     nodes[278505] = [63.67354880266668, 139.99236300533332, 71.99235760533335]
-#     nodes[278506] = [63.58423740400001, 139.59068357999996, 73.98168108]
-#     nodes[278507] = [63.588033710000005, 139.57933936999996, 75.99799762]
-#     nodes[278508] = [63.59028804, 139.58971149999996, 78.0008271]
-#     nodes[278591] =     [63.584229304000004, 141.98168108, 71.59067008]
-#     nodes[278592] = [64.0, 142.0, 74.0]
-#     nodes[278593] = [64.0, 142.0, 76.0]
-#     nodes[278594] = [64.0, 142.0, 78.0]
-    
-#     mesh = Mesh()
-#     mesh.elements = elements
-#     mesh.nodes = nodes
-    
-#     material_labels  = Material_Label()
-#     material_labels.addLabelToMap('TestMaterial', 1)
-    
-#     writer = Writer()
-#     writer.openWriter("vtk", filename, path)
-#     writer.initializeWriter(mesh)
-#     writer.writeMeshData()
-#     writer.closeWriter();
-    
-    
-    
-    
-    
-    
-    
+        self.writer.saveAndClose()
+        self.writer = None

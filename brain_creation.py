@@ -17,16 +17,24 @@ main - the main function of the script
 """
 
 from BrainHexMesh import BrainHexMesh
-from PointCloud import PointCloud
-from Config import ConfigFile
-import VoxelDataUtils as bm 
+from point_cloud.PointCloud import PointCloud
+from config.Config import ConfigFile
+from dotenv import load_dotenv
+import os
 
-# def main():
-path = "C:\\Users\\grife\\OneDrive\\Documents\\PostDoc\\BrainModels\\PythonScripts\\BrainMesher"
-fileIn = '\\mri\\aseg_tumor.mgz'
+load_dotenv()
+pathIn = os.getenv('HOME')
+fileIn = '/mri/aseg_tumor.mgz'
+
+pathOut = "/".join([pathIn, "Models"])
+if not os.path.exists(pathOut):
+    os.mkdir(pathOut)
+
+fileOut = "aseg_tumor"
 
 ## Preferences are defined in ConfigFile
-config = ConfigFile(path,fileIn)
+config = ConfigFile(pathIn, fileIn, pathOut, fileOut)
+config.Smooth = False
 
 brainCreator = BrainHexMesh()
 brainCreator.setConfig(config)
@@ -37,7 +45,9 @@ config.openConfigFile()
 data = brainCreator.import_data() 
 data = brainCreator.homogenize_data(data, unusedLabel="Unused") 
 
-# Pre-processes data to ensure valid mesh, options: lesion edemicTissue ventricles
+# Pre-processes data to ensure valid mesh:
+# config options: basic, lesion, atrophy
+# configCSF options: full, partial default is None
 data = brainCreator.preprocessFactory(data, "basic")
 
 # Creates point cloud from voxel data

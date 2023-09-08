@@ -4,8 +4,8 @@ Created on Wed May 24 09:31:31 2023
 
 @author: grife
 """
-from Vertex import Vertex 
-from GridBox import GridBox
+from voxel_data.void_filler.Vertex import Vertex
+from voxel_data.GridBox import GridBox
 from collections import deque
 import numpy as np
 

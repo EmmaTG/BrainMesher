@@ -6,15 +6,15 @@ Created on Wed May 10 09:11:56 2023
 
 import numpy as np
 
-from HeterogeneityConverter import MaterialsConverterFactory
-from Maze import Maze
-from InverseMaze import InverseMaze
-import VoxelDataUtils as bm
-from Maze_Solver import Maze_Solver
-from Mesh import Mesh, QuadElement
-from Writer import Writer    
-import PreProcessingActions as pp
-import Importer as inp
+from writers.HeterogeneityConverter import MaterialsConverterFactory
+from voxel_data.void_filler import Maze, InverseMaze, Maze_Solver
+import voxel_data.voxel_data_utils as bm
+from voxel_data.PreProcessingActions import IpreProcessAction
+from mesh.Mesh import Mesh
+from mesh.Element import QuadElement
+from writers.Writer import Writer
+from voxel_data import PreProcessingActions as pp
+from readers import Importer as inp
 
 class BrainHexMesh():
     """
@@ -56,7 +56,7 @@ class BrainHexMesh():
         overwrite current_data with data given in cc_data and replaces label with region_value
     smooth_mesh(mesh)
         performs Laplacian smoothing of mesh based on config file preferences.
-        Smoothing options include: specific regional smoothing, smoothing boundar exclusind CSF, global outer mesh smoothing
+        smoothing options include: specific regional smoothing, smoothing boundar exclusind CSF, global outer mesh smoothing
     write_to_file(mesh)
         write mesh data to file accordign to filetypes specifed in config file
     __validCSFBoundary(mats), private
@@ -100,7 +100,7 @@ class BrainHexMesh():
         ----------
         Error raised if config file not initialized beforehand 
         """
-        assert self.configured, "Config file has not been set for this. Please run config(cf -> ConfigFile) before importing data" 
+        assert self.configured, "config file has not been set for this. Please run config(cf -> ConfigFile) before importing data"
         if self.config.readData:
             return self.config.data
         if (path == "") and (file == ""):
@@ -199,15 +199,16 @@ class BrainHexMesh():
         if self.config.Coarsen:
             print("########## Coarsening data ##########")
             self.VOXEL_SIZE = 2
-            data = bm.coarsen(self.VOXEL_SIZE, data)  
-            
+            data = bm.coarsen(self.VOXEL_SIZE, data)
+
         print("########## Performing cleaning operations on the data ##########")
             # Clean image removing isolated pixels and small holes
-        bm.clean_voxel_data(data) 
+        bm.clean_voxel_data(data)
         
         for a in args:
-            a.performAction(data)
-        
+            if isinstance(a, IpreProcessAction):
+                a.performAction(data)
+
         change = True
         iterationCount = 0        
         while(change):
@@ -215,8 +216,8 @@ class BrainHexMesh():
             print("### Iteration number " + str(iterationCount))
             # Find and fill erroneous voids within model
             print("########## Removing voids from data ##########")
-            maze = Maze(data)
-            solver = Maze_Solver(maze)
+            maze = Maze.Maze(data)
+            solver = Maze_Solver.Maze_Solver(maze)
             voidsToFill = solver.find_voids()
             data = solver.fill_voids(voidsToFill)
             
@@ -225,8 +226,8 @@ class BrainHexMesh():
             cont_data = cont_data-1
             cont_data = cont_data*(-1)
             
-            maze2 = InverseMaze(cont_data)
-            solver2 = Maze_Solver(maze2)
+            maze2 = InverseMaze.InverseMaze(cont_data)
+            solver2 = Maze_Solver.Maze_Solver(maze2)
             voidsToFill = solver2.find_voids() 
             
             for key in voidsToFill:
@@ -241,8 +242,8 @@ class BrainHexMesh():
             add_CSF_Function(data, layers=self.config.layers)
             
             print("########## Checking for voids in csf data ##########")
-            csfMaze = Maze(data)
-            solver3 = Maze_Solver(csfMaze)
+            csfMaze = Maze.Maze(data)
+            solver3 = Maze_Solver.Maze_Solver(csfMaze)
             voidsToFill = solver3.find_voids()
             data = solver3.fill_voids(voidsToFill)
         else:
@@ -262,7 +263,7 @@ class BrainHexMesh():
         Outputs
         ----------
         mesh: Mesh
-            Mesh object
+            mesh object
             
         Errors
         ----------
@@ -288,7 +289,7 @@ class BrainHexMesh():
         Parameters
         ----------
         mesh: Mesh
-            Mesh object to be cleaned
+            mesh object to be cleaned
         wm: boolean, optional
             parameter to indiciate white matter boundary cleaning needed
             Default is True
@@ -324,7 +325,7 @@ class BrainHexMesh():
         Parameters
         ----------
         mesh: Mesh
-            Mesh object
+            mesh object
         elementNUmber: int
             materials number for boundary elements
             
@@ -382,13 +383,13 @@ class BrainHexMesh():
         Parameters
         ----------
         mesh: Mesh
-            Mesh object to be smoothed
+            mesh object to be smoothed
         """
-        # Optional Boundary Smoothing
+        # Optional Boundary smoothing
         count = 0
         for region in self.config.Smooth_regions:
             # Smooth regional boundary
-            print("########## Smoothing Regions ##########")
+            print("########## smoothing Regions ##########")
             non_whitematter_labels_map = self.material_labels.get_homogenized_labels_map()
             non_whitematter_labels_map.pop(region)
             non_whitematter_labels_map = list(non_whitematter_labels_map.values())
@@ -398,14 +399,14 @@ class BrainHexMesh():
             count += 1
         # Smooth mesh (excluded CSF)
         if self.config.Add_CSF:
-            print("########## Smoothing mesh excluding CSF ##########")
+            print("########## smoothing mesh excluding CSF ##########")
             # label = self.material_labels.get_homogenized_labels_map()
             # ventricles_label = label.pop("Ventricles")
             mesh.smooth_mesh(self.config.coeffs, self.config.iterations, elementsNotIncluded=[24])
             
-        # # Smoothing
+        # # smoothing
         # Smooth outer surface of mesh (including CSF)
-        print("########## Smoothing global mesh ##########")
+        print("########## smoothing global mesh ##########")
         mesh.smooth_mesh(self.config.coeffs, self.config.iterations)        
         # return mesh    
 
@@ -423,7 +424,7 @@ class BrainHexMesh():
         Parameters
         ----------
         mesh: Mesh
-            Mesh object to be written
+            mesh object to be written
         """        
         # Write mesh to file
         self.__convert_heterogeneity__(mesh)

@@ -22,7 +22,7 @@ class PointCloud:
                     if (np.sum(current_data[x,y,:]) > 0):
                         for z in range(current_dimensions[2]):
                             if (current_data[x,y,z] != 0):
-                                pointCloudData[count,:] = [x,y,z,current_data[x,y,z]] # co-ordinate data and material type (used in colouring pointCloud)
+                                pointCloudData[count,:] = [x,y,z,current_data[x,y,z]] # co-ordinate data and material type (used in colouring point_cloud)
                                 count += 1;
         self.pcd = pointCloudData[0:count,:]
         self.set_colour_map(data)

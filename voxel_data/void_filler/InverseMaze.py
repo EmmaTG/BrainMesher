@@ -5,7 +5,7 @@ Created on Mon Aug 28 10:14:18 2023
 @author: grife
 """
 import numpy as np
-from Maze import Maze
+from voxel_data.void_filler.Maze import Maze
 
 class InverseMaze(Maze):
     

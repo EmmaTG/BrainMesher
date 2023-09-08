@@ -1,7 +1,7 @@
 import numpy as np
-import MeshUtils as mu
-from Element import HexElement
-from Node import Node
+from mesh import mesh_utils as mu
+from mesh.Element import HexElement
+from mesh.Node import Node
 
 
 class Refiner:
@@ -33,7 +33,7 @@ class Refiner:
 
     def __refine_mesh__(self, refined_nodes, sideMap):
         """
-        Refine mesh in area defined by refined_nodes and categorized by sideMap
+        refinement mesh in area defined by refined_nodes and categorized by sideMap
 
         Parameters
         ----------
@@ -139,7 +139,7 @@ class Refiner:
                 del self.elementMap[old_elem_number]
                 del self.mesh.elements[old_elem_number]
 
-        print("Refinement COMPLETE\n")
+        print("refinement COMPLETE\n")
 
     def refinement_node_map(self, category, rotatedNodes, dim=-1):
         """

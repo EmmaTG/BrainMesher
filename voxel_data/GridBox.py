@@ -8,6 +8,7 @@ Created on Thu May 25 09:29:49 2023
 from scipy import stats
 import numpy as np
 
+
 class GridBox:
     splitter = "-"
     

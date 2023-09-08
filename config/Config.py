@@ -4,9 +4,9 @@ Created on Mon Jul 24 13:55:28 2023
 
 @author: grife
 """
-from Material_Label import Material_Label
+from config.Material_Label import Material_Label
 from numpy import array
-from HeterogeneityConverter import Heterogeneity
+from writers.HeterogeneityConverter import Heterogeneity
 
 class ConfigFile():
     """
@@ -66,24 +66,28 @@ class ConfigFile():
     closeConfigFile()
         Closes log file
     """
-    def __init__(self, inputPath, inputFileName):
+    def __init__(self, inputPath, inputFilename, outputPath, outputFilename):
         """
         Parameters
         ----------
         inputPath : string
             Path to input file.
-        inputFileName : TYPE
+        inputFilename : TYPE
             Input file name (.mgz).
+        outputPath : string
+            Path to where output should be saved.
+        outputFilename : TYPE
+            Output file name.
 
         """
         self.readFile = True
         self.fileInPath = inputPath
-        self.fileIn = inputFileName
+        self.fileIn = inputFilename
         self.readData = False
         self.data = []        
-        self.fileoutPath = inputPath
+        self.fileoutPath = outputPath
         self.writeToFile = True
-        self.fileout = inputFileName
+        self.fileout = outputFilename
         self.fileoutTypes = ['vtk'] # 'ucd' | 'vtk' | 'abaqus'
         self.Coarsen = True
         self.Add_CSF = True
@@ -102,27 +106,27 @@ class ConfigFile():
         self.material_labels  = Material_Label()
         self.material_labels.addLabelToMap('BrainStem', 16)
         self.material_labels.addLabelToMap('GreyMatter', [3,42]) # Left, Right
-        self.material_labels.addLabelToMap('WhiteMatter' , [2,41,77]); # Left, Right, WM-hypointensities
-        self.material_labels.addLabelToMap('Corpuscallosum' , [251,252,253,254,255]); # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
-        self.material_labels.addLabelToMap('BasalGanglia' , [11,50,12,51,13,52,26,58,62,30]); # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
-        self.material_labels.addLabelToMap('Cerebellum' , [7,46,8,47]); # WM(L&R), GM(L&R)
-        self.material_labels.addLabelToMap('Thalamus' , [10,49,28,60]); # Thalamus(L&R), Ventral DC(L&R)
-        self.material_labels.addLabelToMap('Hippocampus' , [17,53]); # Left, Right
-        self.material_labels.addLabelToMap('Amygdala' , [18,54]); # Left, Right
-        self.material_labels.addLabelToMap('Lesion' , [25,57]); # Left, Right
-        self.material_labels.addLabelToMap('CSF' , [24]); # Left, Right, Lateral(L&R), 3rd, 4th ventricles
-        self.material_labels.addLabelToMap('Unused' , [4,43,14,15,31,63,85]); # Lateral(L&R), 3rd, 4th NOTE: These labels will be removed to create empty spaces!!
+        self.material_labels.addLabelToMap('WhiteMatter' , [2,41,77]) # Left, Right, WM-hypointensities
+        self.material_labels.addLabelToMap('Corpuscallosum' , [251,252,253,254,255]) # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
+        self.material_labels.addLabelToMap('BasalGanglia' , [11,50,12,51,13,52,26,58,62,30]) # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
+        self.material_labels.addLabelToMap('Cerebellum' , [7,46,8,47]) # WM(L&R), GM(L&R)
+        self.material_labels.addLabelToMap('Thalamus' , [10,49,28,60]) # Thalamus(L&R), Ventral DC(L&R)
+        self.material_labels.addLabelToMap('Hippocampus' , [17,53]) # Left, Right
+        self.material_labels.addLabelToMap('Amygdala' , [18,54]) # Left, Right
+        self.material_labels.addLabelToMap('Lesion' , [25,57]) # Left, Right
+        self.material_labels.addLabelToMap('CSF' , [24]) # Left, Right, Lateral(L&R), 3rd, 4th ventricles
+        self.material_labels.addLabelToMap('Unused' , [4,43,14,15,31,63,85]) # Lateral(L&R), 3rd, 4th NOTE: These labels will be removed to create empty spaces!!
         # OR
-        # material_labels.addLabelToMap('Left-Lateral-Ventricle' , [4]);
-        # material_labels.addLabelToMap('Right-Lateral-Ventricle' , [43]);
-        # material_labels.addLabelToMap('Left-Inf-Lat-Vent' , [5]);
-        # material_labels.addLabelToMap('Right-Inf-Lat-Vent ' , [44]);
-        # material_labels.addLabelToMap('3rd-Ventricle' , [14]);
-        # material_labels.addLabelToMap('4th-Ventricle' , [15]);
+        # material_labels.addLabelToMap('Left-Lateral-Ventricle' , [4])
+        # material_labels.addLabelToMap('Right-Lateral-Ventricle' , [43])
+        # material_labels.addLabelToMap('Left-Inf-Lat-Vent' , [5])
+        # material_labels.addLabelToMap('Right-Inf-Lat-Vent ' , [44])
+        # material_labels.addLabelToMap('3rd-Ventricle' , [14])
+        # material_labels.addLabelToMap('4th-Ventricle' , [15])
         #
-        # material_labels.addLabelToMap('Left-choroid-plexus' , [31]);
-        # material_labels.addLabelToMap('Right-choroid-plexus' , [63]);
-        # material_labels.addLabelToMap('Optic-Chiasm' , [85]);
+        # material_labels.addLabelToMap('Left-choroid-plexus' , [31])
+        # material_labels.addLabelToMap('Right-choroid-plexus' , [63])
+        # material_labels.addLabelToMap('Optic-Chiasm' , [85])
 
     def set_materials_label(self, newLabels):
         self.material_labels = newLabels
@@ -151,11 +155,11 @@ class ConfigFile():
         Opens and write data to config log file
 
         """
-        self.f = open(self.fileoutPath + self.fileout + ".txt", 'w')
+        self.f = open("/".join([self.fileoutPath, self.fileout]) + ".txt", 'w')
         if self.readFile:
             self.f.write("Input file: " + self.fileInPath + self.fileIn + "\n")
         else:
-            self.f.write("Data input fromn user")
+            self.f.write("Data input from user")
         self.f.write("Write output to file: " + str(self.writeToFile) + "\n")
         if self.writeToFile:            
             self.f.write("Output written to: " + self.fileoutPath + self.fileout + "\n")
@@ -191,6 +195,9 @@ class ConfigFile():
         """
         Closes config log file
 
-        """         
+        """
+        self.writeToConfig("Regions included", "")
+        for r in self.material_labels.get_homogenized_labels_map().keys():
+            self.writeToConfig("\t", r)
         self.f.write("COMPLETE\n")
-        self.f.close();
+        self.f.close()

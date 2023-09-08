@@ -5,8 +5,8 @@ Created on Wed Sep  6 08:49:33 2023
 @author: grife
 """
 import numpy as np
-import VoxelDataUtils as bm   
-from abc import ABC, abstractmethod;
+import voxel_data.voxel_data_utils as bm
+from abc import ABC, abstractmethod
 from scipy import ndimage
 import warnings
 

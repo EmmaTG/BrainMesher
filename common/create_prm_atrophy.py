@@ -21,7 +21,7 @@ A .prm file
 def readConfigFile(path,simulationsName):
     radius = 0;
     center = [0,0,0]
-    with open(path + simulationsName + ".txt") as configReader:
+    with open("/".join([path, simulationsName]) + ".txt") as configReader:
         line = configReader.readline();
         while line != '':
             if (line[:22] == "Concentration radius: "):
@@ -34,8 +34,8 @@ def readConfigFile(path,simulationsName):
 
 # simulations = ["OAS1_0002_MR1","OAS1_0004_MR1","OAS1_0005_MR1","OAS1_0006_MR1","OAS1_0007_MR1","OAS1_0009_MR1","OAS1_0011_MR1"];
 # for s in simulations:
-def createPRM(path, s):
-    [center,radius] = readConfigFile(path, s);
+def createPRM(configPath, pathout, s):
+    [center,radius] = readConfigFile(configPath, s)
     replacement_values = {}
     
     # Input filearameters
@@ -52,8 +52,7 @@ def createPRM(path, s):
     output_file = s
     replacement_values["%output%"] = output_file
 
-    path2 = "C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\PythonScripts\\"
-    filepathToTemplate = path2 + "atrophy_template.prm"
+    filepathToTemplate = "/".join([pathout, "atrophy_template.prm"])
 
     template = open(filepathToTemplate,'r')
     inp_tmp = template.read()
@@ -64,7 +63,7 @@ def createPRM(path, s):
     for key,value in replacement_values.items():
         new_inp = new_inp.replace(key, str(value))            
     assert new_inp.replace("%","") == new_inp, ".inp file not fully filled in"
-    outputFile = open(path2 + "/prms/atrophy_prms/" + output_file + ".prm",'w')
+    outputFile = open(pathout + "/prms/" + output_file + ".prm",'w')
     print(output_file + " WRITTEN")
     outputFile.write(new_inp)
     outputFile.close()

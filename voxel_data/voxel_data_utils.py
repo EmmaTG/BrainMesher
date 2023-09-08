@@ -8,7 +8,7 @@ Created on Fri May 12 11:02:36 2023
 import numpy as np
 from scipy import stats
 from scipy import ndimage
-from GridBox import GridBox
+from voxel_data.GridBox import GridBox
 
 """
 A module of functions to assist with manipulating voxel data
@@ -447,7 +447,7 @@ def assign_materials_labels(labelled_data, end):
                     labelled_data[x,y,z] = 0; 
             
 def add_full_CSF(data,layers=1):
-    from PointCloud import PointCloud
+    from point_cloud import PointCloud
     from scipy.spatial import Delaunay
     
     current_dimensions = data.shape
@@ -580,7 +580,7 @@ def add_full_CSF(data,layers=1):
             data[x,y,z] = 24; 
             
 def add_partial_CSF(data,layers=1):
-    from PointCloud import PointCloud
+    from point_cloud import PointCloud
     from scipy.spatial import Delaunay
     
     current_dimensions = data.shape

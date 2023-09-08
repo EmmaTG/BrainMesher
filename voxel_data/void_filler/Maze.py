@@ -4,7 +4,7 @@ Created on Wed May 24 09:33:52 2023
 
 @author: grife
 """
-from Vertex import Vertex
+from voxel_data.void_filler.Vertex import Vertex
 import numpy as np
 
 class Maze():
