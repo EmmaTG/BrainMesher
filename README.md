@@ -19,4 +19,4 @@ Required packages:
 
 .env file required with two directories defined
 1. HOME: store output and
-2. DATA: where mri data is located
+2. DATA: where data is located (i.e. location of the mri/ file in freesurfer output)
