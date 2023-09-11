@@ -8,7 +8,7 @@ Create a 3D brain mesh from mri images using only hexahedral elements.
 4. Convert point cloud to mesh of cube elements
 5. Optional: Use laplacian smothing on the surface and/or boundaries
 
-Run 'Brain_creation.py' to create example brain model to be viewed using Paraview
+Run **'Brain_creation.py'** to create example brain model to be viewed using Paraview
 
 Required packages:
 - Nibabel
