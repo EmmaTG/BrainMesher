@@ -17,6 +17,6 @@ Required packages:
 - Scipy
 - MRI (optional: only needed to view mri images)
 
-.env file required with two directories defined
+.env must eb editted to define two directories
 1. HOME: store output and
 2. DATA: where data is located (i.e. location of the mri/ file in freesurfer output)
