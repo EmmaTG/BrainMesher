@@ -64,6 +64,7 @@ class BrainHexMesh():
     """
     
     def __init__(self):
+        self.VOXEL_SIZE = 1
         self.configured = False
     
     def setConfig(self, configFile):
@@ -109,7 +110,7 @@ class BrainHexMesh():
         importer = inp.ImportFromFile(path, file)
         return importer.getData()
     
-    def homogenize_data(self, data, unusedLabel):
+    def homogenize_data(self, data, unusedLabel="Unused"):
         """
         Homogenizes data based on materials labels
 
@@ -140,26 +141,26 @@ class BrainHexMesh():
             csf_function = bm.add_full_CSF
         elif csfConfig == "partial":
             csf_function = bm.add_partial_CSF
+        if config == 'simple':
+            csf_function = None
 
+        preprocess_steps = []
         if config == "lesion":
             lesion_label = self.material_labels.labelsMap.get("Lesion", [-1000])[0]
             assert lesion_label != -1000, "Lesion label not defined in materials label"
             # Add edemicTissue number of layers of tissue around lesion
             self.material_labels.addLabelToMap('EdemicTissue', [29])
-            return self.preprocess(data, pp.CleanLesion(lesion_label), pp.AddEdemicTissue(),
-                                   add_CSF_Function=csf_function)
-        elif config == "atrophy":
-            return self.preprocess(data, add_CSF_Function=csf_function)
+            preprocess_steps.append(pp.CleanLesion(lesion_label))
+            preprocess_steps.append(pp.AddEdemicTissue())
         elif config == "basic":
             if self.config.lesion:
                 lesion_label = self.material_labels.labelsMap.get("Lesion", [-1000])[0]
                 assert lesion_label != -1000, "Lesion label not defined in materials label"
-                return self.preprocess(data, pp.CleanLesion(lesion_label), add_CSF_Function=csf_function)
-            return self.preprocess(data, add_CSF_Function=csf_function)
-        else:
-            raise KeyError("{} is not a valid pre processing key".format(config))
-                
-    def preprocess(self, data, *args, add_CSF_Function=None):
+                if not config.contains("lesion"):
+                    preprocess_steps.append(pp.CleanLesion(lesion_label))
+        return self.preprocess(data, preprocess_steps = preprocess_steps, add_CSF_Function=csf_function)
+
+    def preprocess(self, data, preprocess_steps=None, add_CSF_Function=None):
         """
         Performs all preprocessing steps on voxel data:\n
         2. Corasen model, if requested\n
@@ -183,72 +184,75 @@ class BrainHexMesh():
         unusedLabel : string, optional
             label name of voxel label numbers to be removed at the end of the model creation
             Default is "unusedLabel"
-            
+
         Outputs
         ----------
         3D array:
             3D data array of voxels with label numbers
-            
-        Errors
+
+        Raises
         ----------
         Error raised lesion smoothing requested but no lesion material exists in mateirls labels object
-        """                     
-        
+        """
+
         # Coarsen the brain model
-        self.VOXEL_SIZE= 1
+        if preprocess_steps is None:
+            preprocess_steps = []
         if self.config.Coarsen:
             print("########## Coarsening data ##########")
             self.VOXEL_SIZE = 2
             data = bm.coarsen(self.VOXEL_SIZE, data)
 
         print("########## Performing cleaning operations on the data ##########")
-            # Clean image removing isolated pixels and small holes
+        # Clean image removing isolated pixels and small holes
         bm.clean_voxel_data(data)
-        
-        for a in args:
-            if isinstance(a, IpreProcessAction):
-                a.performAction(data)
+
+        for step in preprocess_steps:
+            if isinstance(step, IpreProcessAction):
+                step.performAction(data)
 
         change = True
-        iterationCount = 0        
-        while(change):
-            iterationCount += 1
-            print("### Iteration number " + str(iterationCount))
+        iteration_count = 0
+        while change:
+            iteration_count += 1
+            print("### Iteration number " + str(iteration_count))
             # Find and fill erroneous voids within model
             print("########## Removing voids from data ##########")
             maze = Maze.Maze(data)
             solver = Maze_Solver.Maze_Solver(maze)
-            voidsToFill = solver.find_voids()
-            data = solver.fill_voids(voidsToFill)
-            
+            voids_to_fill = solver.find_voids()
+            print("Data size: " + str(np.sum(data)))
+            solver.fill_voids(voids_to_fill)
+            print("Data size: " + str(np.sum(data)))
+
             print("########## Removing disconnected regions from data ##########")
             cont_data = bm.create_binary_image(data)
             cont_data = cont_data-1
             cont_data = cont_data*(-1)
-            
+
             maze2 = InverseMaze.InverseMaze(cont_data)
             solver2 = Maze_Solver.Maze_Solver(maze2)
-            voidsToFill = solver2.find_voids() 
-            
-            for key in voidsToFill:
+            voids_to_fill = solver2.find_voids()
+
+            for key in voids_to_fill:
                 [x,y,z]  = [int(x) for x in key.split("-")]
                 data[x,y,z] = 0
-                
+
             change = bm.clean_voxel_data(data)
-        
+
         # Create CSF layer around GM
-        if (self.config.Add_CSF) and (not add_CSF_Function is None):
+        if self.config.Add_CSF != 'none' and add_CSF_Function is not None:
             print("########## Adding layers of CSF ##########")
             add_CSF_Function(data, layers=self.config.layers)
-            
+
             print("########## Checking for voids in csf data ##########")
-            csfMaze = Maze.Maze(data)
-            solver3 = Maze_Solver.Maze_Solver(csfMaze)
-            voidsToFill = solver3.find_voids()
-            data = solver3.fill_voids(voidsToFill)
+            csf_maze = Maze.Maze(data)
+            solver3 = Maze_Solver.Maze_Solver(csf_maze)
+            voids_to_fill = solver3.find_voids()
+            solver3.fill_voids(voids_to_fill)
         else:
             self.config.Add_CSF = False
-        return data       
+        return data
         
     def make_mesh(self, pc_data):
         """
@@ -296,7 +300,7 @@ class BrainHexMesh():
             
         """
         
-        if self.config.Add_CSF:
+        if self.config.Add_CSF != 'none':
             # Clean grey matter boundary
             print("####### Cleaning grey matter boundary #######")
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
@@ -317,7 +321,7 @@ class BrainHexMesh():
         mesh.replace_outer_region(2, 3, elementsOnBoundary)        
 
 
-    def createBoundary(self, mesh, elementNUmber, elementsNotIncluded = [], boundaryTest=None):
+    def createBoundary(self, mesh, element_mat_number, elementsNotIncluded = [], boundaryTest=None):
         """
         Creates CSF boundary elements. 
         Does not create CSF Boundary elements below subcortical structures at base of brain
@@ -326,7 +330,7 @@ class BrainHexMesh():
         ----------
         mesh: Mesh
             mesh object
-        elementNUmber: int
+        element_mat_number: int
             materials number for boundary elements
             
         Outputs
@@ -338,13 +342,13 @@ class BrainHexMesh():
         # mesh.create_node_to_element_connectivity()
         boundary_elements_map = {}
         boundary_number = max(mesh.elements.keys()) if len(mesh.boundaryElements) == 0 else max(mesh.boundaryElements.keys())
-        boundaryElements = mesh.locate_boundary_element_map(elementsNotIncluded = elementsNotIncluded) 
+        boundary_elements = mesh.locate_boundary_element_map(elementsNotIncluded=elementsNotIncluded)
         print("Locating CSF boundary")
-        for compoundKey,ica in boundaryElements.items():
+        for compoundKey,ica in boundary_elements.items():
             boundary_number += 1
             ica_nodes = [mesh.nodes[n] for n in ica]
-            boundary_element = QuadElement(boundary_number, ica_nodes, mat=[elementNUmber])
-            [element_num,face] = [int(x) for x in compoundKey.split("-")]
+            boundary_element = QuadElement(boundary_number, ica_nodes, mat=[element_mat_number])
+            [element_num, face] = [int(x) for x in compoundKey.split("-")]
             # [xc,yc,zc,m] = e_centroids[element_num]
             Boundary = True
             if not boundaryTest is None:
@@ -354,7 +358,8 @@ class BrainHexMesh():
             else:
                 boundary_number -= 1
         return boundary_elements_map
-        
+
+
     def add_region(self,cc_data,current_data, region_value):
         """
         ADd region to voxel data by overwriting current data
@@ -398,7 +403,7 @@ class BrainHexMesh():
             mesh.smooth_mesh(coeffs, iterations, elementsNotIncluded = non_whitematter_labels_map)
             count += 1
         # Smooth mesh (excluded CSF)
-        if self.config.Add_CSF:
+        if self.config.Add_CSF != 'none':
             print("########## smoothing mesh excluding CSF ##########")
             # label = self.material_labels.get_homogenized_labels_map()
             # ventricles_label = label.pop("Ventricles")
@@ -409,6 +414,49 @@ class BrainHexMesh():
         print("########## smoothing global mesh ##########")
         mesh.smooth_mesh(self.config.coeffs, self.config.iterations)        
         # return mesh    
+
+    def apply_atrophy_concentration(self, mesh):
+        print("Applying concentration field")
+        # Get center of brain stem
+        center_bs = mesh.get_center_of_region(16)
+        # Get center of hippocampus
+        center_h = mesh.get_center_of_region(17)
+        bounding_box_hippo = mesh.getBoundingBox(regions=17)
+        center = [center_bs[0], center_h[1], bounding_box_hippo[5]]
+        distance = max([abs(bounding_box_hippo[0] - center_bs[0]),
+                        abs(bounding_box_hippo[3] - center_bs[0]),
+                        abs(bounding_box_hippo[1] - center_bs[1]),
+                        abs(bounding_box_hippo[4] - center_bs[1]),
+                        abs(bounding_box_hippo[2] - center_bs[2]),
+                        abs(bounding_box_hippo[5] - center_bs[2])])
+
+        mesh_bounding_box = mesh.getBoundingBox()
+        mesh_bounding_box = [x for x in mesh_bounding_box[:3]] + [x for x in mesh_bounding_box[3:]]
+        max_radius = max([abs(mesh_bounding_box[0] - center[0]),
+                          abs(mesh_bounding_box[3] - center[0]),
+                          abs(mesh_bounding_box[1] - center[1]),
+                          abs(mesh_bounding_box[4] - center[1]),
+                          abs(mesh_bounding_box[2] - center[2]),
+                          abs(mesh_bounding_box[5] - center[2])])
+        import random
+
+        num = random.randrange(500, 1000)
+        num /= 1000
+        length = max_radius
+        concentration_radius = length * num + (distance * 2)
+
+        self.config.writeToConfig("Concentration radius", concentration_radius)
+        self.config.writeToConfig("Center", ", ".join([str(x) for x in center]))
+        mesh.dataToWrite.append("concentration")
+        node_touched = []
+        for n in mesh.nodes.values():
+            centroid = n.getCoords()
+            radius = np.linalg.norm(np.array(center) - np.array(centroid))
+            if radius <= concentration_radius:
+                c = 1 - (radius / concentration_radius)
+                n.addData("concentration", [round(c, 4)])
+            else:
+                n.addData("concentration", [0])
 
     def __convert_heterogeneity__(self, mesh):
         converter = MaterialsConverterFactory.get_converter(self.config.converter_type)

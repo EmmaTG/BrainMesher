@@ -99,7 +99,8 @@ class BaseWriter():
         """ 
         self.f.close()
         print("Completed")
-        print("New {} file written to ".format(self.__tag__ .upper()) + self.__path__ + self.__filename__) 
+        print("New {} file written to ".format(self.__tag__ .upper()) +
+              (self.__path__ + self.__filename__).replace("\\", "/"))
         
     def initializeMesh(self, mesh):
         """
@@ -272,13 +273,13 @@ class VTKWriter(BaseWriter,IWriter):
         + "DATASET UNSTRUCTURED_GRID\n\n"
         self.f.write(firstLine)  
     
-    def writeNodes(self, renumber):        
+    def writeNodes(self, renumber):
         """
         Write nodes in the vtk format: 
             coord1 coord2 ... coordn
         Parameters
         ----------
-        reNumber : boolean
+        renumber : boolean
             deteremines whetheer the node numbers shoudl be renumbered or not.
         """ 
         nodeMap = self.__mesh__.nodes
@@ -309,7 +310,7 @@ class VTKWriter(BaseWriter,IWriter):
         
         Parameters
         ----------
-        reNumber : boolean
+        renumber : boolean
             deteremines whether the element numbers should be renumbered or not.
         """ 
         elementMap = self.__mesh__.elements
@@ -396,7 +397,8 @@ class VTKWriter(BaseWriter,IWriter):
                     data = e.properties.get(d,[0]*dataSize)
                     line = sub("[\[\]\(\),]*", '', str(data))
                     self.f.write(line + "\n")
-            
+
+
     def writePointData(self):
         """ 
         This method writes any data stored at the nodes
@@ -456,7 +458,7 @@ class UCDWriter(BaseWriter,IWriter):
             nodenum   coord1   coord2   ...   coordn
         Parameters
         ----------
-        reNumber : boolean
+        renumber : boolean
             deteremines whetheer the node numbers shoudl be renumbered or not.
         """ 
         
@@ -490,7 +492,7 @@ class UCDWriter(BaseWriter,IWriter):
         
         Parameters
         ----------
-        reNumber : boolean
+        renumber : boolean
             deteremines whether the element numbers should be renumbered or not.
         """ 
         element_count = 0
@@ -519,7 +521,7 @@ class UCDWriter(BaseWriter,IWriter):
         
         Parameters
         ----------
-        reNumber : boolean
+        renumber : boolean
             deteremines whether the element numbers should be renumbered or not.
         """
         element_count = 0
@@ -551,7 +553,7 @@ class Writer():
         save and close the file
     """
     
-    def openWriter(self, filetype, filename,filePath):
+    def openWriter(self, filetype, filename, filePath):
         """Open file to be written to given path and filename as defined
         by the super class BaseWriter. The first line of this 
         file is also written as well as the lien summarizing the number of 
@@ -563,7 +565,7 @@ class Writer():
             filetype of writer
         filename : string
             filename of writer
-        path : string
+        filePath : string
             path to filename
         
         Raises

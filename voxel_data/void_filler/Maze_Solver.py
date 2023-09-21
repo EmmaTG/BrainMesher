@@ -27,8 +27,8 @@ class Maze_Solver():
             num_non_zeros_to_boxes[n] = []
         for location in locations:
             location_int = [int(d) for d in location.split(Vertex.splitter)]
-            box = GridBox(self.data,location_int)
-            num_non_zeros = box.get_number_non_zeros();
+            box = GridBox(self.data, location_int)
+            num_non_zeros = box.get_number_non_zeros()
             self.location_to_box[box.get_location_key()] = box
             if num_non_zeros == 26:
                 self.update_grid_boxes(box)
@@ -37,7 +37,7 @@ class Maze_Solver():
         for boxes in num_non_zeros_to_boxes.values():
             for b in boxes:
                 self.update_grid_boxes(b)
-        return self.data
+        # return self.data
             
         
     def update_grid_boxes(self,box):

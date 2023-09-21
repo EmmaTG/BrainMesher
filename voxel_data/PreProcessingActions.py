@@ -102,7 +102,7 @@ class AddEdemicTissue(IpreProcessAction):
     def __init__(self, lesion_label = 25, edemic_tissue_label = 29, layers = 1 ):
         self.label = lesion_label
         self.edemic_tissue_label = edemic_tissue_label
-        self.layers = layers;
+        self.layers = layers
     
     def performAction(self, current_data):
         print("########## Creating edemic Tissue ##########")

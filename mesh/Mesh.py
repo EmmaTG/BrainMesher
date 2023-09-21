@@ -12,7 +12,7 @@ from mesh.Node import Node
 from mesh.Element import HexElement
 
 
-class Mesh():
+class Mesh:
     """
     A class used to store and manipulate mesh data
 
@@ -89,8 +89,9 @@ class Mesh():
         self.elementToPointCloud = {}
         self.dataToWrite = []
         self.cellData = []
+        self.boundaryNodeToElements = {}
         
-    def addBoundaryElements(self,boundaryElementsMap):
+    def addBoundaryElements(self, boundaryElementsMap):
         """Merges new boundary element map to existing map.
 
         Parameters
@@ -100,7 +101,8 @@ class Mesh():
             Key: element number
             Value: Element object
         """
-        self.boundaryElements = {**self.boundaryElements, **boundaryElementsMap};
+        self.boundaryElements = {**self.boundaryElements, **boundaryElementsMap}
+        self.boundaryNodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.boundaryElements))
     
     def getBoundingBox(self, regions = -1):
         """Gets the boundign box for the mesh.
@@ -453,6 +455,7 @@ class Mesh():
                     elements_on_boundary.append(e) 
         
         return elements_on_boundary
+
     def delete_element(self, element_number):
         """
         Deletes elements from the mesh. To do this elements are deleted from 
@@ -464,16 +467,14 @@ class Mesh():
         element_number : int
             element number to be deleted
         """
-        if not (hasattr(self, "boundaryNodeToElements")):
-            self.boundaryNodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.boundaryElements));
-        if self.elements.get(element_number,False):    
+        if self.elements.get(element_number, False):
             element = self.elements[element_number]
             for n in element.ica:
                 connectedElements = self.nodeToElements[n.number]
                 connectedElements.remove(element_number)
                 if (len(connectedElements) == 0):
                     self.nodeToElements.pop(n.number)
-                    if not (self.boundaryNodeToElements.get(n.number,False)):
+                    if not (self.boundaryNodeToElements.get(n.number, False)):
                         self.nodes.pop(n.number)
             self.elements.pop(element_number)
         
@@ -597,7 +598,7 @@ class Mesh():
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def center_mesh(self,region):
+    def center_mesh(self, region):
         """
         Moves the center of the mesh to the center of the region specified by 'region'
         to the nearest integer.
@@ -608,9 +609,9 @@ class Mesh():
         region : int
             material property of region about which mesh should be centered
         """
-        middleOfCC = [int(x) for x in self.get_center_of_region(region)];
+        middle_of_cc = [int(x) for x in self.get_center_of_region(region)]
         # Move mesh
-        mt.translate_mesh(self.nodes,middleOfCC)
+        mt.translate_mesh(self.nodes, middle_of_cc)
         
         
     def get_center_of_region(self,region):
@@ -629,15 +630,15 @@ class Mesh():
 
         """
         centroid = [0,0,0]
-        num_elements = 0;
+        num_elements = 0
         # Find centroid of corpus callosum
         for e in self.elements.values():
             if (e.getMaterial()[0] == region):
-                e_centroid = e.calculate_element_centroid();
+                e_centroid = e.calculate_element_centroid()
                 num_elements += 1
                 for d in range(len(e_centroid)):
                   centroid[d] += e_centroid[d];
-        return [float(x/num_elements) for x in centroid];        
+        return [float(x/num_elements) for x in centroid]
         
     def create_elements_map(self, elementsNotIncluded, elementsIncluded = []):
         """

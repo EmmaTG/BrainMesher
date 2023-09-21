@@ -8,7 +8,8 @@ from config.Material_Label import Material_Label
 from numpy import array
 from writers.HeterogeneityConverter import Heterogeneity
 
-class ConfigFile():
+
+class ConfigFile:
     """
     A class used to set up rpeferences for brain creation.
 
@@ -88,18 +89,22 @@ class ConfigFile():
         self.fileoutPath = outputPath
         self.writeToFile = True
         self.fileout = outputFilename
-        self.fileoutTypes = ['vtk'] # 'ucd' | 'vtk' | 'abaqus'
+        self.fileoutTypes = ['vtk']  # 'ucd' | 'vtk' | 'abaqus'
+        self.preprocess = 'basic'  # 'basic' | 'debug' | 'atrophy' | 'lesion'
         self.Coarsen = True
-        self.Add_CSF = True
-        self.layers = 1
+        self.Add_CSF = 'partial'
+        self.csf_layers = 1
         self.Smooth = True
         self.iterations = 4
-        self.coeffs = [0.6,-0.4]
+        self.coeffs = [0.6, -0.4]
         self.lesion = True
+        self.atrophy = False
+        self.ventricles = False
+        self.external_cc = True
         
         self.Smooth_regions = ['Lesion']
         self.region_iterations = [4]
-        self.region_coeffs =[[0.6,-0.4]]
+        self.region_coeffs =[[0.6, -0.4]]
 
         self.converter_type = Heterogeneity.NINER
         
@@ -168,7 +173,7 @@ class ConfigFile():
         self.f.write("Coarsen: " + str(self.Coarsen) + "\n")
         self.f.write("Add CSF: " + str(self.Add_CSF) + "\n")
         if (self.Add_CSF):
-            self.f.write("Layers of CSF: " + str(self.layers) + "\n")
+            self.f.write("Layers of CSF: " + str(self.csf_layers) + "\n")
         self.f.write("Smooth global mesh: " + str(self.Smooth) + "\n")
         if (self.Smooth):            
             self.f.write("Iterations: " + str(self.iterations) + ", coeffs: " + ", ".join([str(x) for x in self.coeffs]) + "\n")
