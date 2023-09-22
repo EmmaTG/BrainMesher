@@ -21,11 +21,12 @@ from point_cloud.PointCloud import PointCloud
 from config.Config import ConfigFile
 from voxel_data import Preprocessor
 from mesh.refinement import Refiner
+from mesh.PostProcessor import *
 import os
 
 
-# pathIn = os.getcwd()
-pathIn = "./"
+pathIn = os.getcwd()
+# pathIn = "./"
 fileIn = '/mri/aseg_tumor.mgz'
 
 pathOut = "/".join([pathIn, "Models"])
@@ -56,7 +57,7 @@ data_new = preprocessor.preprocess_data()
 
 # Creates point cloud from voxel data
 pointCloud = PointCloud()
-pointCloud.create_point_cloud_from_voxel(data) 
+pointCloud.create_point_cloud_from_voxel(data_new)
 
 # Creates mesh from pointcloud
 mesh = brainCreator.make_mesh(pointCloud.pcd) 
@@ -65,31 +66,29 @@ brainCreator.clean_mesh(mesh)
 # Moves mesh to the center of the corpus callosum
 mesh.center_mesh(251)
 
-# Removes elements associated with a region to be excluded as defined in config file
+postProcessor = PostProcessor(config, mesh)
+if config.atrophy:
+    postProcessor = ApplyAtrophyConcentration(postProcessor)
+if config.Smooth:
+    postProcessor = SmoothMesh(postProcessor, [0.6, -0.4], 2)
+if config.Refine:
+    postProcessor = RefineMesh(postProcessor, 'elements', elements=list(mesh.elements.keys())[:10])
+
 all_labels = config.material_labels.get_homogenized_labels_map()
 label_for_unused = all_labels.get("Unused")
-mesh.remove_region(label_for_unused)
+postProcessor = RemoveRegion(postProcessor, label_for_unused)
+if not config.ventricles:
+    all_labels = config.material_labels.get_homogenized_labels_map()
+    label_for_ventricles = all_labels.get("Ventricles",-1)
+    if label_for_ventricles != -1:
+        postProcessor = RemoveRegion(postProcessor, label_for_ventricles)
 
-### Optional local refinement
-meshRefiner = Refiner.Refiner(mesh)
-bounds = [245, 255, 187, 195, 153, 165]
-meshRefiner.refine_within_region(bounds)
-config.writeToConfig("Refined within bounds", ",".join([str(x) for x in bounds]))
-element_to_refine = list(mesh.elements.keys())[:10]
-meshRefiner.refine_elements(element_to_refine)
-config.writeToConfig("Refined elements", ",".join([str(x) for x in element_to_refine]))
-point = [272, 190, 192]
-radius = 5
-meshRefiner.refine_around_point(point, radius)
-config.writeToConfig("Refined around point", ",".join([str(x) for x in point]))
-config.writeToConfig("Refined with radius", str(radius))
 
-# Laplacian smoothing         
-if config.Smooth:
-    brainCreator.smooth_mesh(mesh)
+postProcessor.post_process()
 
-if config.atrophy:
-    brainCreator.apply_atrophy_concentration(mesh)
+
+# if config.atrophy:
+#     brainCreator.apply_atrophy_concentration(mesh)
 
 # Write mesh to file (ucd, vtk or abq inp as specified in config file)
 brainCreator.write_to_file(mesh)  

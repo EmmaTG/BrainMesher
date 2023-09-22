@@ -37,7 +37,7 @@ class ConfigFile:
         Parameter to determine if data should be corasened to element size = 2
     Add_CSF : boolean
         Parameter to determine if cerebrospinal fluid (CSF) should be added to brain
-    layers : int
+    csf_layers : int
         Number of layers of CSF to be added
     Smooth : boolean
         Parameter to determine if mesh should be smoothed
@@ -92,7 +92,7 @@ class ConfigFile:
         self.fileoutTypes = ['vtk']  # 'ucd' | 'vtk' | 'abaqus'
         self.preprocess = 'basic'  # 'basic' | 'debug' | 'atrophy' | 'lesion'
         self.Coarsen = True
-        self.Add_CSF = 'partial'
+        self.Add_CSF = 'none'
         self.csf_layers = 1
         self.Smooth = True
         self.iterations = 4
@@ -101,6 +101,7 @@ class ConfigFile:
         self.atrophy = False
         self.ventricles = False
         self.external_cc = True
+        self.Refine = False
         
         self.Smooth_regions = ['Lesion']
         self.region_iterations = [4]
@@ -111,10 +112,10 @@ class ConfigFile:
         self.material_labels  = Material_Label()
         self.material_labels.addLabelToMap('BrainStem', 16)
         self.material_labels.addLabelToMap('GreyMatter', [3,42]) # Left, Right
-        self.material_labels.addLabelToMap('WhiteMatter' , [2,41,77]) # Left, Right, WM-hypointensities
-        self.material_labels.addLabelToMap('Corpuscallosum' , [251,252,253,254,255]) # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
-        self.material_labels.addLabelToMap('BasalGanglia' , [11,50,12,51,13,52,26,58,62,30]) # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
-        self.material_labels.addLabelToMap('Cerebellum' , [7,46,8,47]) # WM(L&R), GM(L&R)
+        self.material_labels.addLabelToMap('WhiteMatter', [2,41,77]) # Left, Right, WM-hypointensities
+        self.material_labels.addLabelToMap('Corpuscallosum', [251,252,253,254,255]) # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
+        self.material_labels.addLabelToMap('BasalGanglia', [11,50,12,51,13,52,26,58,62,30]) # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
+        self.material_labels.addLabelToMap('Cerebellum', [7,46,8,47]) # WM(L&R), GM(L&R)
         self.material_labels.addLabelToMap('Thalamus' , [10,49,28,60]) # Thalamus(L&R), Ventral DC(L&R)
         self.material_labels.addLabelToMap('Hippocampus' , [17,53]) # Left, Right
         self.material_labels.addLabelToMap('Amygdala' , [18,54]) # Left, Right
