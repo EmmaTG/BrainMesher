@@ -32,15 +32,19 @@ class ElementCalculations():
             Element centroid.
 
         """
+        # if hasattr(self, 'centroid') and self.centroid is not None:
+        #     return self.centroid
+        # else:
         centroid = [0,0,0]
         for n in self.ica:
             coords = n.getCoords()
             for i in range(3):
                 centroid[i] += coords[i]
-                
+
         for i in range(3):
             centroid[i] /= len(self.ica)
-        return centroid ;
+            # self.centroid = centroid
+        return centroid
     
 class Element(ElementCalculations):
     def __init__(self, number, ica, **kwargs):        

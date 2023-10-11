@@ -1,4 +1,7 @@
+import warnings
 from abc import ABC, abstractmethod
+
+from mesh import BoundaryFunctions
 from mesh.refinement import Refiner
 from mesh.Element import QuadElement
 import numpy as np
@@ -94,6 +97,7 @@ class RefineMesh(PostProcessorDecorator):
         return super().post_process()
 
     def refine_mesh(self):
+        print("########## Refining mesh using {} method ##########".format(self.type_ref))
         if self.type_ref == 'point':
             assert self.point is not None and self.radius > 0
             self.mesh_refiner.refine_around_point(self.point, self.radius)
@@ -116,25 +120,50 @@ class CreateBoundaryElements(PostProcessorDecorator):
         super().__init__(post_processor)
         self.mesh_refiner = None
         self.element_mat_number = element_mat_number
-        self.boundary_test_fx = boundary_test_fx
+        self.boundary_test = boundary_test_fx
         if excluded_regions is None:
             excluded_regions = []
         self.excluded_regions = excluded_regions
 
     def post_process(self):
-        self.mesh_refiner = Refiner.Refiner(self.mesh)
         self.create_boundary()
         return super().post_process()
 
     def create_boundary(self):
-        # boundary_elements_map = brainCreator.createCSFBoundary(mesh,200, boundaryTest=OnlyOnLabel(mesh, 24))
-        # boundary_elements_map = brainCreator.createCSFBoundary(mesh,200, boundaryTest=OpenBottomCSF(mesh))
-        # boundary_elements_map = brainCreator.createBoundary(mesh, 200, boundaryTest=None)
+
+        boundary_test_fx = None
+        if self.boundary_test is not None:
+            if 'OnlyOnLabel' in self.boundary_test:
+                popped_label = self.boundary_test.split("-")[1].strip()
+                labels = self.config.material_labels.get_homogenized_labels_map()
+                region_label = labels.pop(popped_label, False)
+                if region_label:
+                    boundary_test_fx = BoundaryFunctions.OnlyOnLabel(self.mesh, region_label)
+                else:
+                    boundary_test_fx = None
+                for e in labels.values():
+                    if not self.excluded_regions.count(e):
+                        self.excluded_regions.append(e)
+            elif self.boundary_test == 'OpenBottomCSF':
+                if self.config.add_csf == 'none':
+                    warnings.warn("You cannot request an open open CSf boundary if CSF is not added to the model")
+                    boundary_test_fx = None
+                else:
+                    boundary_test_fx = BoundaryFunctions.OpenBottomCSF(self.mesh)
+            else:
+                raise NotImplementedError("This boundary function has not been implemented")
+
+        print("########## Creating boundary elements with number {} \n"
+              "           excluding regions {} \n"
+              "           using boundary test function {} ##########"
+              .format(self.element_mat_number,
+                      'None' if len(self.excluded_regions) == 0 else", ".join([str(x) for x in self.excluded_regions]),
+                      'None' if self.boundary_test is None else self.boundary_test))
+
         boundary_elements_map = {}
         boundary_number = max(self.mesh.elements.keys()) if len(self.mesh.boundaryElements) == 0 else max(
             self.mesh.boundaryElements.keys())
         boundary_elements = self.mesh.locate_boundary_element_map(elementsNotIncluded=self.excluded_regions)
-        print("Locating CSF boundary")
         for compoundKey, ica in boundary_elements.items():
             boundary_number += 1
             ica_nodes = [self.mesh.nodes[n] for n in ica]
@@ -142,12 +171,14 @@ class CreateBoundaryElements(PostProcessorDecorator):
             [element_num, face] = [int(x) for x in compoundKey.split("-")]
             # [xc,yc,zc,m] = e_centroids[element_num]
             boundary = True
-            if not self.boundary_test_fx is None:
-                boundary = self.boundary_test_fx.validElement(element_num)
+            if boundary_test_fx is not None:
+                boundary = boundary_test_fx.validElement(element_num)
             if boundary:
                 boundary_elements_map[boundary_number] = boundary_element
             else:
                 boundary_number -= 1
+        print("{} boundary elements created with material number {}"
+              .format(len(boundary_elements_map), self.element_mat_number))
         self.mesh.addBoundaryElements(boundary_elements_map)
 
 
@@ -158,7 +189,7 @@ class ApplyAtrophyConcentration(PostProcessorDecorator):
         return super().post_process()
 
     def apply_concentration(self):
-        print("Applying concentration field")
+        print("########## Applying concentration field ##########")
         # Get center of brain stem
         center_bs = self.mesh.get_center_of_region(16)
         # Get center of hippocampus
@@ -212,4 +243,5 @@ class RemoveRegion(PostProcessorDecorator):
         return super().post_process()
 
     def remove_region(self):
+        print("########## Removing region {} ##########".format(self.region_label))
         self.mesh.remove_region(self.region_label)

@@ -7,6 +7,7 @@ Created on Mon Jul 24 13:55:28 2023
 from config.Material_Label import Material_Label
 from numpy import array
 from writers.HeterogeneityConverter import Heterogeneity
+import configparser
 
 
 class ConfigFile:
@@ -15,31 +16,31 @@ class ConfigFile:
 
     Attributes
     ----------
-    readFile : boolean
+    read_file : boolean
         Parameter to determine if data shoudl eb read in from file
-    fileInPath : string
+    file_in_path : string
         Path to input file
-    fileIn : string
+    file_in : string
         Input file name (.mgz)
-    readData : boolean
+    read_data : boolean
         Parameter to determine if data should be given explicitly
     data: 3D array 
         Orginal data imported in 
-    writeToFile : boolean
+    write_to_file : boolean
         Paremeter to determine if mesh should be written to file      
-    fileoutPath : string
+    file_out_path : string
         Path to output file, deafault = 'fileInPath'
     fileout : string
         Output file name, deafault = 'fileIn'
-    fileoutTypes : array(string)
+    fileout_types : array(string)
         File types to which data must be written. Options: 'ucd' | 'vtk' | 'abaqus'
-    Coarsen : boolean
+    coarsen : boolean
         Parameter to determine if data should be corasened to element size = 2
-    Add_CSF : boolean
+    add_csf : boolean
         Parameter to determine if cerebrospinal fluid (CSF) should be added to brain
     csf_layers : int
         Number of layers of CSF to be added
-    Smooth : boolean
+    smooth : boolean
         Parameter to determine if mesh should be smoothed
     iterations : int
         Number of smoothing iteration to be performed
@@ -81,58 +82,83 @@ class ConfigFile:
             Output file name.
 
         """
-        self.readFile = True
-        self.fileInPath = inputPath
-        self.fileIn = inputFilename
-        self.readData = False
+        config = configparser.ConfigParser()
+        config.read('model_config.ini')
+        sections = config.sections()
+        print(sections)
+        default_config = config['DEFAULT']
+        for key in default_config:
+            print(key)
+        # file read and write settings
+        self.read_file = default_config['read_file']
+        self.file_in_path = inputPath
+        self.file_in = inputFilename
+        self.read_data = False
         self.data = []        
-        self.fileoutPath = outputPath
-        self.writeToFile = True
+        self.file_out_path = outputPath
+        self.write_to_file = True
         self.fileout = outputFilename
-        self.fileoutTypes = ['vtk']  # 'ucd' | 'vtk' | 'abaqus'
-        self.preprocess = 'basic'  # 'basic' | 'debug' | 'atrophy' | 'lesion'
-        self.Coarsen = True
-        self.Add_CSF = 'none'
+        self.fileout_types = ['vtk']  # 'ucd' | 'vtk' | 'abaqus'
+        self.external_cc = False
+
+        # preprocessign option
+        self.coarsen = True
+
+        # model features to include
+        self.add_csf = 'partial'  # 'none' | 'full' | 'partial'
+        self.lesion = True
+        self.lesion_layers = 1
+        self.atrophy = True
         self.csf_layers = 1
-        self.Smooth = True
+
+        # Smoothing features
+        self.smooth = False
         self.iterations = 4
         self.coeffs = [0.6, -0.4]
-        self.lesion = True
-        self.atrophy = False
-        self.ventricles = False
-        self.external_cc = True
-        self.Refine = False
-        
         self.Smooth_regions = ['Lesion']
         self.region_iterations = [4]
-        self.region_coeffs =[[0.6, -0.4]]
+        self.region_coeffs = [[0.6, -0.4]]
 
+        # Boundary elements
+        self.boundary_element_numbers = []  # [400, 500, 600]
+        self.excluded_regions = [[]]  # [[], [], []]
+        self.boundary_tests = []  # ['OpenBottomCSF', 'OnlyOnLabel-Ventricles', 'OnlyOnLabel-Lesion']
+        self.boundary_element_numbers.reverse()
+        self.excluded_regions.reverse()
+        self.boundary_tests.reverse()
+
+        # Refining features
+        self.refine = True
+
+        # Material converter preference
         self.converter_type = Heterogeneity.NINER
-        
-        self.material_labels  = Material_Label()
+
+        # Material labels (PRESET)
+        self.material_labels = Material_Label()
         self.material_labels.addLabelToMap('BrainStem', 16)
-        self.material_labels.addLabelToMap('GreyMatter', [3,42]) # Left, Right
-        self.material_labels.addLabelToMap('WhiteMatter', [2,41,77]) # Left, Right, WM-hypointensities
-        self.material_labels.addLabelToMap('Corpuscallosum', [251,252,253,254,255]) # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
-        self.material_labels.addLabelToMap('BasalGanglia', [11,50,12,51,13,52,26,58,62,30]) # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
-        self.material_labels.addLabelToMap('Cerebellum', [7,46,8,47]) # WM(L&R), GM(L&R)
-        self.material_labels.addLabelToMap('Thalamus' , [10,49,28,60]) # Thalamus(L&R), Ventral DC(L&R)
-        self.material_labels.addLabelToMap('Hippocampus' , [17,53]) # Left, Right
-        self.material_labels.addLabelToMap('Amygdala' , [18,54]) # Left, Right
-        self.material_labels.addLabelToMap('Lesion' , [25,57]) # Left, Right
-        self.material_labels.addLabelToMap('CSF' , [24]) # Left, Right, Lateral(L&R), 3rd, 4th ventricles
-        self.material_labels.addLabelToMap('Unused' , [4,43,14,15,31,63,85]) # Lateral(L&R), 3rd, 4th NOTE: These labels will be removed to create empty spaces!!
-        # OR
-        # material_labels.addLabelToMap('Left-Lateral-Ventricle' , [4])
-        # material_labels.addLabelToMap('Right-Lateral-Ventricle' , [43])
-        # material_labels.addLabelToMap('Left-Inf-Lat-Vent' , [5])
-        # material_labels.addLabelToMap('Right-Inf-Lat-Vent ' , [44])
-        # material_labels.addLabelToMap('3rd-Ventricle' , [14])
-        # material_labels.addLabelToMap('4th-Ventricle' , [15])
-        #
-        # material_labels.addLabelToMap('Left-choroid-plexus' , [31])
-        # material_labels.addLabelToMap('Right-choroid-plexus' , [63])
-        # material_labels.addLabelToMap('Optic-Chiasm' , [85])
+        self.material_labels.addLabelToMap('GreyMatter', [3, 42])  # Left, Right
+        self.material_labels.addLabelToMap('WhiteMatter', [2, 41, 77])  # Left, Right, WM-hypointensities
+        self.material_labels.addLabelToMap('CorpusCallosum', [251, 252, 253, 254, 255])  # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
+        self.material_labels.addLabelToMap('BasalGanglia', [11, 50, 12, 51, 13, 52, 26, 58, 62, 30])  # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
+        self.material_labels.addLabelToMap('Cerebellum', [7, 46, 8, 47])  # WM(L&R), GM(L&R)
+        self.material_labels.addLabelToMap('Thalamus', [10, 49, 28, 60])  # Thalamus(L&R), Ventral DC(L&R)
+        self.material_labels.addLabelToMap('Hippocampus', [17, 53])  # Left, Right
+        self.material_labels.addLabelToMap('Amygdala', [18, 54])  # Left, Right
+        self.material_labels.addLabelToMap('Ventricles',
+                                           [4, 43, 5, 44, 14, 15])  # Lateral(L&R), 3rd, 4th, Inf-Lat-Vent(L&R)
+
+        unused_labels = [0, 31, 63, 85]  # choroid-plexus (L&R), Optic-Chiasm
+        if self.add_csf:
+            self.material_labels.addLabelToMap('CSF', [24])  # CSF
+        else:
+            unused_labels.append(24)
+
+        if self.lesion:
+            self.material_labels.addLabelToMap('Lesion', [25, 57])  # Left, Right
+        else:
+            unused_labels += [25, 57]
+
+        self.material_labels.addLabelToMap('Unused', unused_labels)
 
     def set_materials_label(self, newLabels):
         self.material_labels = newLabels
@@ -151,8 +177,8 @@ class ConfigFile:
         Error raised if data is not a 3Dimensional array
 
         """
-        self.readFile = False
-        self.readData = True
+        self.read_file = False
+        self.read_data = True
         assert len(array(importedData).shape) == 3
         self.data = importedData
         
@@ -161,22 +187,22 @@ class ConfigFile:
         Opens and write data to config log file
 
         """
-        self.f = open("/".join([self.fileoutPath, self.fileout]) + ".txt", 'w')
-        if self.readFile:
-            self.f.write("Input file: " + self.fileInPath + self.fileIn + "\n")
+        self.f = open("/".join([self.file_out_path, self.fileout]) + ".txt", 'w')
+        if self.read_file:
+            self.f.write("Input file: " + self.file_in_path + self.file_in + "\n")
         else:
             self.f.write("Data input from user")
-        self.f.write("Write output to file: " + str(self.writeToFile) + "\n")
-        if self.writeToFile:            
-            self.f.write("Output written to: " + self.fileoutPath + self.fileout + "\n")
-            self.f.write("Output file types: " + ", ".join(self.fileoutTypes) + "\n")
+        self.f.write("Write output to file: " + str(self.write_to_file) + "\n")
+        if self.write_to_file:
+            self.f.write("Output written to: " + self.file_out_path + self.fileout + "\n")
+            self.f.write("Output file types: " + ", ".join(self.fileout_types) + "\n")
         
-        self.f.write("Coarsen: " + str(self.Coarsen) + "\n")
-        self.f.write("Add CSF: " + str(self.Add_CSF) + "\n")
-        if (self.Add_CSF):
+        self.f.write("Coarsen: " + str(self.coarsen) + "\n")
+        self.f.write("Add CSF: " + str(self.add_csf) + "\n")
+        if (self.add_csf):
             self.f.write("Layers of CSF: " + str(self.csf_layers) + "\n")
-        self.f.write("Smooth global mesh: " + str(self.Smooth) + "\n")
-        if (self.Smooth):            
+        self.f.write("Smooth global mesh: " + str(self.smooth) + "\n")
+        if (self.smooth):
             self.f.write("Iterations: " + str(self.iterations) + ", coeffs: " + ", ".join([str(x) for x in self.coeffs]) + "\n")
         for count,r in enumerate(self.Smooth_regions):
             self.f.write("Smooth region: " + r + "\n")

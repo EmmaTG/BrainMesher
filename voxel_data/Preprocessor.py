@@ -165,13 +165,13 @@ class PreprocessorLesion(IPreprocessor):
                 print("Lesion location {} suitable".format(count))
                 print(lesion_loc)
                 self.config.writeToConfig("Lesion location", [str(x) for x in lesion_loc])
-                data_new = np.copy(self.data)
+                self.data
                 lesion_size = 3
                 for x in range(lesion_loc[0] - lesion_size, lesion_loc[0] + lesion_size + 1):
                     for y in range(lesion_loc[1] - lesion_size, lesion_loc[1] + lesion_size + 1):
                         for z in range(lesion_loc[2] - lesion_size, lesion_loc[2] + lesion_size + 1):
-                            data_new[x, y, z] = 25
-                create_aseg(self.config.fileInPath, lesion_loc)
+                            self.data[x, y, z] = 25
+                create_aseg(self.config.file_in_path, lesion_loc, add_CC=self.config.external_cc)
                 return
         return
 
@@ -198,21 +198,16 @@ class PreProcessorFactory:
 
     @staticmethod
     def get_preprocessor(config_data, data):
-        if config_data.preprocess.lower() == 'basic':
-            preprocessor = PreprocessorBasic(data)
-        elif config_data.preprocess.lower() == 'debug':
-            preprocessor = PreprocessorSimple(data)
-        elif config_data.preprocess.lower() == 'lesion':
+        if config_data.lesion == 'lesion':
             preprocessor = PreprocessorLesion(data)
-            preprocessor.set_lesion_label(config_data.lesion_label, config_data.lesion_layers)
+            labels = config_data.material_labels.get_homogenized_labels_map()
+            lesion_label = labels.pop("Lesion", False)
+            preprocessor.set_lesion_label(lesion_label, config_data.lesion_layers)
             preprocessor.add_config(config_data)
-        elif config_data.preprocess.lower() == 'atrophy':
-            preprocessor = PreprocessorBasic(data)
         else:
-            print("Config {} not supported".format(config_data.preprocess))
-            return None
+            preprocessor = PreprocessorBasic(data)
 
         assert isinstance(preprocessor, IPreprocessor)
-        csf_function = CSFFunctions.get_csf_function(config_data.Add_CSF)
+        csf_function = CSFFunctions.get_csf_function(config_data.add_csf)
         preprocessor.set_csf_data(config_data.csf_layers, csf_function)
         return preprocessor

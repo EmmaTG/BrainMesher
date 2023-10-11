@@ -9,7 +9,7 @@ from mesh.smoothing import Smoothing as smooth
 import mesh.mesh_utils as mu
 import mesh.mesh_transformations as mt
 from mesh.Node import Node
-from mesh.Element import HexElement
+from mesh.Element import HexElement, QuadElement
 
 
 class Mesh:
@@ -492,8 +492,34 @@ class Mesh:
         """
         element = self.elements[element_number]
         element.setMaterial(replace)   
-                     
-            
+
+    # def create_boundary_elements(self, element_mat_number, elements_not_included=None, boundaryTest=None):
+    #
+    #     if elements_not_included is None:
+    #         elements_not_included = []
+    #
+    #     boundary_elements_map = {}
+    #     boundary_number = max(self.elements.keys()) if len(self.boundaryElements) == 0 else max(
+    #         self.boundaryElements.keys())
+    #     boundary_elements = self.locate_boundary_element_map(elementsNotIncluded=elements_not_included)
+    #
+    #     for compoundKey, ica in boundary_elements.items():
+    #         boundary_number += 1
+    #         ica_nodes = [self.nodes[n] for n in ica]
+    #         boundary_element = QuadElement(boundary_number, ica_nodes, mat=[element_mat_number])
+    #         [element_num, face] = [int(x) for x in compoundKey.split("-")]
+    #         # [xc,yc,zc,m] = e_centroids[element_num]
+    #         Boundary = True
+    #         if not boundaryTest is None:
+    #             Boundary = boundaryTest.validElement(element_num)
+    #         if Boundary:
+    #             boundary_elements_map[boundary_number] = boundary_element
+    #         else:
+    #             boundary_number -= 1
+    #
+    #     self.addBoundaryElements(boundary_elements_map)
+    #     return True
+
     def smooth_mesh(self, coeffs, iterations, elementsNotIncluded=[]):
         """
         Prepares information and performs Laplacian smoothing the boundary of a mesh

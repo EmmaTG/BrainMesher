@@ -5,7 +5,7 @@ Created on Thu Aug 17 13:47:49 2023
 @author: grife
 """
 
-
+import os
 import nibabel as nb
 import numpy as np
 from voxel_data import voxel_data_utils as bm
@@ -58,4 +58,7 @@ def create_aseg(fileInPath, lesion_loc=[], add_CC=True, remove_ventricle=True):
 
     # Now we can save the changed data into a new NIfTI file
     new_img = nb.Nifti1Image(data_new, affine=t1.affine, header=t1.header)
+    pathOut = fileInPath + "/tmp"
+    if not os.path.exists(pathOut):
+        os.mkdir(pathOut)
     nb.save(new_img, fileInPath + "/tmp/aseg_new.mgz")
