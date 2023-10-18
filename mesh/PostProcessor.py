@@ -75,19 +75,8 @@ class SmoothMesh(PostProcessorDecorator):
 
 class RefineMesh(PostProcessorDecorator):
 
-    def __init__(self, post_processor: IPostProcessor, refinement_type,
-                 point=None, radius=0, bounds=None, elements=None):
+    def __init__(self, post_processor: IPostProcessor, refinement_type):
         super().__init__(post_processor)
-        if point is None:
-            point = []
-        if bounds is None:
-            bounds = []
-        if elements is None:
-            elements = []
-        self.elements = elements
-        self.bounds = bounds
-        self.radius = radius
-        self.point = point
         self.mesh_refiner = None
         self.type_ref = refinement_type
 
@@ -99,18 +88,30 @@ class RefineMesh(PostProcessorDecorator):
     def refine_mesh(self):
         print("########## Refining mesh using {} method ##########".format(self.type_ref))
         if self.type_ref == 'point':
-            assert self.point is not None and self.radius > 0
-            self.mesh_refiner.refine_around_point(self.point, self.radius)
-            self.config.writeToConfig("Refined around point", ",".join([str(x) for x in self.point]))
-            self.config.writeToConfig("Refined with radius", str(self.radius))
+            centers = self.config.get('refine.centers')
+            radii = self.config.get('refine.radii')
+            assert len(centers) == len(radii)
+            for count in range(len(centers)):
+                point = centers[count]
+                radius = radii[count]
+                assert point is not None and radius > 0
+                self.mesh_refiner.refine_around_point(point, radius)
+                self.config.write_to_config("Refined around point", ",".join([str(x) for x in point]))
+                self.config.write_to_config("Refined with radius", str(radius))
         elif self.type_ref == 'elements':
-            assert self.elements is not None
-            self.mesh_refiner.refine_elements(self.elements)
-            self.config.writeToConfig("Refined elements", ",".join([str(x) for x in self.elements]))
-        elif self.type_ref == 'bounding_box':
-            assert self.bounds is not None
-            self.mesh_refiner.refine_within_region(self.bounds)
-            self.config.writeToConfig("Refined within bounds", ",".join([str(x) for x in self.bounds]))
+            elements = self.config.get('refine.element_numbers')
+            assert len(elements)>0
+            self.mesh_refiner.refine_elements(elements)
+            self.config.write_to_config("Refined elements", ",".join([str(x) for x in elements]))
+        elif self.type_ref == 'refine.bounding_box':
+            for b_box in self.config.get('bounds'):
+                assert (len(b_box) == 6
+                        and b_box[0] > b_box[3]
+                        and b_box[1] > b_box[4]
+                        and b_box[2] > b_box[5]), \
+                    "Bounds must given in the format: [xmin,ymin,zmin,xmax,ymax,zmax]"
+                self.mesh_refiner.refine_within_region(b_box)
+                self.config.write_to_config("Refined within bounds", ",".join([str(x) for x in b_box]))
 
 
 class CreateBoundaryElements(PostProcessorDecorator):
@@ -132,7 +133,7 @@ class CreateBoundaryElements(PostProcessorDecorator):
     def create_boundary(self):
 
         boundary_test_fx = None
-        if self.boundary_test is not None:
+        if self.boundary_test != 'none':
             if 'OnlyOnLabel' in self.boundary_test:
                 popped_label = self.boundary_test.split("-")[1].strip()
                 labels = self.config.material_labels.get_homogenized_labels_map()
@@ -145,7 +146,7 @@ class CreateBoundaryElements(PostProcessorDecorator):
                     if not self.excluded_regions.count(e):
                         self.excluded_regions.append(e)
             elif self.boundary_test == 'OpenBottomCSF':
-                if self.config.add_csf == 'none':
+                if self.config.get('add_csf') == 'none':
                     warnings.warn("You cannot request an open open CSf boundary if CSF is not added to the model")
                     boundary_test_fx = None
                 else:
@@ -218,8 +219,8 @@ class ApplyAtrophyConcentration(PostProcessorDecorator):
         length = max_radius
         concentration_radius = length * num + (distance * 2)
 
-        self.config.writeToConfig("Concentration radius", concentration_radius)
-        self.config.writeToConfig("Center", ", ".join([str(x) for x in center]))
+        self.config.write_to_config("Concentration radius", concentration_radius)
+        self.config.write_to_config("Center", ", ".join([str(x) for x in center]))
         self.mesh.dataToWrite.append("concentration")
         node_touched = []
         for n in self.mesh.nodes.values():

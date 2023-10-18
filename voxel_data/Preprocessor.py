@@ -16,6 +16,7 @@ class PreprocessConfigData(object):
 class IPreprocessor(ABC):
 
     def __init__(self, starting_data):
+        self.ventricle_label = 4
         self.data = starting_data
         self.layers = 0
         self.csfFunction = None
@@ -30,6 +31,7 @@ class IPreprocessor(ABC):
         self.data = bm.coarsen(VOXEL_SIZE, self.data)
 
     def clean_data(self):
+        bm.clean_region(self.data, self.ventricle_label)
         bm.clean_voxel_data(self.data)
 
     def remove_disconnected_regions(self):
@@ -37,9 +39,9 @@ class IPreprocessor(ABC):
         iteration_count = 0
         while change and iteration_count < 10:
             iteration_count += 1
-            print("### Iteration number " + str(iteration_count))
             # Find and fill erroneous voids within model
             print("########## Removing voids from data ##########")
+            print("### Iteration number " + str(iteration_count))
             maze = Maze.Maze(self.data)
             solver = Maze_Solver.Maze_Solver(maze)
             voids_to_fill = solver.find_voids()
@@ -59,6 +61,9 @@ class IPreprocessor(ABC):
                 self.data[x, y, z] = 0
 
             change = bm.clean_voxel_data(self.data)
+
+    def set_ventricle_label(self,ventricle_label):
+        self.ventricle_label = ventricle_label
 
     def set_csf_data(self, layers, csfFunction):
         self.layers = layers
@@ -158,20 +163,19 @@ class PreprocessorLesion(IPreprocessor):
             count += 1
             # 4. Get surrounding data and check for ventricles
             surrounding_data = self.data[lesion_loc[0] - 5:lesion_loc[0] + 6,
-                               lesion_loc[1] - 5:lesion_loc[1] + 6,
-                               lesion_loc[2] - 5:lesion_loc[2] + 6]
+                                         lesion_loc[1] - 5:lesion_loc[1] + 6,
+                                         lesion_loc[2] - 5:lesion_loc[2] + 6]
             labels_in_data = list(np.unique(surrounding_data))
             if not labels_in_data.count(4):
                 print("Lesion location {} suitable".format(count))
                 print(lesion_loc)
-                self.config.writeToConfig("Lesion location", [str(x) for x in lesion_loc])
-                self.data
+                self.config.write_to_config("Lesion location", [str(x) for x in lesion_loc])
                 lesion_size = 3
                 for x in range(lesion_loc[0] - lesion_size, lesion_loc[0] + lesion_size + 1):
                     for y in range(lesion_loc[1] - lesion_size, lesion_loc[1] + lesion_size + 1):
                         for z in range(lesion_loc[2] - lesion_size, lesion_loc[2] + lesion_size + 1):
                             self.data[x, y, z] = 25
-                create_aseg(self.config.file_in_path, lesion_loc, add_CC=self.config.external_cc)
+                create_aseg(self.config.get('file_in_path'), lesion_loc, add_CC=self.config.get('external_cc'))
                 return
         return
 
@@ -198,16 +202,21 @@ class PreProcessorFactory:
 
     @staticmethod
     def get_preprocessor(config_data, data):
-        if config_data.lesion == 'lesion':
+        if config_data.get('lesion'):
             preprocessor = PreprocessorLesion(data)
             labels = config_data.material_labels.get_homogenized_labels_map()
             lesion_label = labels.pop("Lesion", False)
-            preprocessor.set_lesion_label(lesion_label, config_data.lesion_layers)
+            preprocessor.set_lesion_label(lesion_label, config_data.get('lesion_layers'))
             preprocessor.add_config(config_data)
         else:
             preprocessor = PreprocessorBasic(data)
 
         assert isinstance(preprocessor, IPreprocessor)
-        csf_function = CSFFunctions.get_csf_function(config_data.add_csf)
-        preprocessor.set_csf_data(config_data.csf_layers, csf_function)
+        csf_function = CSFFunctions.get_csf_function(config_data.get('add_csf'))
+        preprocessor.set_csf_data(config_data.get('csf_layers'), csf_function)
+
+        all_labels = config_data.material_labels.get_homogenized_labels_map()
+        label_for_ventricles = all_labels.get("Ventricles", all_labels.get("Ventricle", -1))
+        if label_for_ventricles != -1:
+            preprocessor.set_ventricle_label(label_for_ventricles)
         return preprocessor

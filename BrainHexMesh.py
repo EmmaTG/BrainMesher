@@ -64,24 +64,10 @@ class BrainHexMesh():
         method to determine if row of elements is valid for use as a boundary csf element
     """
     
-    def __init__(self):
+    def __init__(self, configFile):
         self.VOXEL_SIZE = 1
-        self.configured = False
-        self.config = None
-        self.material_labels = None
-    
-    def set_config(self, configFile):
-        """
-        Imports configuration file defining preferences w.r.t. model creation.
-
-        Parameters
-        ----------
-        configFile : ConfigFile
-            The configuration settings for the model
-
-        """
         self.config = configFile
-        self.material_labels = configFile.material_labels 
+        self.material_labels = configFile.material_labels
         self.configured = True
 
     @staticmethod
@@ -93,15 +79,16 @@ class BrainHexMesh():
 
         assert self.configured, "config file has not been set for this. Please run config(cf -> ConfigFile) before importing data"
 
-        if self.config.read_data:
-            return self.config.data
+        if self.config.get('read_data'):
+            warnings.warn("Data set to be manually inputted not imported from file")
+            return None
 
         if (path == "") and (file == ""):
-            path = self.config.file_in_path
-            file = self.config.file_in
+            path = self.config.get('file_in_path')
+            file = self.config.get('file_in')
         data = BrainHexMesh.__get_data__(path, file)
 
-        if self.config.external_cc:
+        if self.config.get('external_cc'):
             cc_data = BrainHexMesh.__get_data__(path, "/mri/cc.mgz")
             cc_data = bm.create_binary_image(cc_data)
             self.add_region(cc_data, data, 251)
@@ -182,7 +169,7 @@ class BrainHexMesh():
             
         """
         
-        if self.config.add_csf != 'none':
+        if self.config.get('add_csf') != 'none':
             # Clean grey matter boundary
             print("####### Cleaning grey matter boundary #######")
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
@@ -266,7 +253,7 @@ class BrainHexMesh():
         converter = MaterialsConverterFactory.get_converter(self.config.converter_type)
         converter.convert_materials_labels(mesh)
 
-        self.config.writeToConfig("Heterogeneity level", self.config.converter_type)
+        self.config.write_to_config("Heterogeneity level", self.config.converter_type)
         print("Heterogeneity level: {}".format(self.config.converter_type))
 
     def write_to_file(self, mesh):
@@ -280,10 +267,10 @@ class BrainHexMesh():
         """        
         # Write mesh to file
         self.__convert_heterogeneity__(mesh)
-        for fileType in self.config.fileout_types:
+        for fileType in self.config.get('fileout_types'):
             print("########## Writing data as a " + fileType.upper() + " file ##########")             
             writer = Writer()
-            writer.openWriter(fileType, self.config.fileout, self.config.file_out_path)
+            writer.openWriter(fileType, self.config.get('fileout'), self.config.get('file_out_path'))
             writer.writeMeshData(mesh)
             writer.closeWriter()
 

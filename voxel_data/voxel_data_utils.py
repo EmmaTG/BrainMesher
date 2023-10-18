@@ -45,7 +45,7 @@ def override_voxel_data(new_data,current_data, replacementValue):
                 if (np.sum(new_data[x,y,:]) > 0):
                     for z in range(current_dimensions[2]):
                         if (new_data[x,y,z] == 1):
-                            current_data[x,y,z] = replacementValue;
+                            current_data[x,y,z] = replacementValue
     
 def coarsen(new_voxel_size, original_data):
     print("Coarsening mesh by a factor of " + str(new_voxel_size))
@@ -64,10 +64,10 @@ def coarsen(new_voxel_size, original_data):
                         if (np.sum(gridBox) > 0):
                             unique, counts = np.unique(gridBox, return_counts=True)
                             num_values = dict(zip(unique, counts))
-                            if num_values.get(4, False):
-                                replacedValue = 4 
-                            elif num_values.get(251, False):
+                            if num_values.get(251, False):
                                 replacedValue = 251
+                            elif num_values.get(4, False):
+                                replacedValue = 4
                             else:
                                 [modes, count] = stats.find_repeats(gridBox)
                                 modeIndices, = np.where(count == max(count))
@@ -108,11 +108,12 @@ def create_binary_image(current_data, search=-1):
                             
     return newData
 
+
 def clean_voxel_data(start_data):  
     print("Performing cleaning operations on data")
     cleaned = create_binary_image(start_data)
     start = np.sum(cleaned)
-    structure = ndimage.generate_binary_structure(3,3) 
+    structure = ndimage.generate_binary_structure(3, 3)
     print("Filling in holes")
     cleaned = fill_in_holes(cleaned, structure)
     print("Hit and miss cleaning")
@@ -122,8 +123,33 @@ def clean_voxel_data(start_data):
     cleaned = fill_in_holes(cleaned, structure)  
     end = np.sum(cleaned)      
     print("Complete")        
-    assign_materials_labels(start_data,cleaned)
-    return (start != end)
+    assign_materials_labels(start_data, cleaned)
+    return start != end
+
+
+def clean_region(data, label):
+    print("Cleaning ventricles")
+    ventricles_og = create_binary_image(data, search=label)
+    ventricles = binary_dilation(ventricles_og)
+    ventricles = binary_erosion(ventricles)
+    dimensions = ventricles.shape
+    for x in range(dimensions[0]):
+        if np.sum(ventricles[x, :, :]) > 0 or list(np.unique(data[x, :, :])).count(label):
+            for y in range(dimensions[1]):
+                if (np.sum(ventricles[x, y, :]) > 0 or
+                        list(np.unique(data[x, y, :])).count(label)):
+                    for z in range(dimensions[2]):
+                        if ventricles[x, y, z] == 1:
+                            data[x, y, z] = label
+                        elif ventricles_og[x, y, z] == 1 and ventricles[x, y, z] != 1:
+                            box = GridBox(data, [x, y, z])
+                            box.gridBox = np.delete(box.gridBox, np.where(box.gridBox == label))
+                            replacement_value = box.mode()
+                            if replacement_value is None:
+                                data[x, y, z] = 0
+                            else:
+                                data[x, y, z] = replacement_value
+
 
 def __hit_and_miss(data):
     
@@ -430,20 +456,20 @@ def create_structure():
 #                 cleaned[px,py,z] = 0
     
    
-def assign_materials_labels(labelled_data, end):
-    assert labelled_data.shape == end.shape
+def assign_materials_labels(labelled_data, end_data):
+    assert labelled_data.shape == end_data.shape
     dimensions = labelled_data.shape;
     for x in range(dimensions[0]):
         for y in range(dimensions[1]):
             for z in range(dimensions[2]):
-                if (labelled_data[x,y,z] == 0) and (end[x,y,z] != 0):
+                if (labelled_data[x,y,z] == 0) and (end_data[x,y,z] != 0):
                     box = GridBox(labelled_data,[x,y,z])
                     replacement_value = box.mode() 
                     if replacement_value == None:
                         labelled_data[x,y,z] = 0
                     else:
                         labelled_data[x,y,z] = replacement_value                              
-                elif (labelled_data[x,y,z] != 0) and (end[x,y,z] == 0):
+                elif (labelled_data[x,y,z] != 0) and (end_data[x,y,z] == 0):
                     labelled_data[x,y,z] = 0; 
             
 

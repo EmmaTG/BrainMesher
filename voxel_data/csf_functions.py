@@ -185,6 +185,7 @@ class CSFFunctions:
         for [x, y, z] in np.column_stack((xs, ys, zs)):
             if new_data[x, y, z] == 0:
                 new_data[x, y, z] = 3
+                data[x, y, z] = 24
 
                 # Create point cloud
         point_cloud = PointCloud.PointCloud()

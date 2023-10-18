@@ -22,27 +22,18 @@ from config.Config import ConfigFile
 from voxel_data import Preprocessor
 from mesh.refinement import Refiner
 from mesh.PostProcessor import *
-import os
+import os, sys
 
-
-pathIn = os.getcwd()
-# pathIn = "./"
-fileIn = '/mri/aseg.mgz'
-fileOut = "aseg"
-
-pathOut = "/".join([pathIn, "Models"])
-if not os.path.exists(pathOut):
-    os.mkdir(pathOut)
-
-
-brainCreator = BrainHexMesh()
+configFilePath = sys.argv[1]
+print(configFilePath)
 
 ## Preferences are defined in ConfigFile
-config = ConfigFile(pathIn, fileIn, pathOut, fileOut)
-brainCreator.set_config(config)
+config = ConfigFile(configFilePath)
+
+brainCreator = BrainHexMesh(config)
 
 # Writes configuration preferences to output location
-config.openConfigFile()
+config.open_config_file()
 
 # Gets aseg data as 3D of segmentation labels in voxels
 data = brainCreator.import_data()
@@ -68,16 +59,38 @@ mesh.center_mesh(251)
 
 # Wrapping of post-processing operations (operation selection defined in config file)
 postProcessor = PostProcessor(config, mesh)
-if config.atrophy:
+if config.get('atrophy'):
     # Creates a concentration profile in the brain to eb used for degree fo atrophy calculations
     postProcessor = ApplyAtrophyConcentration(postProcessor)
-if config.smooth:
+if config.get('smooth'):
+    #global smoothing
+    postProcessor = SmoothMesh(postProcessor, config.get('co_effs'), config.get('iterations'))
+
     # Smooths mesh as defined in config file
-    postProcessor = SmoothMesh(postProcessor, [0.6, -0.4], 2)
-if config.refine:
+    regions = config.get("smooth_regions")
+    region_coeffs = config.get("region_co_effs")
+    region_iterations = config.get("region_iterations")
+    count = 0
+    for r in regions:
+        labels = config.material_labels.get_homogenized_labels_map()
+        label_for_region = labels.get(r, -1)
+        if label_for_region != -1:
+            excluded_materials = []
+            labels.pop(r)
+            for e in labels.values():
+                if not excluded_materials.count(e):
+                    excluded_materials.append(e)
+            postProcessor = SmoothMesh(postProcessor, region_coeffs[count], region_iterations[count], excluded_regions=excluded_materials)
+        count += 1
+
+if config.get('refine'):
     # Refines mesh in ways defined in config file
-    print(list(mesh.elements.keys())[:10])
-    postProcessor = RefineMesh(postProcessor, 'elements', elements=list(mesh.elements.keys())[:10])
+    if config.get('refine.point'):
+        postProcessor = RefineMesh(postProcessor, 'point')
+    if config.get('refine.bounding_box'):
+        postProcessor = RefineMesh(postProcessor, 'bounding_box',)
+    if config.get('refine.elements'):
+        postProcessor = RefineMesh(postProcessor, 'elements')
 
 # Removes regions specified at unused in the materials label description
 all_labels = config.material_labels.get_homogenized_labels_map()
@@ -91,10 +104,10 @@ if label_for_ventricles != -1:
     postProcessor = RemoveRegion(postProcessor, label_for_ventricles)
 
 # Creates boundary elements on specified regions
-for count, e_num in enumerate(config.boundary_element_numbers):
+for count, e_num in enumerate(config.get('boundary_element_numbers')):
     postProcessor = CreateBoundaryElements(postProcessor, e_num,
-                                           boundary_test_fx=config.boundary_tests[count],
-                                           excluded_regions=config.excluded_regions[count])
+                                           boundary_test_fx=config.get('boundary_tests')[count],
+                                           excluded_regions=config.get('excluded_regions')[count])
 
 # Performs are post-processing steps
 postProcessor.post_process()
@@ -103,6 +116,6 @@ postProcessor.post_process()
 brainCreator.write_to_file(mesh)  
 
 # Close config file write out  
-config.closeConfigFile()
+config.close_config_file()
 
 
