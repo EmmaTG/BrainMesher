@@ -212,8 +212,9 @@ class PreProcessorFactory:
             preprocessor = PreprocessorBasic(data)
 
         assert isinstance(preprocessor, IPreprocessor)
-        csf_function = CSFFunctions.get_csf_function(config_data.get('add_csf'))
-        preprocessor.set_csf_data(config_data.get('csf_layers'), csf_function)
+        if config_data.get('add_csf'):
+            csf_function = CSFFunctions.get_csf_function(config_data.get('csf_type'))
+            preprocessor.set_csf_data(config_data.get('csf_layers'), csf_function)
 
         all_labels = config_data.material_labels.get_homogenized_labels_map()
         label_for_ventricles = all_labels.get("Ventricles", all_labels.get("Ventricle", -1))

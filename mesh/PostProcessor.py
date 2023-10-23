@@ -142,9 +142,9 @@ class CreateBoundaryElements(PostProcessorDecorator):
                     boundary_test_fx = BoundaryFunctions.OnlyOnLabel(self.mesh, region_label)
                 else:
                     boundary_test_fx = None
-                for e in labels.values():
-                    if not self.excluded_regions.count(e):
-                        self.excluded_regions.append(e)
+                # for e in labels.values():
+                #     if not self.excluded_regions.count(e):
+                #         self.excluded_regions.append(e)
             elif self.boundary_test == 'OpenBottomCSF':
                 if self.config.get('add_csf') == 'none':
                     warnings.warn("You cannot request an open open CSf boundary if CSF is not added to the model")

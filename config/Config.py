@@ -43,19 +43,19 @@ class ConfigFile:
 
         # file read settings
         self.config_dict['read_file'] = default_config.getboolean('read_file', False)
-        self.config_dict['file_in_path'] = default_config.get('inputPath')
+        self.config_dict['file_in_path'] = default_config.get('file_in_path','')
         if default_config.get('file_in_path') == '':
             self.config_dict['file_in_path'] = os.getcwd().replace("\\", "/")
-        self.config_dict['file_in'] = default_config.get('file_in')
+        self.config_dict['file_in'] = default_config.get('file_in',)
 
         self.config_dict['read_data'] = default_config.getboolean('read_data', False)
         self.config_dict['external_cc'] = default_config.getboolean('external_cc', False)
 
         # write settings
-        self.config_dict['file_out_path'] = default_config.get('file_out_Path')
+        self.config_dict['file_out_path'] = default_config.get('file_out_path','')
         if default_config.get('file_out_path') == '':
             self.config_dict['file_out_path'] = self.config_dict.get('file_in_path')
-        self.config_dict['file_out_path'] = "/".join([self.config_dict.get('file_in_path'), "Models"])
+            self.config_dict['file_out_path'] = "/".join([self.config_dict.get('file_in_path'), "Models"])
         if not os.path.exists(self.config_dict['file_out_path']):
             os.mkdir(self.get('file_out_path'))
 
@@ -74,9 +74,11 @@ class ConfigFile:
         self.config_dict['lesion'] = lesion_config.getboolean('lesion', False)
         self.config_dict['lesion_layers'] = lesion_config.getint('lesion_layers', 1)
 
-        csf_config = config['csf']
-        self.config_dict['add_csf'] = csf_config.get('add_csf', 'full').lower()  # 'none' | 'full' | 'partial'
-        self.config_dict['csf_layers'] = csf_config.getint('csf_layers', 1)
+        self.config_dict['add_csf'] = default_config.getboolean('add_csf')
+        if self.get('add_csf'):
+            csf_config = config['csf']
+            self.config_dict['csf_type'] = csf_config.get('csf_type', 'full').lower()  # 'none' | 'full' | 'partial'
+            self.config_dict['csf_layers'] = csf_config.getint('csf_layers', 1)
 
         self.config_dict['atrophy'] = default_config.getboolean('atrophy', False)
 
@@ -146,10 +148,13 @@ class ConfigFile:
                 excluded_regions = excluded_regions_list
 
             boundary_tests_tmp = boundary_config.get('boundary_tests') # ['OpenBottomCSF', 'OnlyOnLabel-Ventricles', 'OnlyOnLabel-Lesion']
-            if boundary_tests_tmp == '':
-                boundary_tests = []
-            else:
-                boundary_tests = [x.strip() for x in boundary_tests_tmp.split(",")]
+            boundary_tests = []
+            for x in boundary_tests_tmp.split(","):
+                x = x.strip()
+                if x == '':
+                    boundary_tests.append('none')
+                else:
+                    boundary_tests.append(x)
 
             if self.get('lesion') and 'lesion' not in ", ".join(boundary_tests).lower():
                 boundary_num = 600
@@ -281,6 +286,7 @@ class ConfigFile:
         Opens and write data to config log file
 
         """
+        # self.f = open("/".join([self.get('file_out_path'), self.get('fileout')]) + ".txt", 'w')
         self.f = open("/".join([self.get('file_out_path'), self.get('fileout')]) + ".txt", 'w')
         if self.config_dict.get('read_file', False):
             self.f.write("Input file: " + self.get('file_in_path') + self.get('file_in') + "\n")
