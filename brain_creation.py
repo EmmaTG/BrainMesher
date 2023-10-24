@@ -10,8 +10,8 @@ This script runs the full execution required to create a 3D brain model from a
 freesurfer aseg file.
 
 Input file given by path + fileIn
-Preferences for model creation are defined in ConigFile class
-Output is writen to same path as input
+Preferences for model creation are defined in ConfigFile class
+Output is a folder Models created in current working directory
 
 main - the main function of the script
 """
@@ -19,61 +19,111 @@ main - the main function of the script
 from BrainHexMesh import BrainHexMesh
 from point_cloud.PointCloud import PointCloud
 from config.Config import ConfigFile
-from dotenv import load_dotenv
-import os
+from voxel_data import Preprocessor
+from mesh.refinement import Refiner
+from mesh.PostProcessor import *
+import os, sys
 
-load_dotenv()
-pathIn = os.getenv('HOME')
-fileIn = '/mri/aseg_tumor.mgz'
-
-pathOut = "/".join([pathIn, "Models"])
-if not os.path.exists(pathOut):
-    os.mkdir(pathOut)
-
-fileOut = "aseg_tumor"
+# configFilePath = sys.argv[1]
+configFilePath = sys.argv[1]
 
 ## Preferences are defined in ConfigFile
-config = ConfigFile(pathIn, fileIn, pathOut, fileOut)
-config.Smooth = False
+config = ConfigFile(configFilePath)
 
-brainCreator = BrainHexMesh()
-brainCreator.setConfig(config)
-# Writes configuarion preferences to output location
-config.openConfigFile()
+brainCreator = BrainHexMesh(config)
+
+# Writes configuration preferences to output location
+config.open_config_file()
 
 # Gets aseg data as 3D of segmentation labels in voxels
-data = brainCreator.import_data() 
-data = brainCreator.homogenize_data(data, unusedLabel="Unused") 
+data = brainCreator.import_data()
 
-# Pre-processes data to ensure valid mesh:
-# config options: basic, lesion, atrophy
-# configCSF options: full, partial default is None
-data = brainCreator.preprocessFactory(data, "basic")
+# Homogenizes data label according to Materials label as defined in Config class
+data = brainCreator.homogenize_data(data)
+
+# Pre-processes data to ensure valid mesh base on config setting:
+preprocessor = Preprocessor.PreProcessorFactory.get_preprocessor(config, data)
+assert isinstance(preprocessor, Preprocessor.IPreprocessor)
+data_new = preprocessor.preprocess_data()
 
 # Creates point cloud from voxel data
 pointCloud = PointCloud()
-pointCloud.create_point_cloud_from_voxel(data) 
+pointCloud.create_point_cloud_from_voxel(data_new)
 
-# Creates mesh from pointcloud
+# Creates mesh from point cloud
 mesh = brainCreator.make_mesh(pointCloud.pcd) 
 brainCreator.clean_mesh(mesh)
 
 # Moves mesh to the center of the corpus callosum
-mesh.center_mesh(251) 
+mesh.center_mesh(251)
 
-# Removes elements associated with a region to be excluded as defined in config file
+# Wrapping of post-processing operations (operation selection defined in config file)
+postProcessor = PostProcessor(config, mesh)
+if config.get('atrophy'):
+    # Creates a concentration profile in the brain to eb used for degree fo atrophy calculations
+    postProcessor = ApplyAtrophyConcentration(postProcessor)
+
+if config.get('smooth'):
+    #global smoothing
+    postProcessor = SmoothMesh(postProcessor, config.get('co_effs'), config.get('iterations'))
+
+    if config.get('add_csf'):
+        labels = config.material_labels.get_homogenized_labels_map()
+        label_for_csf = labels.get("CSF", -1)
+        postProcessor = SmoothMesh(postProcessor,
+                                   config.get('co_effs'), config.get('iterations'), excluded_regions=[label_for_csf])
+
+    # Smooths mesh as defined in config file
+    regions = config.get("smooth_regions")
+    region_coeffs = config.get("region_co_effs")
+    region_iterations = config.get("region_iterations")
+    count = 0
+    for r in regions:
+        labels = config.material_labels.get_homogenized_labels_map()
+        label_for_region = labels.get(r, -1)
+        if label_for_region != -1:
+            excluded_materials = []
+            labels.pop(r)
+            for e in labels.values():
+                if not excluded_materials.count(e):
+                    excluded_materials.append(e)
+            postProcessor = SmoothMesh(postProcessor, region_coeffs[count], region_iterations[count], excluded_regions=excluded_materials)
+        count += 1
+
+
+# Removes regions specified at unused in the materials label description
 all_labels = config.material_labels.get_homogenized_labels_map()
 label_for_unused = all_labels.get("Unused")
-mesh.remove_region(label_for_unused) 
+if label_for_unused != 0:
+    postProcessor = RemoveRegion(postProcessor, label_for_unused)
 
-# Laplacian smoothing         
-if config.Smooth:
-    brainCreator.smooth_mesh(mesh)       
+# Creates blank spaces in areas of the ventricles if specified
+all_labels = config.material_labels.get_homogenized_labels_map()
+label_for_ventricles = all_labels.get("Ventricles", all_labels.get("Ventricle", -1))
+if label_for_ventricles != -1:
+    postProcessor = RemoveRegion(postProcessor, label_for_ventricles)
+
+# Creates boundary elements on specified regions
+for count, e_num in enumerate(config.get('boundary_element_numbers')):
+    postProcessor = CreateBoundaryElements(postProcessor, e_num,
+                                           boundary_test_fx=config.get('boundary_tests')[count],
+                                           excluded_regions=config.get('excluded_regions')[count])
+
+if config.get('refine'):
+    # Refines mesh in ways defined in config file
+    if config.get('refine.point'):
+        postProcessor = RefineMesh(postProcessor, 'point')
+    if config.get('refine.bounding_box'):
+        postProcessor = RefineMesh(postProcessor, 'bounding_box',)
+    if config.get('refine.elements'):
+        postProcessor = RefineMesh(postProcessor, 'elements')
+# Performs are post-processing steps
+postProcessor.post_process()
 
 # Write mesh to file (ucd, vtk or abq inp as specified in config file)
 brainCreator.write_to_file(mesh)  
 
 # Close config file write out  
-config.closeConfigFile()
+config.close_config_file()
 
 
