@@ -60,6 +60,7 @@ class Material_Label:
             Name of region.
 
         """
+        name = name.lower()
         numbers = self.labelsMap.pop(name,[])
         for n in numbers:
             self.inverseLabelsMap.pop(n)
@@ -68,6 +69,8 @@ class Material_Label:
 
         if not (hasattr(self, "labelsMap")):
             self.create_labels_map()
+
+        name = name.lower()
 
         storedLabelValues = []
         for x in list(self.labelsMap.values()):
@@ -105,7 +108,9 @@ class Material_Label:
         """
         if not (hasattr(self, "labelsMap")):
             self.create_labels_map()
-        
+
+        name = name.lower()
+
         storedLabelValues = []
         for x in list(self.labelsMap.values()):
             storedLabelValues += list(x)
@@ -171,6 +176,7 @@ class Material_Label:
         print("Homogenizing data according to chosen labels")
         current_dimensions = data.shape
         newData = np.zeros(current_dimensions, int)
+        unused_values = []
         for x in range(current_dimensions[0]):
             if (np.sum(data[x,:,:]) > 0):
                 for y in range(current_dimensions[1]):
@@ -183,6 +189,8 @@ class Material_Label:
                                 newData[x,y,z] = label_number
                             elif data_value != 0:                                
                                 newData[x,y,z] = replace
-                                
+                                if not unused_values.count(data_value):
+                                    unused_values.append(data_value)
+        self.addLabelToMap("unused",unused_values)
         return newData;
             

@@ -131,12 +131,11 @@ class CreateBoundaryElements(PostProcessorDecorator):
         return super().post_process()
 
     def create_boundary(self):
-
         boundary_test_fx = None
         if self.boundary_test != 'none':
             if 'OnlyOnLabel' in self.boundary_test:
                 popped_label = self.boundary_test.split("-")[1].strip()
-                labels = self.config.material_labels.get_homogenized_labels_map()
+                labels = self.config.MATERIAL_LABELS.get_homogenized_labels_map()
                 region_label = labels.pop(popped_label, False)
                 if region_label:
                     boundary_test_fx = BoundaryFunctions.OnlyOnLabel(self.mesh, region_label)
@@ -146,7 +145,7 @@ class CreateBoundaryElements(PostProcessorDecorator):
                 #     if not self.excluded_regions.count(e):
                 #         self.excluded_regions.append(e)
             elif self.boundary_test == 'OpenBottomCSF':
-                if self.config.get('add_csf') == 'none':
+                if not self.config.get('add_csf'):
                     warnings.warn("You cannot request an open open CSf boundary if CSF is not added to the model")
                     boundary_test_fx = None
                 else:

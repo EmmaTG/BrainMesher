@@ -10,7 +10,16 @@ brain_creation_lesion.py
 brain_creation_atrophy.py
 /Lesion/*
 /Atrophy/*
-.idea/*
+/.idea/*
 venv/*
 vtkReader*
 .env
+/mri/
+/tmp/
+/Lesion/
+/Atrophy/
+/Images/
+/.idea/
+/venv/
+/fetal_brain_mesher/
+/.idea/
