@@ -33,9 +33,7 @@ def remove_ventricle_data(data_new):
                             data_new[x, y, z] = 0
 
 
-def create_aseg(fileInPath, lesion_loc=[], add_CC=True, remove_ventricle=True):
-    
-    filename = "/mri/aseg.mgz"
+def create_aseg(fileInPath, filename, lesion_loc=[], add_CC=True, remove_ventricle=True):
           
     # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
     t1_file = "\\".join([fileInPath, filename])
@@ -59,6 +57,12 @@ def create_aseg(fileInPath, lesion_loc=[], add_CC=True, remove_ventricle=True):
     # Now we can save the changed data into a new NIfTI file
     new_img = nb.Nifti1Image(data_new, affine=t1.affine, header=t1.header)
     pathOut = fileInPath + "/tmp"
+    file_in_split = filename.split(".")
+    file_name_out = file_in_split[0] + "_new"
+    if len(file_in_split) == 1:
+        file_name_out += '.mgz'
+    else:
+        file_name_out += file_in_split[1]
     if not os.path.exists(pathOut):
         os.mkdir(pathOut)
-    nb.save(new_img, fileInPath + "/tmp/aseg_new.mgz")
+    nb.save(new_img, fileInPath + "/tmp/" + file_name_out)

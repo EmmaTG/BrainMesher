@@ -67,7 +67,7 @@ class BrainHexMesh():
     def __init__(self, configFile):
         self.VOXEL_SIZE = 1
         self.config = configFile
-        self.material_labels = configFile.material_labels
+        self.material_labels = configFile.MATERIAL_LABELS
         self.configured = True
 
     @staticmethod
@@ -80,7 +80,7 @@ class BrainHexMesh():
         assert self.configured, "config file has not been set for this. Please run config(cf -> ConfigFile) before importing data"
 
         if self.config.get('read_data'):
-            warnings.warn("Data set to be manually inputted not imported from file")
+            warnings.warn("Data set to be manually inputed not imported from file")
             return None
 
         if (path == "") and (file == ""):
@@ -169,12 +169,12 @@ class BrainHexMesh():
             
         """
         
-        if self.config.get('add_csf') != 'none':
+        if self.config.get('add_csf'):
             # Clean grey matter boundary
             print("####### Cleaning grey matter boundary #######")
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
-            elementsOnBoundary = mesh.locate_elements_on_boundary()
-            mesh.replace_outer_region(3, 24, elementsOnBoundary)
+            # elementsOnBoundary = mesh.locate_elements_on_boundary()
+            # mesh.replace_outer_region(3, 24, elementsOnBoundary)
             
         # Clean outer boundary
         print("####### Cleaning outer boundary #######")    

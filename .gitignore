@@ -14,4 +14,12 @@ brain_creation_atrophy.py
 venv/*
 vtkReader*
 .env
+/mri/
+/tmp/
+/Lesion/
+/Atrophy/
+/Images/
+/.idea/
+/venv/
+/fetal_brain_mesher/
 /.idea/

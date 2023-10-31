@@ -7,6 +7,7 @@ from writers.aseg_manipulate import create_aseg
 from random import randint
 from scipy.stats import qmc
 import numpy as np
+from config.Config import ConfigFile
 
 
 class PreprocessConfigData(object):
@@ -15,8 +16,8 @@ class PreprocessConfigData(object):
 
 class IPreprocessor(ABC):
 
-    def __init__(self, starting_data):
-        self.ventricle_label = 4
+    def __init__(self, starting_data, label):
+        self.ventricle_label = label
         self.data = starting_data
         self.layers = 0
         self.csfFunction = None
@@ -108,9 +109,9 @@ class PreprocessorSimple(IPreprocessor):
 
 class PreprocessorLesion(IPreprocessor):
 
-    def __init__(self, starting_data):
-        super().__init__(starting_data)
-        self.lesion_label = 25
+    def __init__(self, starting_data, ventricle_label, lesion_label):
+        super().__init__(starting_data, ventricle_label)
+        self.lesion_label = lesion_label
         self.edemic_layers = 1
         self.config = None
 
@@ -168,14 +169,13 @@ class PreprocessorLesion(IPreprocessor):
             labels_in_data = list(np.unique(surrounding_data))
             if not labels_in_data.count(4):
                 print("Lesion location {} suitable".format(count))
-                print(lesion_loc)
                 self.config.write_to_config("Lesion location", [str(x) for x in lesion_loc])
                 lesion_size = 3
                 for x in range(lesion_loc[0] - lesion_size, lesion_loc[0] + lesion_size + 1):
                     for y in range(lesion_loc[1] - lesion_size, lesion_loc[1] + lesion_size + 1):
                         for z in range(lesion_loc[2] - lesion_size, lesion_loc[2] + lesion_size + 1):
                             self.data[x, y, z] = 25
-                create_aseg(self.config.get('file_in_path'), lesion_loc, add_CC=self.config.get('external_cc'))
+                create_aseg(self.config.get('file_in_path'), "/mri/aseg.mgz", lesion_loc, add_CC=self.config.get('external_cc'))
                 return
         return
 
@@ -202,22 +202,32 @@ class PreProcessorFactory:
 
     @staticmethod
     def get_preprocessor(config_data, data):
+
+        ventricle_label = config_data.get_material_value("ventricle")
+        if ventricle_label < 0:
+            ventricle_label = config_data.get_material_value("ventricles")
+        if ventricle_label < 0:
+            ventricle_label = 4
+
         if config_data.get('lesion'):
-            preprocessor = PreprocessorLesion(data)
-            labels = config_data.material_labels.get_homogenized_labels_map()
-            lesion_label = labels.pop("Lesion", False)
+
+            lesion_label = config_data.get_material_value("lesion")
+            if lesion_label < 0:
+                lesion_label = config_data.get_material_value("lesions")
+            if lesion_label < 0:
+                lesion_label = 25
+
+            preprocessor = PreprocessorLesion(data, ventricle_label, lesion_label)
             preprocessor.set_lesion_label(lesion_label, config_data.get('lesion_layers'))
             preprocessor.add_config(config_data)
         else:
-            preprocessor = PreprocessorBasic(data)
+            preprocessor = PreprocessorBasic(data, ventricle_label)
 
         assert isinstance(preprocessor, IPreprocessor)
         if config_data.get('add_csf'):
+            config_data.MATERIAL_LABELS.updateLabelInMap("csf", 24)
             csf_function = CSFFunctions.get_csf_function(config_data.get('csf_type'))
             preprocessor.set_csf_data(config_data.get('csf_layers'), csf_function)
 
-        all_labels = config_data.material_labels.get_homogenized_labels_map()
-        label_for_ventricles = all_labels.get("Ventricles", all_labels.get("Ventricle", -1))
-        if label_for_ventricles != -1:
-            preprocessor.set_ventricle_label(label_for_ventricles)
+        preprocessor.set_ventricle_label(ventricle_label)
         return preprocessor
