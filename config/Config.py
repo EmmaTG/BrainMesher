@@ -35,15 +35,11 @@ class ConfigFile:
         self.config_dict['file_in_path'] = curr_config.get('file_in_path', '')
         if curr_config.get('file_in_path') == '':
             self.config_dict['file_in_path'] = os.getcwd().replace("\\", "/")
-        self.config_dict['file_in'] = curr_config.get('file_in', )
-
-        # TODO: set up option to read in UCD, VTK or ABQ file and perform
-        #  smoothing, refinement or boundary element detection
-        self.config_dict['read_data'] = False
+        self.config_dict['file_in'] = curr_config.get('file_in').replace("\\", "/")
 
         # Write settings
         self.config_dict['write_to_file'] = curr_config.getboolean('write_to_file', False)
-        self.config_dict['file_out_path'] = curr_config.get('file_out_path', '')
+        self.config_dict['file_out_path'] = curr_config.get('file_out_path', '').replace("\\", "/")
         if curr_config.get('file_out_path') == '':
             self.config_dict['file_out_path'] = self.config_dict.get('file_in_path')
             self.config_dict['file_out_path'] = "/".join([self.config_dict.get('file_in_path'), "Models"])
@@ -59,15 +55,18 @@ class ConfigFile:
         self.config_dict['external_cc'] = curr_config.getboolean('external_cc', False)
 
         # preprocessing options
-        self.config_dict['basic'] = curr_config.getboolean('basic', False)
         self.config_dict['basic_nocsf'] = curr_config.getboolean('basic_nocsf', False)
+        self.config_dict['basic_partialcsf'] = curr_config.getboolean('basic_partialcsf', False)
+        self.config_dict['basic_fullcsf'] = curr_config.getboolean('basic_fullcsf', False)
         self.config_dict['atrophy'] = curr_config.getboolean('atrophy', False)
         self.config_dict['lesion'] = curr_config.getboolean('lesion', False)
 
-        if self.get('basic'):
-            curr_config = config['basic']
         if self.get('basic_nocsf'):
             curr_config = config['basic_nocsf']
+        if self.get('basic_partialcsf'):
+            curr_config = config['basic_partialcsf']
+        if self.get('basic_fullcsf'):
+            curr_config = config['basic_fullcsf']
         if self.get('atrophy'):
             curr_config = config['atrophy']
         if self.get('lesion'):
@@ -180,15 +179,15 @@ class ConfigFile:
                     bracketOpen = True
                 elif bracketOpen:
                     inside_pa += s
-            for entries in excluded_list:
-                all_labels = self.MATERIAL_LABELS.get_homogenized_labels_map()
-                if entries == '':
-                    all_labels.clear()
-                else:
-                    for regions in entries.split(","):
-                        all_labels.pop(regions.strip())
-                excluded_regions_list.append(list(all_labels.values()))
-            excluded_regions = excluded_regions_list
+            # for entries in excluded_list:
+            #     all_labels = self.MATERIAL_LABELS.get_homogenized_labels_map()
+            #     if entries == '':
+            #         all_labels.clear()
+            #     else:
+            #         for regions in entries.split(","):
+            #             all_labels.pop(regions.strip().lower())
+            #     excluded_regions_list.append(list(all_labels.values()))
+            excluded_regions = excluded_list
 
         boundary_tests_tmp = curr_config.get(
             'boundary_tests')  # ['OpenBottomCSF', 'OnlyOnLabel-Ventricles', 'OnlyOnLabel-Lesion']
@@ -318,7 +317,9 @@ class ConfigFile:
 
         self.f.write("Coarsen: " + str(self.config_dict.get('coarsen', False)) + "\n")
 
-        self.f.write("basic configuration settings: " + str(self.get('basic')) + "\n")
+        self.f.write("basic configuration settings without CSF: " + str(self.get('basic_nocsf')) + "\n")
+        self.f.write("basic configuration settings with partial CSF: " + str(self.get('basic_partialcsf')) + "\n")
+        self.f.write("basic configuration settings with full CSF: " + str(self.get('basic_fullcsf')) + "\n")
         self.f.write("atrophy configuration settings: " + str(self.get('atrophy')) + "\n")
         self.f.write("lesion configuration settings: " + str(self.get('lesion')) + "\n")
         if self.get('lesion'):

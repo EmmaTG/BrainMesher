@@ -21,6 +21,7 @@ from mesh.PostProcessorFactory import PostProcessorFactory
 from point_cloud.PointCloud import PointCloud
 from config.Config import ConfigFile
 from voxel_data import Preprocessor
+from writers.aseg_manipulate import create_aseg
 import sys
 
 # configFilePath = sys.argv[1]
@@ -45,6 +46,8 @@ data = brainCreator.homogenize_data(data)
 preprocessor = Preprocessor.PreProcessorFactory.get_preprocessor(config, data)
 assert isinstance(preprocessor, Preprocessor.IPreprocessor)
 data_new = preprocessor.preprocess_data()
+create_aseg(config.get("file_in_path"), config.get("file_in"), config.get("file_out_path"), config.get("fileout"),
+            data_new)
 
 # Creates point cloud from voxel data
 pointCloud = PointCloud()
@@ -58,7 +61,7 @@ brainCreator.clean_mesh(mesh)
 mesh.center_mesh(251)
 
 # Wrapping of post-processing operations (operation selection defined in config file)
-post_processor = PostProcessorFactory.get_post_processor(config, mesh)
+post_processor = PostProcessorFactory.get_post_processor(mesh, config)
 post_processor.post_process()
 
 # Write mesh to file (ucd, vtk or abq inp as specified in config file)

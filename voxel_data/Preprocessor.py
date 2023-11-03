@@ -3,7 +3,6 @@ from voxel_data.void_filler import Maze, InverseMaze, Maze_Solver
 from abc import ABC, abstractmethod
 from voxel_data import PreProcessingActions as pp
 from voxel_data.csf_functions import CSFFunctions
-from writers.aseg_manipulate import create_aseg
 from random import randint
 from scipy.stats import qmc
 import numpy as np
@@ -83,18 +82,17 @@ class IPreprocessor(ABC):
             voids_to_fill = solver3.find_voids()
             solver3.fill_voids(voids_to_fill)
 
-
 class PreprocessorBasic(IPreprocessor):
 
     def preprocess_data(self):
         super().coarsen()
         super().clean_data()
         super().remove_disconnected_regions()
+
         if self.csf_configured:
             super().add_csf(self.layers, self.csfFunction)
         else:
-            print("CSF not added as no configuration was given. "
-                  "Please call set_csf_data to configure CSF")
+            print("CSF not added.")
         return self.data
 
 
@@ -175,7 +173,6 @@ class PreprocessorLesion(IPreprocessor):
                     for y in range(lesion_loc[1] - lesion_size, lesion_loc[1] + lesion_size + 1):
                         for z in range(lesion_loc[2] - lesion_size, lesion_loc[2] + lesion_size + 1):
                             self.data[x, y, z] = 25
-                create_aseg(self.config.get('file_in_path'), "/mri/aseg.mgz", lesion_loc, add_CC=self.config.get('external_cc'))
                 return
         return
 
@@ -193,8 +190,7 @@ class PreprocessorLesion(IPreprocessor):
         if self.csf_configured:
             super().add_csf(self.layers, self.csfFunction)
         else:
-            print("CSF not added as no configuration was given. "
-                  "Please call set_csf_data to configure CSF")
+            print("CSF not added.")
         return self.data
 
 
