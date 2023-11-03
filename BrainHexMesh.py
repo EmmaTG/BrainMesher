@@ -79,17 +79,13 @@ class BrainHexMesh():
 
         assert self.configured, "config file has not been set for this. Please run config(cf -> ConfigFile) before importing data"
 
-        if self.config.get('read_data'):
-            warnings.warn("Data set to be manually inputed not imported from file")
-            return None
-
         if (path == "") and (file == ""):
             path = self.config.get('file_in_path')
             file = self.config.get('file_in')
         data = BrainHexMesh.__get_data__(path, file)
 
         if self.config.get('external_cc'):
-            cc_data = BrainHexMesh.__get_data__(path, "/mri/cc.mgz")
+            cc_data = BrainHexMesh.__get_data__(path, "/cc.mgz")
             cc_data = bm.create_binary_image(cc_data)
             self.add_region(cc_data, data, 251)
 
@@ -148,7 +144,7 @@ class BrainHexMesh():
             
         print("########## Creating mesh from point cloud ##########")
         mesh = Mesh()        
-        mesh.create_mesh_from_Point_Cloud(pc_data,self.VOXEL_SIZE)
+        mesh.create_mesh_from_Point_Cloud(pc_data,2)
         return mesh
     
     def clean_mesh(self, mesh, wm=False):

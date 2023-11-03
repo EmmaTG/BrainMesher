@@ -420,7 +420,7 @@ class VTKWriter(BaseWriter,IWriter):
         for d in dataToWrite:
             dataSize = len(nodes[list(nodes.keys())[0]].data.get(d))
             self.f.write("\nPOINT_DATA " + str(len(nodes)) + "\n")
-            self.f.write("FIELD FieldData 1 \n")
+            self.f.write("FIELD FieldData {} \n".format(len(dataToWrite)))
             self.f.write("{} {} {} float\n".format(d, dataSize, len(nodes)))
             for nodeNum in nodeKeys:
                 n = nodes[nodeNum]

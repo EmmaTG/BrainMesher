@@ -176,7 +176,7 @@ class Material_Label:
         print("Homogenizing data according to chosen labels")
         current_dimensions = data.shape
         newData = np.zeros(current_dimensions, int)
-        unused_values = []
+        unused_values = [replace]
         for x in range(current_dimensions[0]):
             if (np.sum(data[x,:,:]) > 0):
                 for y in range(current_dimensions[1]):

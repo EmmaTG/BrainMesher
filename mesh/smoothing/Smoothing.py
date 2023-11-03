@@ -126,8 +126,6 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
                 coords.append(nodeMap[n].getCoords())
             curvature = calculateCurvature(coords, currentNodeCoords)
             newCoords = list(np.array(currentNodeCoords) + coeff*np.array(curvature))
-            # for i in range(3):
-            #     newCoords[i] = currentNodeCoords[i] + coeff*curvature[i]
             newNodePositions[node] = newCoords
             sameMaterial = True
             for e in nodeToElemMap[node]:
@@ -154,4 +152,4 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
     print("Number of tangled elements: " + str(len(tangled_elements)))
     for node, newcoords in newNodePositions.items():
         changedNode = nodeMap[node]
-        changedNode.setCoords(newcoords);
+        changedNode.setCoords(newcoords)
