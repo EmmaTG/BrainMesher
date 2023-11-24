@@ -4,6 +4,8 @@ Created on Thu May 25 15:39:38 2023
 
 @author: grife
 """
+import warnings
+
 # import ABQ_UCD_handling as rw
 from mesh.smoothing import Smoothing as smooth
 import mesh.mesh_utils as mu
@@ -103,6 +105,12 @@ class Mesh:
         """
         self.boundaryElements = {**self.boundaryElements, **boundaryElementsMap}
         self.boundaryNodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.boundaryElements))
+
+    def addElements(self, new_elements):
+        self.elements = {**self.elements, **new_elements}
+
+    def addNodes(self, new_nodes):
+        self.nodes = {**self.nodes, **new_nodes}
     
     def getBoundingBox(self, regions = -1):
         """Gets the boundign box for the mesh.
@@ -295,14 +303,14 @@ class Mesh:
             total_count += count;
         print(str(total_count) + " elements deleted/replaced due to poor node/edge connectivity in " + str(iteration) + " iterations")
         
-    def replace_outer_region(self, white_matter_label, replace_label, elements_on_boundary):
+    def replace_outer_region(self, incorrect_label, replace_label, elements_on_boundary):
         """
         Replaced any element in 'elements_on_boundary' list that have the value 'white_matter_label'
         nd are replcaed with 'replace_label'
 
         Parameters
         ----------
-        white_matter_label : int
+        incorrect_label : int
             material property to be replaced
         replace_label : int
             material property to be used to replace 'white_matter_label'
@@ -313,8 +321,8 @@ class Mesh:
         for elem in elements_on_boundary:
             element = self.elements[elem]
             materials = element.getMaterial()
-            if materials.count(white_matter_label):
-                materials.remove(white_matter_label)
+            if materials.count(incorrect_label):
+                materials.remove(incorrect_label)
                 materials.insert(0,replace_label)
         
         
@@ -552,6 +560,12 @@ class Mesh:
             surfaceNodeConnectivity = mu.create_surface_connectivity(boundary_element_map,node_to_boundary_element_map)
             elementICAMap = mu.create_elements_ica_map(self.elements)
             nodeToElemMap = mu.create_node_to_elem_map(elementICAMap)
+            assert len(coeffs) == 2, "Please provide (only) 2 coefficient, one positive and one negative. Positive value must be greater than absolute fo negative value"
+            if coeffs[0] > 0:
+                assert coeffs[0] >= abs(coeffs[1]), "First coefficient must be greater than absolute of the second (negative) coefficient"
+            elif coeffs[1] > 0:
+                assert coeffs[1] >= abs(coeffs[2]), "Second coefficient must be greater than absolute of the first (negative) coefficient"
+
             for iteration in range(iterations):
                 smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementICAMap, nodeToElemMap=nodeToElemMap)
         else:
@@ -624,7 +638,7 @@ class Mesh:
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def center_mesh(self, region):
+    def center_mesh_by_region(self, region):
         """
         Moves the center of the mesh to the center of the region specified by 'region'
         to the nearest integer.

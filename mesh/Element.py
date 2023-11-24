@@ -53,6 +53,37 @@ class Element(ElementCalculations):
         self.properties = {}
         for key,value in kwargs.items():
             self.properties[key] = value;
+
+    def get_number(self):
+        return self.num
+
+    def set_number(self, number):
+        self.num = number
+
+    def addMaterial(self, mat):
+        if self.properties.get('mat', False):
+            try:
+                list(mat)
+            except TypeError:
+                mat = [mat]
+            self.properties['mat'] += mat
+        else:
+            self.setMaterial(mat)
+
+
+
+    def addProperty(self, name,data):
+        if self.properties.get(name, False):
+            try:
+                list(data)
+            except TypeError:
+                data = [data]
+            self.properties[name] += data
+        else:
+            self.setMaterial(data)
+
+    def getProperty(self, name):
+        return self.properties[name]
     
     def setMaterial(self,mat):
         try:
@@ -63,7 +94,14 @@ class Element(ElementCalculations):
     
     
     def getMaterial(self):
-        return self.properties['mat']
+        mat = self.properties.get('mat',False)
+        if not mat:
+            return [0]
+        try:
+            list(mat)
+        except TypeError:
+            mat = [mat]
+        return mat
      
             
     def get_nodes_involved(self, faces, stringyfy=True, order=True):       

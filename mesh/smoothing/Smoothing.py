@@ -19,11 +19,11 @@ def calculateQualityMetric(coords, UCD_Values=False):
             [5,7,2],
             [6,4,3]]     
     for i in range(8):
-        neighbourNodes = neighbours[i];
-        vertexNodeCoords = coords[i];
-        A = np.zeros([3,3]);
+        neighbourNodes = neighbours[i]
+        vertexNodeCoords = coords[i]
+        A = np.zeros([3,3])
         for count,n in enumerate(neighbourNodes):
-            neighbourNodeCoords = coords[n];
+            neighbourNodeCoords = coords[n]
             A[count] = neighbourNodeCoords - vertexNodeCoords
         if (np.linalg.det(A) > 0):
             inv_A = np.linalg.inv(A)
@@ -110,7 +110,7 @@ def value_in_square_bounds(n_coords, bounds, inside=True):
     return False
 
 def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementICAMap, nodeToElemMap,
-                      bounds = [-100000,100000,-100000,100000,-100000,100000], inBounds=True):
+                      bounds=None, inBounds=True):
     print("Iteration: " + str(iteration+1))    
     import numpy as np 
     newNodePositions = {}
@@ -118,25 +118,24 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
     tangled_elements = []
     nodesUnsmoothed = []
     coeff = coeffs[iteration%2]
-    for node,connected in surfaceNodeConnectivity.items():
+    for node, connected in surfaceNodeConnectivity.items():
         currentNodeCoords = list(nodeMap[node].getCoords())
-        if (value_in_square_bounds(currentNodeCoords, bounds, inside=inBounds) ):
+        if bounds is None or value_in_square_bounds(currentNodeCoords, bounds, inside=inBounds):
             coords = []
             for n in connected:
                 coords.append(nodeMap[n].getCoords())
-            curvature = calculateCurvature(coords,currentNodeCoords)
-            newCoords = [0,0,0]
-            for i in range(3):
-                newCoords[i] = currentNodeCoords[i] + coeff*curvature[i]
+            curvature = calculateCurvature(coords, currentNodeCoords)
+            newCoords = list(np.array(currentNodeCoords) + coeff*np.array(curvature))
             newNodePositions[node] = newCoords
+            sameMaterial = True
             for e in nodeToElemMap[node]:
-                elemCoords = np.zeros([8,3])
-                for count,n in enumerate(elementICAMap[e]):
-                    if newNodePositions.get(n,False):
+                elemCoords = np.zeros([8, 3])
+                for count, n in enumerate(elementICAMap[e]):
+                    if newNodePositions.get(n, False):
                         elemCoords[count] = newNodePositions[n]
                     else:
                         elemCoords[count] = nodeMap[n].getCoords()
-                metric = calculateQualityMetric(elemCoords);
+                metric = calculateQualityMetric(elemCoords)
                 if metric < 0.2:
                     newNodePositions.pop(node)
                     if metric < -10000:
@@ -153,4 +152,4 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
     print("Number of tangled elements: " + str(len(tangled_elements)))
     for node, newcoords in newNodePositions.items():
         changedNode = nodeMap[node]
-        changedNode.setCoords(newcoords);
+        changedNode.setCoords(newcoords)

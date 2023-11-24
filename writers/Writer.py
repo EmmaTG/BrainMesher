@@ -68,6 +68,7 @@ class BaseWriter():
         """
         self.__ext__ = ext
         self.__tag__ = tag
+        self.__filename__ = ''
         
     def openWriter(self, filename, path):
         """Open file to be written to given path and filename.
@@ -112,15 +113,23 @@ class BaseWriter():
         """
         self.__mesh__ = mesh
         
-    def mesh_statistics(self):
+    def mesh_statistics(self, file=None):
         """
         Prints the number of nodes, elemenst and boundary surfaces in the mesh object.
         """
-        print("MESH STATISTICS: ")
-        print("\tNumber of nodes: " + str(len(self.__mesh__.nodes)))
-        print("\tNumber of elements: " + str(len(self.__mesh__.elements)))
-        if (len(self.__mesh__.boundaryElements)>0):  
-            print("\tNumber of boundary surfaces: " + str(len(self.__mesh__.boundaryElements)))
+        if file is None:
+            print("MESH STATISTICS: ")
+            print("\tNumber of nodes: " + str(len(self.__mesh__.nodes)))
+            print("\tNumber of elements: " + str(len(self.__mesh__.elements)))
+            if (len(self.__mesh__.boundaryElements)>0):
+                print("\tNumber of boundary surfaces: " + str(len(self.__mesh__.boundaryElements)))
+        else:
+            file.write("MESH STATISTICS: ")
+            file.write("\tNumber of nodes: " + str(len(self.__mesh__.nodes)))
+            file.write("\tNumber of elements: " + str(len(self.__mesh__.elements)))
+            if (len(self.__mesh__.boundaryElements)>0):
+                file.write("\tNumber of boundary surfaces: " + str(len(self.__mesh__.boundaryElements)))
+
     
 class ABQWriter(BaseWriter,IWriter):
     """
@@ -178,8 +187,8 @@ class ABQWriter(BaseWriter,IWriter):
             if reNumber:
                 nodeNum = count+1
             else:
-                nodeNum = n.number
-            self.oldNumToNewNum[n.number] = nodeNum
+                nodeNum = n
+            self.oldNumToNewNum[n] = nodeNum
             self.f.write(str(nodeNum) + ",\t" + ",\t".join([str(round(i,6)) for i in nodeMap[n].getCoords()])+"\n")
     
     def writeElements(self, reNumber):
@@ -225,8 +234,8 @@ class ABQWriter(BaseWriter,IWriter):
                 else:
                     materialToElements[material] = [num]
         for elsetName,elset_elements in materialToElements.items():
-            print("Writing elset data: " + str(elsetName).upper())
-            self.f.write("*ELSET, ELSET=" + str(elsetName).upper() + '\n')
+            print("Writing elset data: E" + str(int(elsetName)).upper())
+            self.f.write("*ELSET, ELSET=E" + str(int(elsetName)).upper() + '\n')
             elset_elements.sort()
             for x in range(0,len(elset_elements),15):
                 str_to_write = ", ".join([str(self.oldELemTonewELem[y]) for y in elset_elements[x:x+15]])
@@ -411,7 +420,7 @@ class VTKWriter(BaseWriter,IWriter):
         for d in dataToWrite:
             dataSize = len(nodes[list(nodes.keys())[0]].data.get(d))
             self.f.write("\nPOINT_DATA " + str(len(nodes)) + "\n")
-            self.f.write("FIELD FieldData 1 \n")
+            self.f.write("FIELD FieldData {} \n".format(len(dataToWrite)))
             self.f.write("{} {} {} float\n".format(d, dataSize, len(nodes)))
             for nodeNum in nodeKeys:
                 n = nodes[nodeNum]

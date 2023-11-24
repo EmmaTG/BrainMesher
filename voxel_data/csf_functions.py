@@ -162,30 +162,25 @@ class CSFFunctions:
 
         xs, ys, zs = np.where(data == 3)
         for [x, y, z] in np.column_stack((xs, ys, zs)):
-            new_data[x, y, z] = 3
+            new_data[x, y, z] = 24
 
         xs, ys, zs = np.where(data == 2)
         for [x, y, z] in np.column_stack((xs, ys, zs)):
-            new_data[x, y, z] = 3
+            new_data[x, y, z] = 24
 
         xs, ys, zs = np.where(data == 25)
         for [x, y, z] in np.column_stack((xs, ys, zs)):
-            new_data[x, y, z] = 3
+            new_data[x, y, z] = 24
 
         xs, ys, zs = np.where(data == 57)
         for [x, y, z] in np.column_stack((xs, ys, zs)):
-            new_data[x, y, z] = 3
+            new_data[x, y, z] = 24
 
-        inflated_csf = ndimage.binary_dilation(new_data).astype(int)
-        for i in range(layers - 1):
-            inflated_csf = ndimage.binary_dilation(inflated_csf).astype(int)
-
-        xs, ys, zs = np.where(inflated_csf == 1)
-        current_dimensions = inflated_csf.shape
-        for [x, y, z] in np.column_stack((xs, ys, zs)):
-            if new_data[x, y, z] == 0:
-                new_data[x, y, z] = 3
-                data[x, y, z] = 24
+        # xs, ys, zs = np.where(new_data == 1)
+        # current_dimensions = new_data.shape
+        # for [x, y, z] in np.column_stack((xs, ys, zs)):
+        #     if new_data[x, y, z] == 0:
+        #         new_data[x, y, z] = 24
 
                 # Create point cloud
         point_cloud = PointCloud.PointCloud()
@@ -208,16 +203,12 @@ class CSFFunctions:
                 for y in range(int(mid_y), int(ymin - 1), -1):
                     if (data[x, y, z] == 0) and (y < ymax_tot):
                         if in_hull([x, y], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
                             new_data[x, y, z] = 24
                         else:
                             break
                 for y in range(int(mid_y), int(ymax + 1)):
                     if (data[x, y, z] == 0) and (y < ymax_tot):
                         if in_hull([x, y], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
                             new_data[x, y, z] = 24
                         else:
                             break
@@ -236,8 +227,6 @@ class CSFFunctions:
                 for z in range(int(mid_2d), int(min2d - 1), -1):
                     if (data[x, y, z] == 0) and (y < ymax_tot):
                         if in_hull([y, z], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
                             new_data[x, y, z] = 24
                         else:
                             break
@@ -245,8 +234,6 @@ class CSFFunctions:
                 for z in range(int(mid_2d), int(max2d + 1)):
                     if (data[x, y, z] == 0) and (y < ymax_tot):
                         if in_hull([y, z], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
                             new_data[x, y, z] = 24
                         else:
                             break
@@ -264,19 +251,25 @@ class CSFFunctions:
                 for z in range(int(mid_2d), int(min2d - 1), -1):
                     if (data[x, y, z] == 0) and (y < ymax_tot):
                         if in_hull([x, z], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
                             new_data[x, y, z] = 24
                         else:
                             break
                 for z in range(int(mid_2d), int(max2d + 1)):
                     if (data[x, y, z] == 0) and (y < ymax_tot):
                         if in_hull([x, z], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
                             new_data[x, y, z] = 24
                         else:
                             break
+
+        new_data = ndimage.binary_erosion(new_data).astype(int)
+        # for i in range(1):
+        #     new_data = ndimage.binary_erosion(new_data).astype(int)
+
+        xs, ys, zs = np.where(new_data == 1)
+        current_dimensions = new_data.shape
+        for [x, y, z] in np.column_stack((xs, ys, zs)):
+            if data[x, y, z] == 0:
+                data[x, y, z] = 24
 
     @staticmethod
     def get_csf_function(csf_type):
