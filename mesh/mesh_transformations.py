@@ -37,7 +37,7 @@ def scale_mesh(nodeMap,scale=[1,1,1],reduce=True):
 
 def translate_mesh(nodeMap,distance=[1,1,1]):        
     for n in nodeMap.values():
-        coords = n.getCoords();
+        coords = n.getCoords()
         coords[0] = coords[0]+distance[0]
         coords[1] = coords[1]+distance[1]
         coords[2] = coords[2]+distance[2]

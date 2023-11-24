@@ -8,13 +8,14 @@ class Refiner:
     def __init__(self, mesh):
         self.mesh = mesh
         self.nodeMap = mu.create_node_coords_map(mesh.nodes)
+        assert len(self.nodeMap) == len(mesh.nodes)
         self.elementMap = mu.create_elements_ica_map(mesh.elements)
+        assert len(self.elementMap) == len(mesh.elements)
 
     def refine_within_region(self, bounds):
         nodes_of_refinement = self.define_refinement_area(bounds)
         sideMap = self.assign_refinement_type(nodes_of_refinement)
         self.__refine_mesh__(nodes_of_refinement, sideMap)
-        pass
 
     def refine_around_point(self, point, radius):
         bounds = [point[0]-radius, point[0]+radius,
@@ -51,7 +52,7 @@ class Refiner:
         nodeLocationMapZ = {}
         refined_elements = []
         swapMap = {}
-        for side, side_elements,  in sideMap.items():
+        for side, side_elements in sideMap.items():
             print("Refining {} elements in category {}".format(len(side_elements), side))
             for e in side_elements:
                 current_ele = self.mesh.elements.get(e)
@@ -536,7 +537,7 @@ class Refiner:
         Parameters
         ----------
         bounds_to_refine : array[6]
-            [x,y,z] min and max cooordinates defining square within which to refine model
+            [xmin, x max,ymin ,ymax, zmin, zmax] min and max cooordinates defining square within which to refine model
         nodeMap : Map(int,array)
             Map of node numbers (keys) to coordinates of nodes (values)
 
