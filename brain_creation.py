@@ -22,10 +22,10 @@ from point_cloud.PointCloud import PointCloud
 from config.Config import ConfigFile
 from voxel_data import Preprocessor
 from writers.aseg_manipulate import create_aseg
-import sys
+import sys, os
 
-# configFilePath = sys.argv[1]
 configFilePath = sys.argv[1]
+# configFilePath = os.getcwd()
 
 # Preferences are defined in ConfigFile
 config = ConfigFile(configFilePath)

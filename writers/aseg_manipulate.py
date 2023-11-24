@@ -12,8 +12,8 @@ from voxel_data import voxel_data_utils as bm
 
 
 def add_cc_data(fileInPath,homogenized_data):
-    # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
-    t1_file_cc = "/".join([fileInPath, "mri/cc.mgz"])
+    # Step 1: Using freesurfer and 'recon-all' create in outputs. Ensure aseg.mgz is created.
+    t1_file_cc = "/".join([fileInPath, "in/cc.mgz"])
     t1_cc = nb.load(t1_file_cc)
     # t1.orthoview()
     cc_data = np.asarray(t1_cc.dataobj)
@@ -35,7 +35,7 @@ def remove_ventricle_data(data_new):
 
 def create_aseg(fileInPath, filename, fileoutpath, fileout, data_new, remove_ventricle=True):
           
-    # Step 1: Using freesurfer and 'recon-all' create mri outputs. Ensure aseg.mgz is created.
+    # Step 1: Using freesurfer and 'recon-all' create in outputs. Ensure aseg.mgz is created.
     t1_file = "/".join([fileInPath, filename])
     t1 = nb.load(t1_file)
     # t1.orthoview()
