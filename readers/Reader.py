@@ -40,7 +40,7 @@ class IReader(ABC):
         pass
 
     @abstractmethod
-    def getMesh(self):
+    def getMesh(self) -> Mesh:
         pass
 
 
@@ -99,11 +99,7 @@ class BaseReader:
         """
         Saves and closed file.
         """
-        self.f.close()
         print("Completed")
-
-
-        return self.mesh
 
 
 class ABQReader(BaseReader, IReader):
@@ -126,10 +122,16 @@ class ABQReader(BaseReader, IReader):
         self.element_lines = []
         self.elset_lines = {}
 
-    def getMesh(self):
+    def closeReader(self):
+        """
+        Saves and closed file.
+        """
+        self.f.close()
+        super().closeReader()
+
+    def getMesh(self) -> Mesh:
         self.readNodes()
         self.readElements()
-        super().closeReader()
         return self.mesh
 
     def openReader(self, filename, path):
@@ -152,7 +154,12 @@ class ABQReader(BaseReader, IReader):
         for line in self.f:
             line = "".join(line.split()).upper()
             if line != '':
-                if "*NODE" in line:
+                if "**" in line:
+                    start_nodes = False
+                    start_elements = False
+                    start_elsets = False
+
+                elif "*NODE" in line:
                     start_nodes = True
                     start_elements = False
                     start_elsets = False
@@ -229,7 +236,7 @@ class VTKReader(BaseReader, IReader):
         super().__init__("vtk", "vtk")
         self.grid = None
 
-    def getMesh(self):
+    def getMesh(self) -> Mesh:
         self.readNodes()
         self.readElements()
         return self.mesh
@@ -281,6 +288,7 @@ class VTKReader(BaseReader, IReader):
     def readMaterialsData(self):
         cell_data = self.grid.GetCellData()
         number_arrays =cell_data.GetNumberOfArrays()
+        number_elements = len(self.mesh.elements)
         for i in range(number_arrays):
             arr = cell_data.GetArray(i)
             arr_name = arr.GetName()
@@ -288,8 +296,10 @@ class VTKReader(BaseReader, IReader):
                 for e in range(arr.GetNumberOfValues()):
                     mat = arr.GetValue(e)
                     element = self.mesh.elements.get(e, None)
-                    if element is not None:
-                        element.addMaterial(mat)
+                    if element is None:
+                        element = self.mesh.boundaryElements.get(e, None)
+                    assert element is not None, "Error in reader: Element does not exist in mesh"
+                    element.addMaterial(mat)
             else:
                 for e in range(arr.GetNumberOfValues()):
                     data = arr.GetValue(e)

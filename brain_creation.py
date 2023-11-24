@@ -58,7 +58,7 @@ mesh = brainCreator.make_mesh(pointCloud.pcd)
 brainCreator.clean_mesh(mesh)
 
 # Moves mesh to the center of the corpus callosum
-mesh.center_mesh(251)
+mesh.center_mesh_by_region(251)
 
 # Wrapping of post-processing operations (operation selection defined in config file)
 post_processor = PostProcessorFactory.get_post_processor(mesh, config)

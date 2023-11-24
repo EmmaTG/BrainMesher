@@ -71,12 +71,14 @@ class FourRegionConverter(MaterialsConverter):
 
     def __init__(self):
         super().__init__()
-        sub_cortical = [7,10,11,16,17,18,251]
+        sub_cortical = [7,10,11,16,17,18]
         for n in self.materials:
             if n == 3:
                 self.converter[n] = 3
             elif n == 2:
                 self.converter[n] = 2
+            elif n == 251:
+                self.converter[n] = 251
             elif sub_cortical.count(n):
                 self.converter[n] = 7
             else:

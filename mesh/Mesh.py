@@ -105,6 +105,12 @@ class Mesh:
         """
         self.boundaryElements = {**self.boundaryElements, **boundaryElementsMap}
         self.boundaryNodeToElements = mu.create_node_to_elem_map(mu.create_elements_ica_map(self.boundaryElements))
+
+    def addElements(self, new_elements):
+        self.elements = {**self.elements, **new_elements}
+
+    def addNodes(self, new_nodes):
+        self.nodes = {**self.nodes, **new_nodes}
     
     def getBoundingBox(self, regions = -1):
         """Gets the boundign box for the mesh.
@@ -632,7 +638,7 @@ class Mesh:
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def center_mesh(self, region):
+    def center_mesh_by_region(self, region):
         """
         Moves the center of the mesh to the center of the region specified by 'region'
         to the nearest integer.
