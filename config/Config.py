@@ -49,7 +49,10 @@ class ConfigFile:
 
         types_string = curr_config.get('fileout_types')
         types = [x.strip() for x in types_string.split(",")]
+        for t in types:
+            assert ['ucd' , 'vtk','abaqus'].count(t), "OUTPUT TYPE {} NOT SUPPORTED".format(t)
         self.config_dict['fileout_types'] = types  # 'ucd' | 'vtk' | 'abaqus'
+
 
         # If corpus callosum is saved as an external file (must be stored as cc.mgz in mri folder)
         self.config_dict['external_cc'] = curr_config.getboolean('external_cc', False)
