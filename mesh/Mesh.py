@@ -659,9 +659,9 @@ class Mesh:
         region : int
             material property of region about which mesh should be centered
         """
-        middle_of_cc = [int(x) for x in self.get_center_of_region(region)]
+        middle_of_cc = [-1*int(x) for x in self.get_center_of_region(region)]
         # Move mesh
-        mt.translate_mesh(self.nodes, middle_of_cc)
+        mt.translate_mesh(self.nodes, distance=middle_of_cc)
         
         
     def get_center_of_region(self,region):
