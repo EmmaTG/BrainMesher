@@ -15,13 +15,14 @@ class PostProcessorFactory:
             # global smoothing
             post_processor = SmoothMesh(post_processor, config.get('co_effs'), config.get('iterations'))
 
+            # Smooth grey matter boundary
             if config.get('add_csf'):
                 labels = config.MATERIAL_LABELS.get_homogenized_labels_map()
                 label_for_csf = labels.get("csf", 24)
                 post_processor = SmoothMesh(post_processor, config.get('co_effs'), config.get('iterations'),
                                             excluded_regions=[label_for_csf])
 
-            # Smooths mesh as defined in config file
+            # Smooth mesh regions as defined in config file
             regions = config.get("smooth_regions")
             region_coeffs = config.get("region_co_effs")
             region_iterations = config.get("region_iterations")
