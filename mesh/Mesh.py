@@ -198,9 +198,9 @@ class Mesh:
         add = True
         for el_types in element.getMaterial():
             if elementsNotIncluded.count(el_types):
-                add=False
+                add = False
                 break
-        return add;
+        return add
      
     def remove_region(self,region_value):
         """Removes an elements with material properties 'region_values'
@@ -555,9 +555,19 @@ class Mesh:
         
         boundary_element_map = self.locate_boundary_element_map(elementsNotIncluded=elementsNotIncluded)
         assert len(coeffs)==2, "Laplacian smoothing requires for two coefficients"
-        if len(boundary_element_map)>0:
+        if len(boundary_element_map) > 0:
             node_to_boundary_element_map = mu.create_node_to_elem_map(boundary_element_map)
             surfaceNodeConnectivity = mu.create_surface_connectivity(boundary_element_map,node_to_boundary_element_map)
+            surfaceNodeKeys = list(surfaceNodeConnectivity.keys())
+            # This followign loop prevents previously smoothed nodes/regions from being affected by latter smoothed regions
+            # as smoothing should be done from most to least important region
+            for node_number in surfaceNodeKeys:
+                node = self.nodes[node_number]
+                touched = node.getData('touched')
+                if len(touched) == 0:
+                    node.addData('touched', [1])
+                else:
+                    surfaceNodeConnectivity.pop(node_number)
             elementICAMap = mu.create_elements_ica_map(self.elements)
             nodeToElemMap = mu.create_node_to_elem_map(elementICAMap)
             assert len(coeffs) == 2, "Please provide (only) 2 coefficient, one positive and one negative. Positive value must be greater than absolute fo negative value"
@@ -567,7 +577,7 @@ class Mesh:
                 assert coeffs[1] >= abs(coeffs[2]), "Second coefficient must be greater than absolute of the first (negative) coefficient"
 
             for iteration in range(iterations):
-                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementICAMap, nodeToElemMap=nodeToElemMap)
+                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, self.elements, nodeToElemMap=nodeToElemMap)
         else:
             print("No elements selected to smooth")
                            

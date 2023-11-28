@@ -109,7 +109,7 @@ def value_in_square_bounds(n_coords, bounds, inside=True):
                 return True
     return False
 
-def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementICAMap, nodeToElemMap,
+def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementMap, nodeToElemMap,
                       bounds=None, inBounds=True):
     print("Iteration: " + str(iteration+1))    
     import numpy as np 
@@ -128,9 +128,11 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
             newCoords = list(np.array(currentNodeCoords) + coeff*np.array(curvature))
             newNodePositions[node] = newCoords
             sameMaterial = True
-            for e in nodeToElemMap[node]:
+            for e_num in nodeToElemMap[node]:
+                e = elementMap[e_num]
                 elemCoords = np.zeros([8, 3])
-                for count, n in enumerate(elementICAMap[e]):
+                for count, node_obj in enumerate(e.ica):
+                    n = node_obj.number
                     if newNodePositions.get(n, False):
                         elemCoords[count] = newNodePositions[n]
                     else:
@@ -139,9 +141,9 @@ def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, eleme
                 if metric < 0.2:
                     newNodePositions.pop(node)
                     if metric < -10000:
-                        tangled_elements.append(e)
+                        tangled_elements.append(e_num)
                     else:
-                        badElements.append(e)
+                        badElements.append(e_num)
                         nodesUnsmoothed.append(node)
                     break
                     
