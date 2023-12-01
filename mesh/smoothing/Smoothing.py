@@ -4,9 +4,12 @@ Created on Mon Feb  6 09:41:58 2023
 
 @author: grife
 """
+import numpy as np
+from math import acos,pi
+from numpy.linalg import norm, det, inv
 
 def calculateQualityMetric(coords, UCD_Values=False):
-    import numpy as np
+
     if UCD_Values:
         coords = np.concatenate((coords[-4:],coords[:4]))
     J = 0
@@ -25,10 +28,10 @@ def calculateQualityMetric(coords, UCD_Values=False):
         for count,n in enumerate(neighbourNodes):
             neighbourNodeCoords = coords[n]
             A[count] = neighbourNodeCoords - vertexNodeCoords
-        if (np.linalg.det(A) > 0):
-            inv_A = np.linalg.inv(A)
-            kTk = np.linalg.norm(A)*np.linalg.norm(inv_A)
-            J += (kTk/3)**2
+        if (det(A) > 0):
+            inv_A = inv(A)
+            kTk = norm(A)*norm(inv_A)
+            J += (kTk/3)*(kTk/3)
         else:
             # print("Error: determinant is negative! Element Tangled" ) 
             return -100000
@@ -37,8 +40,6 @@ def calculateQualityMetric(coords, UCD_Values=False):
     return J
 
 def calculateAngles(coords):
-    import numpy as np
-    from math import acos,pi
     coords =  np.concatenate((coords[-4:],coords[:4]))
     neighbours = [[1,3,4],
             [2,0,5],
@@ -109,34 +110,24 @@ def value_in_square_bounds(n_coords, bounds, inside=True):
                 return True
     return False
 
-def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementMap, nodeToElemMap,
+def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementICAMap, nodeToElemMap,
                       bounds=None, inBounds=True):
-    print("Iteration: " + str(iteration+1))    
-    import numpy as np 
+    print("Iteration: " + str(iteration+1))
     newNodePositions = {}
-    badElements = []
-    tangled_elements = []
-    nodesUnsmoothed = []
+    badElements, tangled_elements, nodesUnsmoothed = [],[],[]
     coeff = coeffs[iteration%2]
     for node, connected in surfaceNodeConnectivity.items():
-        currentNodeCoords = list(nodeMap[node].getCoords())
+        currentNodeCoords = nodeMap[node].getCoords()
         if bounds is None or value_in_square_bounds(currentNodeCoords, bounds, inside=inBounds):
-            coords = []
-            for n in connected:
-                coords.append(nodeMap[n].getCoords())
+            coords = [nodeMap[n].getCoords() for n in connected]
             curvature = calculateCurvature(coords, currentNodeCoords)
-            newCoords = list(np.array(currentNodeCoords) + coeff*np.array(curvature))
+            newCoords = np.array(currentNodeCoords) + coeff*np.array(curvature)
             newNodePositions[node] = newCoords
-            sameMaterial = True
             for e_num in nodeToElemMap[node]:
-                e = elementMap[e_num]
+                e_ica = elementICAMap[e_num]
                 elemCoords = np.zeros([8, 3])
-                for count, node_obj in enumerate(e.ica):
-                    n = node_obj.number
-                    if newNodePositions.get(n, False):
-                        elemCoords[count] = newNodePositions[n]
-                    else:
-                        elemCoords[count] = nodeMap[n].getCoords()
+                for count, n_num in enumerate(e_ica):
+                    elemCoords[count] = newNodePositions.get(n_num, nodeMap[n_num].getCoords())
                 metric = calculateQualityMetric(elemCoords)
                 if metric < 0.2:
                     newNodePositions.pop(node)

@@ -40,7 +40,15 @@ class Converter:
             writer.openWriter('vtk', new_filename, path)
         elif convert_to == 'ucd':
             writer.openWriter('ucd', new_filename, path)
+        else:
+            raise NotImplementedError
 
         writer.writeMeshData(mesh)
         writer.closeWriter()
+
+
+if __name__ == "__main__":
+    pathout = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/PythonScripts/BrainMesher/Atrophy"
+    filename = "OAS1_0004_MR1"
+    Converter.convert_file(pathout, filename + "_VTK","vtk","ucd", filename)
 

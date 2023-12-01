@@ -19,24 +19,41 @@ from dotenv import load_dotenv
 from readers.Reader import ABQReader, VTKReader
 from file_converters.Converter import Converter
 import os
-filenames = [4,5,6,9,10]
-for curve_number in filenames:
-    filename = "Brain_sphere_3mm_30mm_I6mm_curve{}_Loc1_9R_VTK".format(curve_number)
-    filename_out = "Brain_sphere_3mm_30mm_I6mm_curve{}_Loc1_4R".format(curve_number)
-    path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/CoreFoamModels"
+# filenames = [4,5,6,9,10]
+# for curve_number in filenames:
+#     filename = "Brain_sphere_3mm_30mm_I6mm_curve{}_Loc1_9R_VTK".format(curve_number)
+    # filename_out = "Brain_sphere_3mm_30mm_I6mm_curve{}_Loc1_4R".format(curve_number)
+    # path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/CoreFoamModels"
 
-    reader = VTKReader()
-    reader.openReader(filename, path)
-    mesh = reader.getMesh()
-    reader.closeReader()
 
-    mat_converter = FourRegionConverter()
-    mat_converter.convert_materials_labels(mesh)
 
-    writer = Writer()
-    writer.openWriter('ucd',filename_out,path)
-    writer.writeMeshData(mesh)
-    writer.closeWriter()
+filename = "brain_full_csf_centered_VTK"
+filename_out = "brain_full_csf_centered_rotated"
+path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/PythonScripts/BrainMesher/IOput/out/"
+path = "C:/Users/grife/OneDrive/Documents/PostDoc/Students/Yashasvi/meshes"
+pathout = "C:/Users/grife/OneDrive/Documents/PostDoc/Students/Yashasvi/meshes"
+
+reader = VTKReader()
+reader.openReader(filename, path)
+mesh = reader.getMesh()
+reader.closeReader()
+
+import mesh.mesh_transformations as mt
+mt.translate_mesh(mesh.nodes,[2,-8,6])
+mt.rotate_mesh(mesh.nodes,axis=1, degrees=90)
+
+# mat_converter = FourRegionConverter()
+# mat_converter.convert_materials_labels(mesh)
+
+writer = Writer()
+writer.openWriter('ucd',filename_out,pathout)
+writer.writeMeshData(mesh)
+writer.closeWriter()
+
+writer = Writer()
+writer.openWriter('vtk',filename_out,pathout)
+writer.writeMeshData(mesh)
+writer.closeWriter()
 
 # reader = VTKReader()
 # mesh = reader.getMesh()
@@ -59,14 +76,25 @@ for curve_number in filenames:
 #
 # labels = Material_Label()
 # labels.addLabelToMap("Body1", 3)
-# dimension = 20;
+# filename = "output_full_brain_VTK"
+# filename_out = "output_non_regular_grid_centered"
+# path = "C:/Users/grife/OneDrive/Documents/PostDoc/Students/Yashasvi/meshes"
+# dimension = 20
 #
 # data = np.ones((dimension,dimension,dimension))*3
+# data[:,dimension-2:,:2] = np.ones((dimension,1,1))*0
+# data[:8,:8,dimension-2:] = np.ones((8,8,2))*0
 #
 # pointCloud = PointCloud()
 # pointCloud.create_point_cloud_from_voxel(data)
 # mesh = Mesh()
 # mesh.create_mesh_from_Point_Cloud(pointCloud.pcd, 2)
+# mesh.center_mesh_by_region()
+#
+# writer = Writer()
+# writer.openWriter('vtk',filename_out,path)
+# writer.writeMeshData(mesh)
+# writer.closeWriter()
 #
 # meshRefiner = Refiner(mesh)
 # bounds = [17, 23, 37, 41, 21, 27]

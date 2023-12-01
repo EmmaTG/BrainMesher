@@ -577,7 +577,7 @@ class Mesh:
                 assert coeffs[1] >= abs(coeffs[2]), "Second coefficient must be greater than absolute of the first (negative) coefficient"
 
             for iteration in range(iterations):
-                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, self.elements, nodeToElemMap=nodeToElemMap)
+                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementICAMap, nodeToElemMap=nodeToElemMap)
         else:
             print("No elements selected to smooth")
                            
@@ -648,7 +648,7 @@ class Mesh:
         coordz = (tmp - (coordy*(elementZ+1)))-1
         return [float(d) for d in [coordx*size, coordy*size, coordz*size]]
     
-    def center_mesh_by_region(self, region):
+    def center_mesh_by_region(self, region=None):
         """
         Moves the center of the mesh to the center of the region specified by 'region'
         to the nearest integer.
@@ -659,12 +659,12 @@ class Mesh:
         region : int
             material property of region about which mesh should be centered
         """
-        middle_of_cc = [-1*int(x) for x in self.get_center_of_region(region)]
+        middle_of_cc = [-1*int(round(x)) for x in self.get_center_of_region(region)]
         # Move mesh
         mt.translate_mesh(self.nodes, distance=middle_of_cc)
         
         
-    def get_center_of_region(self,region):
+    def get_center_of_region(self,region=None):
         """
         Find center of a region in the mesh
 
@@ -683,7 +683,7 @@ class Mesh:
         num_elements = 0
         # Find centroid of corpus callosum
         for e in self.elements.values():
-            if (e.getMaterial()[0] == region):
+            if region is None or (e.getMaterial()[0] == region):
                 e_centroid = e.calculate_element_centroid()
                 num_elements += 1
                 for d in range(len(e_centroid)):

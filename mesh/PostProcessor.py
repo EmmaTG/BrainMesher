@@ -139,7 +139,7 @@ class CreateBoundaryElements(PostProcessorDecorator):
 
     def create_boundary(self):
         boundary_test_fx = None
-        if self.boundary_test != 'none':
+        if self.boundary_test.lower() != 'none':
             if 'OnlyOnLabel' in self.boundary_test:
                 popped_label = self.boundary_test.split("-")[1].strip()
                 labels = self.config.MATERIAL_LABELS.get_homogenized_labels_map()
@@ -157,6 +157,12 @@ class CreateBoundaryElements(PostProcessorDecorator):
                     boundary_test_fx = None
                 else:
                     boundary_test_fx = BoundaryFunctions.OpenBottomCSF(self.mesh)
+            elif self.boundary_test == 'ExternalCSF':
+                if not self.config.get('add_csf'):
+                    warnings.warn("You cannot request an open open CSf boundary if CSF is not added to the model")
+                    boundary_test_fx = None
+                else:
+                    boundary_test_fx = BoundaryFunctions.ExternalCSF(self.mesh)
             else:
                 raise NotImplementedError("This boundary function has not been implemented")
 

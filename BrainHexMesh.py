@@ -111,9 +111,7 @@ class BrainHexMesh():
             3D data array of voxels with label numbers
         """
         # Homogenize labels
-        label_number = 0
-        if self.material_labels.labelsMap.get(unusedLabel, False):
-            label_number = self.material_labels.labelsMap[unusedLabel][0]
+        label_number = self.material_labels.labelsMap.get(unusedLabel, [0])[0]
                     
         # Replace regions with multiple labels with only one label, if label is not required replace with unused/0
         data = self.material_labels.homogenize_material_labels(data, replace=label_number)

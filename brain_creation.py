@@ -24,50 +24,51 @@ from voxel_data import Preprocessor
 from writers.aseg_manipulate import create_aseg
 import sys, os
 
-configFilePath = sys.argv[1]
-# configFilePath = os.getcwd()
+def run(configFilePath, model_Type):
+    # configFilePath = os.getcwd()
 
-# Preferences are defined in ConfigFile
-config = ConfigFile(configFilePath)
+    # Preferences are defined in ConfigFile
+    config = ConfigFile(configFilePath, model_Type)
 
-brainCreator = BrainHexMesh(config)
+    brainCreator = BrainHexMesh(config)
 
-# Writes configuration preferences to output location
-config.open_config_file()
-config.write_preamble()
+    # Writes configuration preferences to output location
+    config.open_config_file()
+    config.write_preamble()
 
-# Gets aseg data as 3D of segmentation labels in voxels
-data = brainCreator.import_data()
+    # Gets aseg data as 3D of segmentation labels in voxels
+    data = brainCreator.import_data()
 
-# Homogenizes data label according to Materials label as defined in Config class
-data = brainCreator.homogenize_data(data)
+    # Homogenizes data label according to Materials label as defined in Config class
+    data = brainCreator.homogenize_data(data)
 
-# Pre-processes data to ensure valid mesh base on config setting:
-preprocessor = Preprocessor.PreProcessorFactory.get_preprocessor(config, data)
-assert isinstance(preprocessor, Preprocessor.IPreprocessor)
-data_new = preprocessor.preprocess_data()
-create_aseg(config.get("file_in_path"), config.get("file_in"), config.get("file_out_path"), config.get("fileout"),
-            data_new)
+    # Pre-processes data to ensure valid mesh base on config setting:
+    preprocessor = Preprocessor.PreProcessorFactory.get_preprocessor(config, data)
+    assert isinstance(preprocessor, Preprocessor.IPreprocessor)
+    data_new = preprocessor.preprocess_data()
+    create_aseg(config.get("file_in_path"), config.get("file_in"), config.get("file_out_path"), config.get("fileout"),
+                data_new)
 
-# Creates point cloud from voxel data
-pointCloud = PointCloud()
-pointCloud.create_point_cloud_from_voxel(data_new)
+    # Creates point cloud from voxel data
+    pointCloud = PointCloud()
+    pointCloud.create_point_cloud_from_voxel(data_new)
 
-# Creates mesh from point cloud
-mesh = brainCreator.make_mesh(pointCloud.pcd) 
-brainCreator.clean_mesh(mesh)
+    # Creates mesh from point cloud
+    mesh = brainCreator.make_mesh(pointCloud.pcd)
+    brainCreator.clean_mesh(mesh)
 
-# Moves mesh to the center of the corpus callosum
-mesh.center_mesh_by_region(251)
+    # Moves mesh to the center of the corpus callosum
+    mesh.center_mesh_by_region(251)
 
-# Wrapping of post-processing operations (operation selection defined in config file)
-post_processor = PostProcessorFactory.get_post_processor(mesh, config)
-post_processor.post_process()
+    # Wrapping of post-processing operations (operation selection defined in config file)
+    post_processor = PostProcessorFactory.get_post_processor(mesh, config)
+    post_processor.post_process()
 
-# Write mesh to file (ucd, vtk or abq inp as specified in config file)
-brainCreator.write_to_file(mesh)  
+    # Write mesh to file (ucd, vtk or abq inp as specified in config file)
+    brainCreator.write_to_file(mesh)
 
-# Close config file write out  
-config.close_config_file()
+    # Close config file write out
+    config.close_config_file()
+    return config
 
 

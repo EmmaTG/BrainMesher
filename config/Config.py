@@ -19,7 +19,7 @@ class ConfigFile:
     A class used to set up preferences for brain creation.
     """
 
-    def __init__(self, configFilePath):
+    def __init__(self, configFilePath, model_type = ''):
         self.MATERIAL_LABELS = None
         self.f = None
         self.data = []
@@ -57,23 +57,28 @@ class ConfigFile:
         # If corpus callosum is saved as an external file (must be stored as cc.mgz in mri folder)
         self.config_dict['external_cc'] = curr_config.getboolean('external_cc', False)
 
-        # preprocessing options
-        self.config_dict['basic_nocsf'] = curr_config.getboolean('basic_nocsf', False)
-        self.config_dict['basic_partialcsf'] = curr_config.getboolean('basic_partialcsf', False)
-        self.config_dict['basic_fullcsf'] = curr_config.getboolean('basic_fullcsf', False)
-        self.config_dict['atrophy'] = curr_config.getboolean('atrophy', False)
-        self.config_dict['lesion'] = curr_config.getboolean('lesion', False)
+        # # preprocessing options
+        self.config_dict['basic_nocsf'] = False
+        self.config_dict['basic_partialcsf'] = False
+        self.config_dict['basic_fullcsf'] =False
+        self.config_dict['atrophy'] = False
+        self.config_dict['lesion'] = False
 
-        if self.get('basic_nocsf'):
+        if model_type == 'basic_nocsf':
             curr_config = config['basic_nocsf']
-        if self.get('basic_partialcsf'):
+            self.config_dict['basic_nocsf'] = True
+        elif model_type == 'basic_partialcsf':
             curr_config = config['basic_partialcsf']
-        if self.get('basic_fullcsf'):
+            self.config_dict['basic_partialcsf'] = True
+        elif model_type == 'basic_fullcsf':
             curr_config = config['basic_fullcsf']
-        if self.get('atrophy'):
+            self.config_dict['basic_fullcsf'] =True
+        elif model_type == 'atrophy':
             curr_config = config['atrophy']
-        if self.get('lesion'):
+            self.config_dict['atrophy'] = True
+        elif model_type == 'lesion':
             curr_config = config['lesion']
+            self.config_dict['lesion'] = True
             self.config_dict['lesion_layers'] = curr_config.getint('lesion_layers', 1)
 
         # CSF options
@@ -202,6 +207,8 @@ class ConfigFile:
                     boundary_tests.append('none')
                 else:
                     boundary_tests.append(x)
+        elif len(boundary_element_numbers) != 0:
+            boundary_tests.append('none')
 
         assert (len(boundary_element_numbers) == len(excluded_regions) and
                 len(excluded_regions) == len(boundary_tests)), \
