@@ -89,6 +89,10 @@ class BrainHexMesh():
             cc_data = bm.create_binary_image(cc_data)
             self.add_region(cc_data, data, 251)
 
+        if self.config.get('segmented_brainstem'):
+            bs_data = BrainHexMesh.__get_data__(path, "/brainstemSsLabels.mgz")
+            self.add_region(bs_data, data, -1)
+
         values_in_data = list(np.unique(data))
         if not values_in_data.count(251):
             warnings.warn("There is no corpus callosum in this data set")
@@ -167,8 +171,6 @@ class BrainHexMesh():
             # Clean grey matter boundary
             print("####### Cleaning grey matter boundary #######")
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
-            # elementsOnBoundary = mesh.locate_elements_on_boundary()
-            # mesh.replace_outer_region(3, 24, elementsOnBoundary)
             
         # Clean outer boundary
         print("####### Cleaning outer boundary #######")    
@@ -180,8 +182,8 @@ class BrainHexMesh():
             mesh.clean_mesh(elementsNotIncluded=[24,3], replace=2)
         
         # Replace any white matter on boundary with grey matter
-        elementsOnBoundary = mesh.locate_elements_on_boundary(elementsNotIncluded = [24])
-        mesh.replace_outer_region(2, 3, elementsOnBoundary)        
+        elementsOnBoundary = mesh.locate_elements_on_boundary(elementsNotIncluded=[24])
+        mesh.replace_outer_region(2, elementsOnBoundary)
 
     # def create_boundary(self, mesh, element_mat_number, elementsNotIncluded=[], boundaryTest=None):
     #     """
