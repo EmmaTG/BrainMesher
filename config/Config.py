@@ -29,6 +29,48 @@ class ConfigFile:
         config.read(configFilePath)
         curr_config = config['DEFAULT']
 
+        # Material converter preference
+        material_converter = curr_config.get('converter_type')
+        if material_converter == '1R':
+            self.converter_type = Heterogeneity.ONER
+        elif material_converter == '2R':
+            self.converter_type = Heterogeneity.TWOR
+        elif material_converter == '4R':
+            self.converter_type = Heterogeneity.FOURR
+        elif material_converter == '19R':
+            self.converter_type = Heterogeneity.NINETEENR
+        else:
+            self.converter_type = Heterogeneity.NINER
+
+        self.MATERIAL_LABELS = Material_Label()
+        default_keys = list(config['DEFAULT'])
+        try:
+            if self.converter_type == Heterogeneity.NINETEENR:
+                materials_config = config['materials19R']
+            else:
+                materials_config = config['materials9R']
+            for key in materials_config:
+                if not default_keys.count(key):
+                    label = key
+                    values = [int(x.strip()) for x in materials_config[key].split(",")]
+                    self.MATERIAL_LABELS.addLabelToMap(label, values)
+        except KeyError:
+            print("Default materials labels will be used")
+            # Material labels (PRESET)
+            self.MATERIAL_LABELS.addLabelToMap('brainStem', 16)
+            self.MATERIAL_LABELS.addLabelToMap('greymatter', [3, 42])  # Left, Right
+            self.MATERIAL_LABELS.addLabelToMap('whitematter', [2, 41, 77])  # Left, Right, WM-hypointensities
+            self.MATERIAL_LABELS.addLabelToMap('corpuscallosum', [251, 252, 253, 254,
+                                                                  255])  # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
+            self.MATERIAL_LABELS.addLabelToMap('basalganglia', [11, 50, 12, 51, 13, 52, 26, 58, 62,
+                                                                30])  # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
+            self.MATERIAL_LABELS.addLabelToMap('cerebellum', [7, 46, 8, 47])  # WM(L&R), GM(L&R)
+            self.MATERIAL_LABELS.addLabelToMap('thalamus', [10, 49, 28, 60])  # Thalamus(L&R), Ventral DC(L&R)
+            self.MATERIAL_LABELS.addLabelToMap('hippocampus', [17, 53])  # Left, Right
+            self.MATERIAL_LABELS.addLabelToMap('amygdala', [18, 54])  # Left, Right
+            self.MATERIAL_LABELS.addLabelToMap('ventricles',
+                                               [4, 5, 43, 44, 14, 15])  # Lateral(L&R), 3rd, 4th, Inf-Lat-Vent(L&R)
+
         # File settings
         # Read Settings
         self.config_dict['read_file'] = curr_config.getboolean('read_file', False)
@@ -50,36 +92,40 @@ class ConfigFile:
         types_string = curr_config.get('fileout_types')
         types = [x.strip() for x in types_string.split(",")]
         for t in types:
-            assert ['ucd' , 'vtk','abaqus'].count(t), "OUTPUT TYPE {} NOT SUPPORTED".format(t)
+            assert ['ucd', 'vtk', 'abaqus'].count(t), "OUTPUT TYPE {} NOT SUPPORTED".format(t)
         self.config_dict['fileout_types'] = types  # 'ucd' | 'vtk' | 'abaqus'
-
 
         # If corpus callosum is saved as an external file (must be stored as cc.mgz in mri folder)
         self.config_dict['external_cc'] = curr_config.getboolean('external_cc', False)
+        self.config_dict['segmented_brainstem'] = curr_config.getboolean('segmented_brainstem', False)
 
         # # preprocessing options
-        self.config_dict['basic_nocsf'] = False
-        self.config_dict['basic_partialcsf'] = False
-        self.config_dict['basic_fullcsf'] =False
-        self.config_dict['atrophy'] = False
-        self.config_dict['lesion'] = False
+        self.config_dict['model_type'] = model_type
+        if model_type in config:
+            curr_config = config[model_type]
+        # self.config_dict['basic_nocsf'] = False
+        # self.config_dict['basic_partialcsf'] = False
+        # self.config_dict['basic_fullcsf'] =False
+        # self.config_dict['atrophy'] = False
+        # self.config_dict['lesion'] = False
 
-        if model_type == 'basic_nocsf':
-            curr_config = config['basic_nocsf']
-            self.config_dict['basic_nocsf'] = True
-        elif model_type == 'basic_partialcsf':
-            curr_config = config['basic_partialcsf']
-            self.config_dict['basic_partialcsf'] = True
-        elif model_type == 'basic_fullcsf':
-            curr_config = config['basic_fullcsf']
-            self.config_dict['basic_fullcsf'] =True
-        elif model_type == 'atrophy':
-            curr_config = config['atrophy']
-            self.config_dict['atrophy'] = True
-        elif model_type == 'lesion':
-            curr_config = config['lesion']
+        # if model_type == 'basic_nocsf':
+        #     curr_config = config['basic_nocsf']
+        #     self.config_dict['basic_nocsf'] = True
+        # elif model_type == 'basic_partialcsf':
+        #     curr_config = config['basic_partialcsf']
+        #     self.config_dict['basic_partialcsf'] = True
+        # elif model_type == 'basic_fullcsf':
+        #     curr_config = config['basic_fullcsf']
+        #     self.config_dict['basic_fullcsf'] =True
+        # elif model_type == 'atrophy':
+        #     curr_config = config['atrophy']
+        #     self.config_dict['atrophy'] = True
+        if model_type == 'lesion':
             self.config_dict['lesion'] = True
             self.config_dict['lesion_layers'] = curr_config.getint('lesion_layers', 1)
+            self.MATERIAL_LABELS.addLabelToMap('lesion', [25, 57])  # Left, Right
+            self.MATERIAL_LABELS.addLabelToMap('edemictissue', [29])  # Left, Right
 
         # CSF options
         self.config_dict['add_csf'] = curr_config.getboolean('add_csf', False)
@@ -87,40 +133,13 @@ class ConfigFile:
             self.config_dict['csf_type'] = curr_config.get('csf_type', 'full').lower()  # 'none' | 'full' | 'partial'
             self.config_dict['csf_layers'] = curr_config.getint('csf_layers', 1)
 
-        self.MATERIAL_LABELS = Material_Label()
-        if 'materials' in config:
-            default_keys = list(config['DEFAULT'])
-            materials_config = config['materials']
-            for key in materials_config:
-                if not default_keys.count(key):
-                    label = key
-                    values = [int(x.strip()) for x in materials_config[key].split(",")]
-                    self.MATERIAL_LABELS.addLabelToMap(label, values)
-        else:
-            # Material labels (PRESET)
-            self.MATERIAL_LABELS.addLabelToMap('brainStem', 16)
-            self.MATERIAL_LABELS.addLabelToMap('greymatter', [3, 42])  # Left, Right
-            self.MATERIAL_LABELS.addLabelToMap('whitematter', [2, 41, 77])  # Left, Right, WM-hypointensities
-            self.MATERIAL_LABELS.addLabelToMap('corpuscallosum', [251, 252, 253, 254,
-                                                             255])  # CC_Posterior, CC_Mid_Posterior, CC_Central, CC_Mid_Anterior, CC_Anterior
-            self.MATERIAL_LABELS.addLabelToMap('basalganglia', [11, 50, 12, 51, 13, 52, 26, 58, 62,
-                                                           30])  # Caudate(L&R), Putamen(L&R), Palladium(L&R), Accumbens Area(L&R), vessel(L&R)
-            self.MATERIAL_LABELS.addLabelToMap('cerebellum', [7, 46, 8, 47])  # WM(L&R), GM(L&R)
-            self.MATERIAL_LABELS.addLabelToMap('thalamus', [10, 49, 28, 60])  # Thalamus(L&R), Ventral DC(L&R)
-            self.MATERIAL_LABELS.addLabelToMap('hippocampus', [17, 53])  # Left, Right
-            self.MATERIAL_LABELS.addLabelToMap('amygdala', [18, 54])  # Left, Right
-            self.MATERIAL_LABELS.addLabelToMap('ventricles',
-                                          [4, 5, 43, 44, 14, 15])  # Lateral(L&R), 3rd, 4th, Inf-Lat-Vent(L&R)
-
         # unused_labels = [0, 31, 63, 85, 24]  # choroid-plexus (L&R), Optic-Chiasm
         # if self.get('add_csf'):
         #     self.MATERIAL_LABELS.addLabelToMap('csf', [24])  # CSF
         # else:
         #     unused_labels.append(24)
 
-        if self.get('lesion'):
-            self.MATERIAL_LABELS.addLabelToMap('lesion', [25, 57])  # Left, Right
-            self.MATERIAL_LABELS.addLabelToMap('edemictissue', [29])  # Left, Right
+        # if self.get('lesion'):
         # else:
         #     unused_labels += [25, 57]
 
@@ -187,14 +206,6 @@ class ConfigFile:
                     bracketOpen = True
                 elif bracketOpen:
                     inside_pa += s
-            # for entries in excluded_list:
-            #     all_labels = self.MATERIAL_LABELS.get_homogenized_labels_map()
-            #     if entries == '':
-            #         all_labels.clear()
-            #     else:
-            #         for regions in entries.split(","):
-            #             all_labels.pop(regions.strip().lower())
-            #     excluded_regions_list.append(list(all_labels.values()))
             excluded_regions = excluded_list
 
         boundary_tests_tmp = curr_config.get(
@@ -261,23 +272,18 @@ class ConfigFile:
                 elements = [int(x.strip()) for x in element_tmp.split(",")]
                 self.config_dict['refine.element_numbers'] = elements
 
-        # Material converter preference
-        material_converter = curr_config.get('converter_type')
-        if material_converter == '1R':
-            self.config_dict['converter_type'] = Heterogeneity.ONER
-        elif material_converter == '2R':
-            self.config_dict['converter_type'] = Heterogeneity.TWOR
-        elif material_converter == '4R':
-            self.config_dict['converter_type'] = Heterogeneity.FOURR
-        else:
-            self.converter_type = Heterogeneity.NINER
-
     def get(self, key):
         result = self.config_dict.get(key, None)
         if result is None:
             warnings.warn("There is no configuration setting with the name:" + key)
             return False
         return result
+
+    def set(self, key, value):
+        result = self.config_dict.get(key, None)
+        if result is None:
+            warnings.warn("There is no configuration setting with the name:" + key)
+        self.config_dict.update({key:value})
 
     def set_materials_label(self, newLabels):
         self.MATERIAL_LABELS = newLabels
@@ -327,12 +333,13 @@ class ConfigFile:
 
         self.f.write("Coarsen: " + str(self.config_dict.get('coarsen', False)) + "\n")
 
-        self.f.write("basic configuration settings without CSF: " + str(self.get('basic_nocsf')) + "\n")
-        self.f.write("basic configuration settings with partial CSF: " + str(self.get('basic_partialcsf')) + "\n")
-        self.f.write("basic configuration settings with full CSF: " + str(self.get('basic_fullcsf')) + "\n")
-        self.f.write("atrophy configuration settings: " + str(self.get('atrophy')) + "\n")
-        self.f.write("lesion configuration settings: " + str(self.get('lesion')) + "\n")
-        if self.get('lesion'):
+        # self.f.write("basic configuration settings without CSF: " + str(self.get('basic_nocsf')) + "\n")
+        # self.f.write("basic configuration settings with partial CSF: " + str(self.get('basic_partialcsf')) + "\n")
+        # self.f.write("basic configuration settings with full CSF: " + str(self.get('basic_fullcsf')) + "\n")
+        # self.f.write("atrophy configuration settings: " + str(self.get('atrophy')) + "\n")
+        # self.f.write("lesion configuration settings: " + str(self.get('lesion')) + "\n")
+        self.f.write("model type configuration settings: " + str(self.get('model_type')) + "\n")
+        if self.get('model_type') == 'lesion':
             self.f.write("layers of edemic tissue: " + str(self.get('lesion_layers')) + "\n")
 
         self.f.write("Add CSF: " + str(self.get('add_csf')) + "\n")

@@ -24,11 +24,7 @@ from voxel_data import Preprocessor
 from writers.aseg_manipulate import create_aseg
 import sys, os
 
-def run(configFilePath, model_Type):
-    # configFilePath = os.getcwd()
-
-    # Preferences are defined in ConfigFile
-    config = ConfigFile(configFilePath, model_Type)
+def run(config):
 
     brainCreator = BrainHexMesh(config)
 
@@ -69,6 +65,11 @@ def run(configFilePath, model_Type):
 
     # Close config file write out
     config.close_config_file()
-    return config
+
+if __name__ == "__main__":
+    # Model type options: basic_fullcsf, basic_partilacsf, basic_nocsf, atrophy, lesion
+    config = ConfigFile("./IOput/model_config.ini", 'basic_nocsf')
+    # config.set("smooth", False)
+    run(config)
 
 
