@@ -12,6 +12,7 @@ import mesh.mesh_utils as mu
 import mesh.mesh_transformations as mt
 from mesh.Node import Node
 from mesh.Element import HexElement, QuadElement
+import numpy as np
 
 
 class Mesh:
@@ -303,7 +304,7 @@ class Mesh:
             total_count += count;
         print(str(total_count) + " elements deleted/replaced due to poor node/edge connectivity in " + str(iteration) + " iterations")
         
-    def replace_outer_region(self, incorrect_label, replace_label, elements_on_boundary):
+    def replace_outer_region(self, incorrect_label, elements_on_boundary):
         """
         Replaced any element in 'elements_on_boundary' list that have the value 'white_matter_label'
         nd are replcaed with 'replace_label'
@@ -317,13 +318,35 @@ class Mesh:
         elements_on_boundary : Array(ints)
             list of element numbers
         """
+
         print("Cleaning brain boundary")
+
+        elementICA = mu.create_elements_ica_map(self.elements)
+        self.nodeToElements = mu.create_node_to_elem_map(elementICA)
         for elem in elements_on_boundary:
             element = self.elements[elem]
             materials = element.getMaterial()
             if materials.count(incorrect_label):
-                materials.remove(incorrect_label)
-                materials.insert(0,replace_label)
+                connected_elements = []
+                for n in element.ica:
+                    eles = self.nodeToElements[n.number]
+                    connected_elements += eles
+                connected_elements = list(set(connected_elements))
+                mats = []
+                for x in connected_elements:
+                    mat = self.elements[x].getMaterial()
+                    if not self.elements[x].getMaterial().count(incorrect_label):
+                        mats += mat
+
+                if (len(mats)>0):
+                    [modes, count] = np.unique(mats, return_counts=True)
+                    modeIndices, = np.where(count == max(count))
+                    modeIndex = modeIndices[0]
+                    replacedValue = modes[modeIndex]
+                    materials.remove(incorrect_label)
+                    materials.insert(0,replacedValue)
+                else:
+                    print("materials not replaced")
         
         
     def __clean_mesh_nodes(self, elementsNotIncluded = [], replace=0):
@@ -528,7 +551,7 @@ class Mesh:
     #     self.addBoundaryElements(boundary_elements_map)
     #     return True
 
-    def smooth_mesh(self, coeffs, iterations, elementsNotIncluded=[]):
+    def smooth_mesh(self, coeffs, iterations, elementsNotIncluded=[], bounds = None, inside=False):
         """
         Prepares information and performs Laplacian smoothing the boundary of a mesh
         where the elements with material type given in 'elementsNotIncluded'
@@ -577,7 +600,7 @@ class Mesh:
                 assert coeffs[1] >= abs(coeffs[2]), "Second coefficient must be greater than absolute of the first (negative) coefficient"
 
             for iteration in range(iterations):
-                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementICAMap, nodeToElemMap=nodeToElemMap)
+                smooth.perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, self.nodes, elementICAMap, nodeToElemMap=nodeToElemMap, bounds=bounds, inBounds=inside)
         else:
             print("No elements selected to smooth")
                            
@@ -722,6 +745,28 @@ class Mesh:
                 else:
                     elementMap[elementNo] = element
         return elementMap
+
+    def create_boundary(self, boundary_test_fx, element_mat_number, excluded_regions=[]):
+        boundary_elements_map = {}
+        boundary_number = max(self.elements.keys()) if len(self.boundaryElements) == 0 else max(
+            self.boundaryElements.keys())
+        boundary_elements = self.locate_boundary_element_map(elementsNotIncluded=excluded_regions)
+        for compoundKey, ica in boundary_elements.items():
+            boundary_number += 1
+            ica_nodes = [self.nodes[n] for n in ica]
+            boundary_element = QuadElement(boundary_number, ica_nodes, mat=element_mat_number)
+            [element_num, face] = [int(x) for x in compoundKey.split("-")]
+            # [xc,yc,zc,m] = e_centroids[element_num]
+            boundary = True
+            if boundary_test_fx is not None:
+                boundary = boundary_test_fx.validElement(element_num)
+            if boundary:
+                boundary_elements_map[boundary_number] = boundary_element
+            else:
+                boundary_number -= 1
+        print("{} boundary elements created with material number {}"
+              .format(len(boundary_elements_map), element_mat_number))
+        self.addBoundaryElements(boundary_elements_map)
     
 
         
