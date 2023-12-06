@@ -5,6 +5,7 @@ class Heterogeneity(Enum):
     TWOR = 2
     FOURR = 4
     NINER = 9
+    NINETEENR = 19
 
 class MaterialsConverter:
 
@@ -28,7 +29,10 @@ class MaterialsConverter:
             curr_mats = e.getMaterial()
             new_mats = []
             for m in curr_mats:
-                new_mats.append(self.converter[m])
+                if m > 1000:
+                    new_mats.append(self.converter[3])
+                else:
+                    new_mats.append(self.converter[m])
             e.setMaterial(new_mats)
 
 
@@ -39,6 +43,14 @@ class NineRegionConverter(MaterialsConverter):
         for n in self.materials:
             self.converter[n] = n
 
+class NineteenRegionsConverter(MaterialsConverter):
+    def __init__(self):
+        super().__init__()
+        for n in self.materials:
+            self.converter[n] = n
+
+    def convert_materials_labels(self, mesh):
+        pass;
 
 class HomogenousConverter(MaterialsConverter):
 
@@ -102,6 +114,8 @@ class MaterialsConverterFactory:
             return TwoRegionConverter()
         elif converter_type == Heterogeneity.FOURR:
             return FourRegionConverter()
+        elif converter_type == Heterogeneity.NINETEENR:
+            return NineteenRegionsConverter()
         else:
             return NineRegionConverter()
 
