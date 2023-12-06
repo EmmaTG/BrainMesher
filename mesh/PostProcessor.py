@@ -117,7 +117,7 @@ class RefineMesh(PostProcessorDecorator):
 class CreateBoundaryElements(PostProcessorDecorator):
 
     def __init__(self, post_processor: IPostProcessor, element_mat_number,
-                 boundary_test_fx=None, excluded_regions=None):
+                 boundary_test_fx='none', excluded_regions=None):
         super().__init__(post_processor)
         self.mesh_refiner = None
         self.element_mat_number = element_mat_number
@@ -173,26 +173,7 @@ class CreateBoundaryElements(PostProcessorDecorator):
                       'None' if len(self.excluded_regions) == 0 else", ".join([str(x) for x in self.excluded_regions]),
                       'None' if self.boundary_test is None else self.boundary_test))
 
-        boundary_elements_map = {}
-        boundary_number = max(self.mesh.elements.keys()) if len(self.mesh.boundaryElements) == 0 else max(
-            self.mesh.boundaryElements.keys())
-        boundary_elements = self.mesh.locate_boundary_element_map(elementsNotIncluded=self.excluded_regions)
-        for compoundKey, ica in boundary_elements.items():
-            boundary_number += 1
-            ica_nodes = [self.mesh.nodes[n] for n in ica]
-            boundary_element = QuadElement(boundary_number, ica_nodes, mat=[self.element_mat_number])
-            [element_num, face] = [int(x) for x in compoundKey.split("-")]
-            # [xc,yc,zc,m] = e_centroids[element_num]
-            boundary = True
-            if boundary_test_fx is not None:
-                boundary = boundary_test_fx.validElement(element_num)
-            if boundary:
-                boundary_elements_map[boundary_number] = boundary_element
-            else:
-                boundary_number -= 1
-        print("{} boundary elements created with material number {}"
-              .format(len(boundary_elements_map), self.element_mat_number))
-        self.mesh.addBoundaryElements(boundary_elements_map)
+        self.mesh.create_boundary(boundary_test_fx, self.element_mat_number, excluded_regions=self.excluded_regions)
 
 
 class ApplyAtrophyConcentration(PostProcessorDecorator):
