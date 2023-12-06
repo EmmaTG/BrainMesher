@@ -111,7 +111,7 @@ def value_in_square_bounds(n_coords, bounds, inside=True):
     return False
 
 def perform_smoothing(iteration, coeffs, surfaceNodeConnectivity, nodeMap, elementICAMap, nodeToElemMap,
-                      bounds=None, inBounds=True):
+                      bounds=None, inBounds=False):
     print("Iteration: " + str(iteration+1))
     newNodePositions = {}
     badElements, tangled_elements, nodesUnsmoothed = [],[],[]
