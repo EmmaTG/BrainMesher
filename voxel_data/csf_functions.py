@@ -71,23 +71,24 @@ class CSFFunctions:
                             data[x, y, z] = 24
                             new_data[x, y, z] = 24
 
-        print("Filling in CSF x-dim")
-        for x in range(xmin_tot, xmax_tot + 1):
-            points = point_cloud.get_slice(0, x)
-            points = points[:, 1:3]
-            hull = Delaunay(points)
-
-            min1d, min2d = np.min(points, axis=0)
-            max1d_slice, max2d = np.max(points, axis=0)
-            max1d = min([ymax_tot, max1d_slice])
-            mid_2d = int((int(min2d) + int(max2d + 1)) / 2)
-            for y in range(int(min1d), int(max1d + 1)):
-                for z in range(int(min2d), int(max2d + 1)):
-                    if (data[x, y, z] == 0) and (y < ymax_tot):
-                        if in_hull([y, z], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
-                            new_data[x, y, z] = 24
+        ##### CSF is not filled for the sagital plane of the brain
+        # print("Filling in CSF x-dim")
+        # for x in range(xmin_tot, xmax_tot + 1):
+        #     points = point_cloud.get_slice(0, x)
+        #     points = points[:, 1:3]
+        #     hull = Delaunay(points)
+        #
+        #     min1d, min2d = np.min(points, axis=0)
+        #     max1d_slice, max2d = np.max(points, axis=0)
+        #     max1d = min([ymax_tot, max1d_slice])
+        #     mid_2d = int((int(min2d) + int(max2d + 1)) / 2)
+        #     for y in range(int(min1d), int(max1d + 1)):
+        #         for z in range(int(min2d), int(max2d + 1)):
+        #             if (data[x, y, z] == 0) and (y < ymax_tot):
+        #                 if in_hull([y, z], hull):
+        #                     point_cloud.add_point_to_cloud([x, y, z, 24])
+        #                     data[x, y, z] = 24
+        #                     new_data[x, y, z] = 24
 
         print("Filling in CSF y-dim")
         for y in range(ymin_tot, ymax_tot + 1):
@@ -174,21 +175,22 @@ class CSFFunctions:
                         if in_hull([x, y], hull):
                             new_data[x, y, z] = 24
 
-        print("Filling in CSF x-dim")
-        for x in range(xmin_tot, xmax_tot + 1):
-            points = point_cloud.get_slice(0, x)
-            points = points[:, 1:3]
-            hull = Delaunay(points)
-
-            min1d, min2d = np.min(points, axis=0)
-            max1d_slice, max2d = np.max(points, axis=0)
-            max1d = min([ymax_tot, max1d_slice])
-            mid_2d = int((int(min2d) + int(max2d + 1)) / 2)
-            for y in range(int(min1d), int(max1d + 1)):
-                for z in range(int(min2d), int(max2d + 1)):
-                    if (data[x, y, z] == 0) and (y < ymax_tot):
-                        if in_hull([y, z], hull):
-                            new_data[x, y, z] = 24
+        ##### CSF is not filled for the sagital plane of the brain
+        # print("Filling in CSF x-dim")
+        # for x in range(xmin_tot, xmax_tot + 1):
+        #     points = point_cloud.get_slice(0, x)
+        #     points = points[:, 1:3]
+        #     hull = Delaunay(points)
+        #
+        #     min1d, min2d = np.min(points, axis=0)
+        #     max1d_slice, max2d = np.max(points, axis=0)
+        #     max1d = min([ymax_tot, max1d_slice])
+        #     mid_2d = int((int(min2d) + int(max2d + 1)) / 2)
+        #     for y in range(int(min1d), int(max1d + 1)):
+        #         for z in range(int(min2d), int(max2d + 1)):
+        #             if (data[x, y, z] == 0) and (y < ymax_tot):
+        #                 if in_hull([y, z], hull):
+        #                     new_data[x, y, z] = 24
 
         print("Filling in CSF y-dim")
         for y in range(ymin_tot, ymax_tot + 1):
