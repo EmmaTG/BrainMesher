@@ -53,7 +53,7 @@ class CSFFunctions:
 
         # ymax_tot = 70
 
-        print("Filling in CSF z-dim")
+        print("Filling in CSF coronal plane")
         for z in range(zmin_tot, zmax_tot + 1):
             points = point_cloud.get_slice(2, z)
             points = points[:, :2]
@@ -90,7 +90,7 @@ class CSFFunctions:
         #                     data[x, y, z] = 24
         #                     new_data[x, y, z] = 24
 
-        print("Filling in CSF y-dim")
+        print("Filling in CSF transverse plane")
         for y in range(ymin_tot, ymax_tot + 1):
             points = point_cloud.get_slice(1, y)
             points = points[:, [0, 2]]
@@ -159,7 +159,7 @@ class CSFFunctions:
         xmin_tot, ymin_tot, zmin_tot = [int(p) for p in np.min(pc[:, :3], axis=0)]
         xmax_tot, ymax_tot, zmax_tot = [int(p) for p in np.max(pc[:, :3], axis=0)]
 
-        print("Filling in CSF z-dim")
+        print("Filling in CSF coronal plane")
         for z in range(zmin_tot, zmax_tot + 1):
             points = point_cloud.get_slice(2, z)
             points = points[:, :2]
@@ -192,7 +192,7 @@ class CSFFunctions:
         #                 if in_hull([y, z], hull):
         #                     new_data[x, y, z] = 24
 
-        print("Filling in CSF y-dim")
+        print("Filling in CSF trasverse plane")
         for y in range(ymin_tot, ymax_tot + 1):
             points = point_cloud.get_slice(1, y)
             points = points[:, [0, 2]]

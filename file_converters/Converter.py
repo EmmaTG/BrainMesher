@@ -1,6 +1,6 @@
 
 from readers.Reader import ABQReader, VTKReader
-from writers.Writer import Writer
+from writers.Writers import Writer
 
 
 class Converter:
@@ -19,7 +19,7 @@ class Converter:
 
         filename = "".join(split_file1[0].split())
         if filename_out == '':
-            filename_out = filename
+            filename_out = "_".join([filename_out, "converted"])
 
         if ext == "inp" and convert_from == "abaqus":
             reader = ABQReader()
@@ -33,7 +33,7 @@ class Converter:
         mesh = reader.getMesh()
 
         writer = Writer()
-        new_filename = "_".join([filename_out,"converted"])
+        new_filename = filename_out
         if convert_to == 'abaqus':
             writer.openWriter('abaqus', new_filename, path)
         elif convert_to == 'vtk':

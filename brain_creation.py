@@ -21,7 +21,10 @@ from mesh.PostProcessorFactory import PostProcessorFactory
 from point_cloud.PointCloud import PointCloud
 from config.Config import ConfigFile
 from voxel_data import Preprocessor
+from writers.HeterogeneityConverter import MaterialsConverterFactory, Heterogeneity
 from writers.aseg_manipulate import create_aseg
+from writers.Writers import Writer
+import mesh.mesh_transformations as mt
 import sys, os
 
 def run(config):
@@ -60,16 +63,27 @@ def run(config):
     post_processor = PostProcessorFactory.get_post_processor(mesh, config)
     post_processor.post_process()
 
-    # Write mesh to file (ucd, vtk or abq inp as specified in config file)
-    brainCreator.write_to_file(mesh)
-
     # Close config file write out
     config.close_config_file()
 
+    return mesh
+
+def write(config, mesh):
+    for fileType in config.get('fileout_types'):
+        print("########## Writing data as a " + fileType.upper() + " file ##########")
+        writer = Writer()
+        writer.openWriter(fileType, config.get('fileout'), config.get('file_out_path'))
+        writer.writeMeshData(mesh)
+        writer.closeWriter()
+
+
 if __name__ == "__main__":
     # Model type options: basic_fullcsf, basic_partilacsf, basic_nocsf, atrophy, lesion
-    config = ConfigFile("./IOput/model_config.ini", 'basic_nocsf')
-    # config.set("smooth", False)
-    run(config)
+    config = ConfigFile("./IOput/model_config.ini", 'basic_fullcsf')
+    config.set("smooth", False)
+    mesh = run(config)
+    # converter = MaterialsConverterFactory().get_converter(Heterogeneity.NINER)
+    write(config, mesh)
+
 
 
