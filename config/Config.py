@@ -103,24 +103,6 @@ class ConfigFile:
         self.config_dict['model_type'] = model_type
         if model_type in config:
             curr_config = config[model_type]
-        # self.config_dict['basic_nocsf'] = False
-        # self.config_dict['basic_partialcsf'] = False
-        # self.config_dict['basic_fullcsf'] =False
-        # self.config_dict['atrophy'] = False
-        # self.config_dict['lesion'] = False
-
-        # if model_type == 'basic_nocsf':
-        #     curr_config = config['basic_nocsf']
-        #     self.config_dict['basic_nocsf'] = True
-        # elif model_type == 'basic_partialcsf':
-        #     curr_config = config['basic_partialcsf']
-        #     self.config_dict['basic_partialcsf'] = True
-        # elif model_type == 'basic_fullcsf':
-        #     curr_config = config['basic_fullcsf']
-        #     self.config_dict['basic_fullcsf'] =True
-        # elif model_type == 'atrophy':
-        #     curr_config = config['atrophy']
-        #     self.config_dict['atrophy'] = True
         if model_type == 'lesion':
             self.config_dict['lesion'] = True
             self.config_dict['lesion_layers'] = curr_config.getint('lesion_layers', 1)
@@ -132,18 +114,6 @@ class ConfigFile:
         if self.get('add_csf'):
             self.config_dict['csf_type'] = curr_config.get('csf_type', 'full').lower()  # 'none' | 'full' | 'partial'
             self.config_dict['csf_layers'] = curr_config.getint('csf_layers', 1)
-
-        # unused_labels = [0, 31, 63, 85, 24]  # choroid-plexus (L&R), Optic-Chiasm
-        # if self.get('add_csf'):
-        #     self.MATERIAL_LABELS.addLabelToMap('csf', [24])  # CSF
-        # else:
-        #     unused_labels.append(24)
-
-        # if self.get('lesion'):
-        # else:
-        #     unused_labels += [25, 57]
-
-        # self.MATERIAL_LABELS.addLabelToMap('Unused', unused_labels)
 
         # Smoothing features
         self.config_dict['smooth'] = curr_config.getboolean('smooth', False)
@@ -334,10 +304,6 @@ class ConfigFile:
         self.f.write("Coarsen: " + str(self.config_dict.get('coarsen', False)) + "\n")
 
         # self.f.write("basic configuration settings without CSF: " + str(self.get('basic_nocsf')) + "\n")
-        # self.f.write("basic configuration settings with partial CSF: " + str(self.get('basic_partialcsf')) + "\n")
-        # self.f.write("basic configuration settings with full CSF: " + str(self.get('basic_fullcsf')) + "\n")
-        # self.f.write("atrophy configuration settings: " + str(self.get('atrophy')) + "\n")
-        # self.f.write("lesion configuration settings: " + str(self.get('lesion')) + "\n")
         self.f.write("model type configuration settings: " + str(self.get('model_type')) + "\n")
         if self.get('model_type') == 'lesion':
             self.f.write("layers of edemic tissue: " + str(self.get('lesion_layers')) + "\n")
