@@ -32,19 +32,11 @@ class IReader(ABC):
         pass
 
     @abstractmethod
-    def readNodes(self):
-        pass
-
-    @abstractmethod
-    def readElements(self):
-        pass
-
-    @abstractmethod
     def getMesh(self) -> Mesh:
         pass
 
 
-class BaseReader:
+class BaseReader(ABC):
     """
     A base class used to define methods for mesh writers
 
@@ -100,6 +92,15 @@ class BaseReader:
         Saves and closed file.
         """
         print("Completed")
+
+
+    @abstractmethod
+    def readNodes(self):
+        pass
+
+    @abstractmethod
+    def readElements(self):
+        pass
 
 
 class ABQReader(BaseReader, IReader):
@@ -389,3 +390,34 @@ class VTKReader(BaseReader, IReader):
                 if node is not None:
                     node.addData(arr_name, data)
             self.mesh.dataToWrite.append(arr_name)
+
+
+class Reader(IReader):
+
+    def __init__(self, file_type):
+        self.reader = None
+        file_type = file_type.lower()
+        if file_type == 'vtk':
+            self.reader = VTKReader()
+        elif file_type == 'ucd':
+            self.reader = UCDReader()
+        elif file_type == 'abaqus' or file_type == 'abq':
+            self.reader = ABQReader()
+
+    def openReader(self, filename, path):
+        filename_split = filename.split(".")
+        if len(filename_split) > 1:
+            filename = ".".join(filename.split(".")[:-1])
+        self.reader.openReader(filename, path)
+
+    def closeReader(self):
+        self.reader.closeReader()
+        self.reader = None
+
+    def getMesh(self) -> Mesh:
+        return self.reader.getMesh()
+
+
+
+
+
