@@ -1,5 +1,5 @@
 
-from readers.Reader import ABQReader, VTKReader
+from readers.Reader import Reader
 from writers.Writers import Writer
 
 
@@ -21,14 +21,7 @@ class Converter:
         if filename_out == '':
             filename_out = "_".join([filename_out, "converted"])
 
-        if ext == "inp" and convert_from == "abaqus":
-            reader = ABQReader()
-        elif ext == "vtk" and convert_from == "vtk":
-            reader = VTKReader()
-        else:
-            print("File type {} not support".format(convert_from))
-            return
-
+        reader = Reader(convert_from)
         reader.openReader(filename, path)
         mesh = reader.getMesh()
 
