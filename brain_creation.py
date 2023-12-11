@@ -68,11 +68,13 @@ def run(config):
 
     return mesh
 
-def write(config, mesh):
-    for fileType in config.get('fileout_types'):
+def write(mesh, file_out_path, fileout, file_types=None):
+    if file_types is None:
+        file_types = ['vtk','ucd']
+    for fileType in file_types:
         print("########## Writing data as a " + fileType.upper() + " file ##########")
         writer = Writer()
-        writer.openWriter(fileType, config.get('fileout'), config.get('file_out_path'))
+        writer.openWriter(fileType, file_out_path, fileout)
         writer.writeMeshData(mesh)
         writer.closeWriter()
 
@@ -83,7 +85,7 @@ if __name__ == "__main__":
     config.set("smooth", False)
     mesh = run(config)
     # converter = MaterialsConverterFactory().get_converter(Heterogeneity.NINER)
-    write(config, mesh)
+    write(mesh, config.get('file_out_path'), config.get('fileout'))
 
 
 

@@ -28,7 +28,18 @@ class BRAINREGIONNAMES(Enum):
     VC = "occipital"
     CL = "cingulate"
     CI = "cortexinsula"
+    CR = "coronaradiata"
 
+class NINEREGIONNUMBERS(Enum):
+    Am = 18
+    C = 3
+    BG = 26
+    BS = 16
+    CR = 2
+    CC = 251
+    CB = 7
+    M = 10
+    Hi = 17
 
 class BRAINREGIONNUMBERS(Enum):
     Am = 18

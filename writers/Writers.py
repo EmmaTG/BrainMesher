@@ -89,6 +89,7 @@ class BaseWriter():
         
         if len(filename.split('.'))>1:
             filename = filename.split('.')[0]
+            filename.replace("/","")
         filenameOUT = filename + "_" + self.__tag__.upper()
         self.__filename__ = filenameOUT
         

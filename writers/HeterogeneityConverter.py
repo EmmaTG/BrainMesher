@@ -54,7 +54,7 @@ class MaterialsConverter:
 
 class NineRegionConverter(MaterialsConverter):
 
-    values = [2, 3, 7, 10, 26, 16, 17, 18, 25, 29, 251]
+    values = [2, 3, 7, 10, 26, 16, 17, 18, 24, 251]
 
     def __init__(self):
         super().__init__()
@@ -79,7 +79,7 @@ class NineteenRegionsConverter(MaterialsConverter):
 
 class HomogenousConverter(MaterialsConverter):
 
-    values = [2]
+    values = [3]
 
     def __init__(self):
         super().__init__()
@@ -91,7 +91,7 @@ class HomogenousConverter(MaterialsConverter):
                 if n == 24:
                     self.converter[n] = 24
                 else:
-                    self.converter[n] = 2
+                    self.converter[n] = 3
 
 
 
