@@ -88,6 +88,10 @@ class ConfigFile:
         if not os.path.exists(self.config_dict['file_out_path']):
             os.mkdir(self.get('file_out_path'))
         self.config_dict['fileout'] = curr_config.get('fileout', 'unnamed_test')
+        self.config_dict['file_out_path'] = "/".join([self.config_dict['file_out_path'], self.config_dict['fileout']])
+        if not os.path.exists(self.config_dict['file_out_path']):
+            os.mkdir(self.config_dict['file_out_path'])
+
 
         types_string = curr_config.get('fileout_types')
         types = [x.strip() for x in types_string.split(",")]
