@@ -80,12 +80,12 @@ class BrainHexMesh:
         data = BrainHexMesh.__get_data__(path, file)
 
         if self.config.get('external_cc'):
-            cc_data = BrainHexMesh.__get_data__(path, "/cc.mgz")
+            cc_data = BrainHexMesh.__get_data__(path, "cc.mgz")
             cc_data = bm.create_binary_image(cc_data)
             self.add_region(cc_data, data, 251)
 
         if self.config.get('segmented_brainstem'):
-            bs_data = BrainHexMesh.__get_data__(path, "/brainstemSsLabels.mgz")
+            bs_data = BrainHexMesh.__get_data__(path, "brainstemSsLabels.mgz")
             self.add_region(bs_data, data, -1)
 
         values_in_data = list(np.unique(data))

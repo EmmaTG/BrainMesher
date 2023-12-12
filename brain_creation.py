@@ -74,17 +74,16 @@ def write(mesh, file_out_path, fileout, file_types=None):
     for fileType in file_types:
         print("########## Writing data as a " + fileType.upper() + " file ##########")
         writer = Writer()
-        writer.openWriter(fileType, file_out_path, fileout)
+        writer.openWriter(fileType, fileout, file_out_path)
         writer.writeMeshData(mesh)
         writer.closeWriter()
 
 
 if __name__ == "__main__":
     # Model type options: basic_fullcsf, basic_partilacsf, basic_nocsf, atrophy, lesion
-    config = ConfigFile("./IOput/model_config.ini", 'basic_fullcsf')
-    config.set("smooth", False)
+    config = ConfigFile("./IOput/in", "aseg.mgz","./IOput/out",
+                        "full_brain_model", model_type='basic_fullcsf')
     mesh = run(config)
-    # converter = MaterialsConverterFactory().get_converter(Heterogeneity.NINER)
     write(mesh, config.get('file_out_path'), config.get('fileout'))
 
 

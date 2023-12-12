@@ -19,7 +19,7 @@ class ConfigFile:
     A class used to set up preferences for brain creation.
     """
 
-    def __init__(self, configFilePath, model_type = ''):
+    def __init__(self, file_in_path, file_in_name, file_out_path, file_out_name, configFilePath="./IOput/model_config.ini", model_type = ''):
         self.MATERIAL_LABELS = None
         self.f = None
         self.data = []
@@ -73,25 +73,33 @@ class ConfigFile:
 
         # File settings
         # Read Settings
-        self.config_dict['read_file'] = curr_config.getboolean('read_file', False)
-        self.config_dict['file_in_path'] = curr_config.get('file_in_path', '')
-        if curr_config.get('file_in_path') == '':
-            self.config_dict['file_in_path'] = os.getcwd().replace("\\", "/")
-        self.config_dict['file_in'] = curr_config.get('file_in').replace("\\", "/")
+        self.config_dict['read_file'] = True
+        file_in_path = file_in_path.replace("\\", "/")
+        while file_in_path[-1] == "/":
+            file_in_path = file_in_path[:-1]
+        self.config_dict['file_in_path'] = file_in_path
+        self.config_dict['file_in'] = file_in_name
 
         # Write settings
-        self.config_dict['write_to_file'] = curr_config.getboolean('write_to_file', False)
-        self.config_dict['file_out_path'] = curr_config.get('file_out_path', '').replace("\\", "/")
-        if curr_config.get('file_out_path') == '':
-            self.config_dict['file_out_path'] = self.config_dict.get('file_in_path')
-            self.config_dict['file_out_path'] = "/".join([self.config_dict.get('file_in_path'), "Models"])
-        if not os.path.exists(self.config_dict['file_out_path']):
-            os.mkdir(self.get('file_out_path'))
-        self.config_dict['fileout'] = curr_config.get('fileout', 'unnamed_test')
-        self.config_dict['file_out_path'] = "/".join([self.config_dict['file_out_path'], self.config_dict['fileout']])
-        if not os.path.exists(self.config_dict['file_out_path']):
-            os.mkdir(self.config_dict['file_out_path'])
+        self.config_dict['write_to_file'] = True
+        file_out_path = file_out_path.replace("\\", "/")
+        while file_out_path[-1] == "/":
+            file_out_path = file_out_path[:-1]
 
+        files_to_create = []
+        file_out_path_split = file_out_path.split("/")
+        while not os.path.exists(file_out_path):
+            files_to_create.append(file_out_path_split.pop())
+            file_out_path = "/".join(file_out_path_split)
+
+        files_to_create.reverse()
+        for file in files_to_create:
+            file_out_path = "/".join([file_out_path, file])
+            os.mkdir(file_out_path)
+
+        self.config_dict['file_out_path'] = file_out_path
+        file_out_name = "unnamed_test" if file_out_name == '' else file_out_name
+        self.config_dict['fileout'] = file_out_name
 
         types_string = curr_config.get('fileout_types')
         types = [x.strip() for x in types_string.split(",")]
@@ -268,38 +276,34 @@ class ConfigFile:
         return all_labels.get(name, -1000)
 
 
-    def add_data(self, importedData):
-        """
-        Adds external data to config file
-
-        Parameters
-        ----------
-        importedData :
-            Array of data to be used
-
-        Raises
-        -------
-        Error raised if data is not a 3Dimensional array
-
-        """
-        self.config_dict['read_file'] = False
-        self.config_dict['read_data'] = True
-        assert len(array(importedData).shape) == 3
-        self.data = importedData
+    # def add_data(self, importedData):
+    #     """
+    #     Adds external data to config file
+    #
+    #     Parameters
+    #     ----------
+    #     importedData :
+    #         Array of data to be used
+    #
+    #     Raises
+    #     -------
+    #     Error raised if data is not a 3Dimensional array
+    #
+    #     """
+    #     self.config_dict['read_fil'] = False
+    #     self.config_dict['read_dat'] = True
+    #     assert len(array(importedData).shape) == 3
+    #     self.data = importedData
 
     def open_config_file(self):
         """
         Opens and write data to config log file
 
         """
-        # self.f = open("/".join([self.get('file_out_path'), self.get('fileout')]) + ".txt", 'w')
         self.f = open("/".join([self.get('file_out_path'), self.get('fileout')]) + ".txt", 'w')
 
     def write_preamble(self):
-        if self.config_dict.get('read_file', False):
-            self.f.write("Input file: " + self.get('file_in_path') + self.get('file_in') + "\n")
-        else:
-            self.f.write("Data input from user")
+        self.f.write("Input file: " + self.get('file_in_path') + self.get('file_in') + "\n")
         self.f.write("Write output to file: " + str(self.config_dict.get('write_to_file', False)) + "\n")
         if self.config_dict.get('write_to_file', False):
             self.f.write("Output written to: " + self.config_dict.get('file_out_path') + self.get('fileout') + "\n")
