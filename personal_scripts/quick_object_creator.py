@@ -12,22 +12,27 @@ import numpy as np
 from point_cloud.PointCloud import PointCloud
 from mesh.Mesh import Mesh
 from writers.HeterogeneityConverter import FourRegionConverter, MaterialsConverterFactory, Heterogeneity
-from writers.Writer import Writer
+from writers.Writers import Writer
 from mesh.refinement.Refiner import Refiner
 import mesh.mesh_transformations as mt
 from config.Material_Label import Material_Label
 from dotenv import load_dotenv
-from readers.Reader import ABQReader, VTKReader, UCDReader
-from file_converters.Converter import Converter
+from readers.Reader import Reader
 from mesh.PostProcessor import PostProcessor, CreateBoundaryElements
 import common.helper_functions as hf
 import os
-# filenames = [4,5,6,9,10]
-# for curve_number in filenames:
-#     filename = "Brain_sphere_3mm_30mm_I6mm_curve{}_Loc1_9R_VTK".format(curve_number)
-    # filename_out = "Brain_sphere_3mm_30mm_I6mm_curve{}_Loc1_4R".format(curve_number)
-    # path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/CoreFoamModels"
 
+path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/CoreFoamModels"
+filenames = [5,6,8,11]
+for curve_number in filenames:
+    filename = "sphere_in_cube_4mm_30mm_6mm_curve{}_VTK".format(curve_number)
+#     filename_out = "Brain_sphere_3mm_30mm_I6mm_curve{}_Loc1_4R".format(curve_number)
+    reader = Reader('vtk')
+    reader.openReader(filename, path)
+    mesh = reader.getMesh()
+    reader.closeReader()
+    print("Number of nodes: ", len(mesh.nodes))
+    print("Number of elements: ", len(mesh.elements))
 
 
 # filename = "brain_full_csf_centered_VTK"
@@ -36,40 +41,40 @@ import os
 # path = "C:/Users/grife/OneDrive/Documents/PostDoc/Students/Yashasvi/meshes"
 # pathout = "C:/Users/grife/OneDrive/Documents/PostDoc/Students/Yashasvi/meshes"
 #
-path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/CoreFoamModels"
-filename = "Brain_incision_L12mm_W4mm_30mm_Loc1_4R"
-reader = UCDReader()
-reader.openReader(filename, path)
-mesh = reader.getMesh()
-reader.closeReader()
-#
-# import mesh.mesh_transformations as mt
-mt.translate_mesh(mesh.nodes,[-50, -18, +30])
-safety_factor = 0.1
-bounds_to_refine = [-1*safety_factor - (25 * 1.1),
-                    safety_factor + 50,  # (xmin,xmax  ...
-                    -1*safety_factor - 3,
-                    safety_factor + 3,  # ymin,ymax ...
-                    -1*safety_factor - 3,
-                    safety_factor + 3]  # zmin,zmax)
-refine_mesh = Refiner(mesh)
-refine_mesh.refine_within_region(bounds_to_refine)
-# mt.rotate_mesh(mesh.nodes,axis=1, degrees=90)
-#
-# # mat_converter = FourRegionConverter()
-# # mat_converter.convert_materials_labels(mesh)
-#
-writer = Writer()
-writer.openWriter('vtk',filename + "_refined",path)
-writer.writeMeshData(mesh)
-writer.closeWriter()
+# path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/CoreFoamModels"
+# filename = "Brain_incision_L12mm_W4mm_30mm_Loc1_4R"
+# reader = Reader('ucd')
+# reader.openReader(filename, path)
+# mesh = reader.getMesh()
+# reader.closeReader()
+# #
+# # import mesh.mesh_transformations as mt
+# mt.translate_mesh(mesh.nodes,[-50, -18, +30])
+# safety_factor = 0.1
+# bounds_to_refine = [-1*safety_factor - (25 * 1.1),
+#                     safety_factor + 50,  # (xmin,xmax  ...
+#                     -1*safety_factor - 3,
+#                     safety_factor + 3,  # ymin,ymax ...
+#                     -1*safety_factor - 3,
+#                     safety_factor + 3]  # zmin,zmax)
+# refine_mesh = Refiner(mesh)
+# refine_mesh.refine_within_region(bounds_to_refine)
+# # mt.rotate_mesh(mesh.nodes,axis=1, degrees=90)
+# #
+# # # mat_converter = FourRegionConverter()
+# # # mat_converter.convert_materials_labels(mesh)
+# #
+# writer = Writer()
+# writer.openWriter('vtk',filename + "_refined",path)
+# writer.writeMeshData(mesh)
+# writer.closeWriter()
 #
 # writer = Writer()
 # writer.openWriter('vtk',filename_out,pathout)
 # writer.writeMeshData(mesh)
 # writer.closeWriter()
 
-# reader = VTKReader()
+# reader = Reader('vtk')
 # mesh = reader.getMesh()
 # path = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/CoreFoamModels"
 # for filename_ext in ['curve8']:
@@ -77,7 +82,7 @@ writer.closeWriter()
 # #     filename = "sphere_in_cube_4mm_30mm_6mm_{}" .format(filename_ext)
 #     filename = "Brain_sphere_4mm_30mm_I6mm_{}_Loc1_4R" .format(filename_ext)
 #
-#     reader = VTKReader()
+#     reader = Reader('vtk')
 #     reader.openReader(filename + "_VTK", path)
 #     reader.readNodes()
 #     reader.readElements()
