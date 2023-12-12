@@ -9,7 +9,7 @@ Create a 3D brain mesh from mri images using only hexahedral elements.
 5. Optional: Use laplacian smothing on the surface and/or boundaries
 
 Run **'Brain_creation.py'** to create example brain model to be viewed using Paraview  
-Edit **'model_config.ini'** file to give new input and output directory and other parameters.
+Edit **'model_config.ini'** as needed.
 
 Required packages:
 - Nibabel
