@@ -5,7 +5,7 @@ Created on Wed Sep  6 08:58:07 2023
 @author: grife
 """
 
-from abc import ABC, abstractmethod;
+from abc import ABC, abstractmethod
 from os.path import exists
 import nibabel
 import numpy as np
@@ -14,7 +14,7 @@ class IImport(ABC):
     
     @abstractmethod
     def getData(self):
-        raise NotImplementedError;
+        raise NotImplementedError
         
 class ImportFromFile(IImport):
         

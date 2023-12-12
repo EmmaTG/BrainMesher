@@ -7,11 +7,9 @@ Created on Mon Jul 24 13:55:28 2023
 import warnings
 
 from config.Material_Label import Material_Label
-from numpy import array
 from writers.HeterogeneityConverter import Heterogeneity
 import configparser
 import os
-import re
 
 
 class ConfigFile:

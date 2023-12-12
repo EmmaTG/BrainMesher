@@ -6,10 +6,10 @@ Created on Thu Aug  3 12:26:29 2023
 
 Module of functionf used for mesh transformations
 """
+from math import pi, cos, sin
+import numpy as np
 
 def rotate_mesh(nodeMap, axis=0, degrees=90):
-    from math import pi,cos,sin
-    import numpy as np
     deg = degrees*pi/180
     if (axis == 0):
         R = np.array([[1,0,0],[0, cos(deg), -1*sin(deg)],[0, sin(deg), cos(deg)]])      

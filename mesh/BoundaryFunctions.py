@@ -4,10 +4,10 @@ Created on Wed Sep  6 08:51:41 2023
 
 @author: grife
 """
-from array import ArrayType
 
 import numpy as np
-from abc import ABC, abstractmethod;
+from abc import ABC, abstractmethod
+
 
 class IBoundaryTest(ABC):
     """
@@ -23,7 +23,8 @@ class IBoundaryTest(ABC):
     @abstractmethod
     def validElement(self, element_num):
         raise NotImplementedError 
-        
+
+
 class OnlyOnLabel(IBoundaryTest):
     """
     Boundary test to add elements that are only attached to CSF elements 

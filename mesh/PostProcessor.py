@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 
 from mesh import BoundaryFunctions
 from mesh.refinement import Refiner
-from mesh.Element import QuadElement
 import numpy as np
 
 
@@ -22,18 +21,6 @@ class PostProcessor(IPostProcessor):
     def post_process(self):
         return
 
-
-# class PostProcessorDebug(IPostProcessor):
-
-    # def post_process(self):
-
-# class PostProcessorAtrophy(IPostProcessor):
-
-    # def post_process(self):
-
-# class PostProcessorLesion(IPostProcessor):
-
-    # def post_process(self):
 
 
 class PostProcessorDecorator(IPostProcessor):

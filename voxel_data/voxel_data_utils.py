@@ -9,6 +9,7 @@ import numpy as np
 from scipy import stats
 from scipy import ndimage
 from voxel_data.GridBox import GridBox
+from scipy.spatial import Delaunay
 
 """
 A module of functions to assist with manipulating voxel data
@@ -24,7 +25,7 @@ def in_hull(p, hull):
     coordinates of `M` points in `K`dimensions for which Delaunay triangulation
     will be computed
     """
-    from scipy.spatial import Delaunay
+
     if not isinstance(hull,Delaunay):
         hull = Delaunay(hull)
 

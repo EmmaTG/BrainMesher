@@ -6,7 +6,6 @@ from voxel_data.csf_functions import CSFFunctions
 from random import randint
 from scipy.stats import qmc
 import numpy as np
-from config.Config import ConfigFile
 
 
 class PreprocessConfigData(object):

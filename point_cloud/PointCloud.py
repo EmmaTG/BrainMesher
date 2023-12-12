@@ -6,7 +6,6 @@ Created on Wed May 24 14:02:00 2023
 """
 import numpy as np
 import pyvista as pv
-# from matplotlib.colors import ListedColormap
 
 
 class PointCloud:

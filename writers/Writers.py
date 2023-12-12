@@ -7,6 +7,7 @@ Created on Thu Jul 13 08:18:00 2023
 from abc import ABC, abstractmethod
 from re import sub
 
+
 class IWriter(ABC):
     
     """

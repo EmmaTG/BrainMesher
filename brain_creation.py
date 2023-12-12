@@ -21,11 +21,8 @@ from mesh.PostProcessorFactory import PostProcessorFactory
 from point_cloud.PointCloud import PointCloud
 from config.Config import ConfigFile
 from voxel_data import Preprocessor
-from writers.HeterogeneityConverter import MaterialsConverterFactory, Heterogeneity
 from writers.aseg_manipulate import create_aseg
 from writers.Writers import Writer
-import mesh.mesh_transformations as mt
-import sys, os
 
 def run(config):
 

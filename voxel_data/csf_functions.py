@@ -13,7 +13,6 @@ def in_hull(p, hull):
     coordinates of `M` points in `K`dimensions for which Delaunay triangulation
     will be computed
     """
-    from scipy.spatial import Delaunay
     if not isinstance(hull, Delaunay):
         hull = Delaunay(hull)
 
@@ -124,8 +123,6 @@ class CSFFunctions:
 
     @staticmethod
     def add_partial_csf(data, layers=1):
-        from point_cloud import PointCloud
-        from scipy.spatial import Delaunay
 
         current_dimensions = data.shape
         new_data = np.zeros(current_dimensions, int)
