@@ -11,10 +11,12 @@ Create a 3D brain mesh from mri images using only hexahedral elements.
 Run **'Brain_creation.py'** to create example brain model to be viewed using Paraview  
 Edit **'model_config.ini'** as needed.
 
+Code tested using Python 3.6  
 Required packages:
-- Nibabel
-- Pyvists
-- Numpy
-- Scipy
-- MRI (optional: only needed to view mri images)
+- numpy~=1.25.2
+- vtk~=9.2.6
+- nibabel~=5.1.0
+- scipy~=1.11.2
+- pyvista~=0.42.1
+- python-dotenv~=1.0.0
 
