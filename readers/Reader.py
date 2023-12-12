@@ -32,19 +32,11 @@ class IReader(ABC):
         pass
 
     @abstractmethod
-    def readNodes(self):
-        pass
-
-    @abstractmethod
-    def readElements(self):
-        pass
-
-    @abstractmethod
     def getMesh(self) -> Mesh:
         pass
 
 
-class BaseReader:
+class BaseReader(ABC):
     """
     A base class used to define methods for mesh writers
 
@@ -100,6 +92,15 @@ class BaseReader:
         Saves and closed file.
         """
         print("Completed")
+
+
+    @abstractmethod
+    def readNodes(self):
+        pass
+
+    @abstractmethod
+    def readElements(self):
+        pass
 
 
 class ABQReader(BaseReader, IReader):
@@ -230,6 +231,74 @@ class ABQReader(BaseReader, IReader):
                     if element is not None:
                         element.addMaterial(mat)
 
+class UCDReader(BaseReader,IReader):
+
+    def __init__(self):
+        super().__init__("inp", "ucd")
+        self.num_elements = None
+        self.num_nodes = None
+        self.grid = None
+
+    def getMesh(self) -> Mesh:
+        self.readNodes()
+        self.readElements()
+        return self.mesh
+
+    def closeReader(self):
+        """
+        Saves and closed file.
+        """
+        self.f.close()
+        super().closeReader()
+
+    def openReader(self, filename, path):
+        super().openReader(filename, path)
+        line = self.f.readline()
+        while line.split()[0] == '#':
+            line = self.f.readline()
+        initial_line = line.split('\t')
+        self.num_nodes = int(initial_line[0])
+        self.num_elements = int(initial_line[1])
+
+
+    def readNodes(self):
+        """
+        Write nodes in the vtk format:
+            coord1 coord2 ... coordn
+        Parameters
+        ----------
+        renumber : boolean
+            deteremines whetheer the node numbers shoudl be renumbered or not.
+        """
+        node_map = {}
+        for i in range(self.num_nodes):
+            node_line = self.f.readline().split("\t")
+            number = int(node_line[0])
+            coords = [float(x) for x in node_line[1:]]
+            new_node = Node(number, coords)
+            node_map[number] = new_node
+        self.mesh.nodes = node_map
+
+    def readElements(self):
+        element_map = {}
+        boundary_elements = {}
+        for i in range(self.num_elements):
+            element_line = self.f.readline().split("\t")
+            number = int(element_line[0])
+            material = int(element_line[1])
+            type = element_line[2].strip()
+            ica = [int(x) for x in element_line[3:]]
+            node_ica = [self.mesh.nodes[x] for x in ica]
+            if type == 'hex':
+                new_element = HexElement(number, node_ica, mat=[material])
+                element_map[number] = new_element
+            elif type == 'quad':
+                new_element = QuadElement(number, node_ica, mat=[material])
+                boundary_elements[number] = new_element
+        self.mesh.elements = element_map
+        self.mesh.addBoundaryElements(boundary_elements)
+
+
 class VTKReader(BaseReader, IReader):
 
     def __init__(self):
@@ -321,3 +390,34 @@ class VTKReader(BaseReader, IReader):
                 if node is not None:
                     node.addData(arr_name, data)
             self.mesh.dataToWrite.append(arr_name)
+
+
+class Reader(IReader):
+
+    def __init__(self, file_type):
+        self.reader = None
+        file_type = file_type.lower()
+        if file_type == 'vtk':
+            self.reader = VTKReader()
+        elif file_type == 'ucd':
+            self.reader = UCDReader()
+        elif file_type == 'abaqus' or file_type == 'abq':
+            self.reader = ABQReader()
+
+    def openReader(self, filename, path):
+        filename_split = filename.split(".")
+        if len(filename_split) > 1:
+            filename = ".".join(filename.split(".")[:-1])
+        self.reader.openReader(filename, path)
+
+    def closeReader(self):
+        self.reader.closeReader()
+        self.reader = None
+
+    def getMesh(self) -> Mesh:
+        return self.reader.getMesh()
+
+
+
+
+

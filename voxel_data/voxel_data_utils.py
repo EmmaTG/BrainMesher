@@ -37,15 +37,18 @@ def check_data_dims(data):
         print('Error, data shape not 3 dimensional!')
         return False    
     
-def override_voxel_data(new_data,current_data, replacementValue):
+def override_voxel_data(new_data,current_data, replacementValue = -1):
     current_dimensions = current_data.shape
     for x in range(current_dimensions[0]):
         if (np.sum(new_data[x,:,:]) > 0):
             for y in range(current_dimensions[1]):
                 if (np.sum(new_data[x,y,:]) > 0):
                     for z in range(current_dimensions[2]):
-                        if (new_data[x,y,z] == 1):
-                            current_data[x,y,z] = replacementValue
+                        if (new_data[x,y,z] != 0):
+                            if replacementValue == -1:
+                                current_data[x, y, z] = new_data[x, y, z]
+                            else:
+                                current_data[x,y,z] = replacementValue
     
 def coarsen(new_voxel_size, original_data):
     print("Coarsening mesh by a factor of " + str(new_voxel_size))

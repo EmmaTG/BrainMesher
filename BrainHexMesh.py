@@ -7,17 +7,12 @@ import warnings
 
 import numpy as np
 
-from writers.HeterogeneityConverter import MaterialsConverterFactory
-from voxel_data.void_filler import Maze, InverseMaze, Maze_Solver
 import voxel_data.voxel_data_utils as bm
-from voxel_data.PreProcessingActions import IpreProcessAction
 from mesh.Mesh import Mesh
-from mesh.Element import QuadElement
-from writers.Writer import Writer
-from voxel_data import PreProcessingActions as pp
 from readers import Importer as inp
 
-class BrainHexMesh():
+
+class BrainHexMesh:
     """
     A class used to facilitate 3D brain model creation.
 
@@ -85,9 +80,13 @@ class BrainHexMesh():
         data = BrainHexMesh.__get_data__(path, file)
 
         if self.config.get('external_cc'):
-            cc_data = BrainHexMesh.__get_data__(path, "/cc.mgz")
+            cc_data = BrainHexMesh.__get_data__(path, "cc.mgz")
             cc_data = bm.create_binary_image(cc_data)
             self.add_region(cc_data, data, 251)
+
+        if self.config.get('segmented_brainstem'):
+            bs_data = BrainHexMesh.__get_data__(path, "brainstemSsLabels.mgz")
+            self.add_region(bs_data, data, -1)
 
         values_in_data = list(np.unique(data))
         if not values_in_data.count(251):
@@ -111,9 +110,7 @@ class BrainHexMesh():
             3D data array of voxels with label numbers
         """
         # Homogenize labels
-        label_number = 0
-        if self.material_labels.labelsMap.get(unusedLabel, False):
-            label_number = self.material_labels.labelsMap[unusedLabel][0]
+        label_number = self.material_labels.labelsMap.get(unusedLabel, [0])[0]
                     
         # Replace regions with multiple labels with only one label, if label is not required replace with unused/0
         data = self.material_labels.homogenize_material_labels(data, replace=label_number)
@@ -169,8 +166,6 @@ class BrainHexMesh():
             # Clean grey matter boundary
             print("####### Cleaning grey matter boundary #######")
             mesh.clean_mesh(elementsNotIncluded=[24], replace=24)
-            # elementsOnBoundary = mesh.locate_elements_on_boundary()
-            # mesh.replace_outer_region(3, 24, elementsOnBoundary)
             
         # Clean outer boundary
         print("####### Cleaning outer boundary #######")    
@@ -182,46 +177,8 @@ class BrainHexMesh():
             mesh.clean_mesh(elementsNotIncluded=[24,3], replace=2)
         
         # Replace any white matter on boundary with grey matter
-        elementsOnBoundary = mesh.locate_elements_on_boundary(elementsNotIncluded = [24])
-        mesh.replace_outer_region(2, 3, elementsOnBoundary)        
-
-    # def create_boundary(self, mesh, element_mat_number, elementsNotIncluded=[], boundaryTest=None):
-    #     """
-    #     Creates CSF boundary elements.
-    #     Does not create CSF Boundary elements below subcortical structures at base of brain
-    #
-    #     Parameters
-    #     ----------
-    #     mesh: Mesh
-    #         mesh object
-    #     element_mat_number: int
-    #         materials number for boundary elements
-    #
-    #     Outputs
-    #     ----------
-    #     boundary_elements_map: Map(int,QuadElement)
-    #         Map of boundary elements to thier element numbers
-    #
-    #     """
-    #     # mesh.create_node_to_element_connectivity()
-    #     boundary_elements_map = {}
-    #     boundary_number = max(mesh.elements.keys()) if len(mesh.boundaryElements) == 0 else max(mesh.boundaryElements.keys())
-    #     boundary_elements = mesh.locate_boundary_element_map(elementsNotIncluded=elementsNotIncluded)
-    #     print("Locating CSF boundary")
-    #     for compoundKey,ica in boundary_elements.items():
-    #         boundary_number += 1
-    #         ica_nodes = [mesh.nodes[n] for n in ica]
-    #         boundary_element = QuadElement(boundary_number, ica_nodes, mat=[element_mat_number])
-    #         [element_num, face] = [int(x) for x in compoundKey.split("-")]
-    #         # [xc,yc,zc,m] = e_centroids[element_num]
-    #         Boundary = True
-    #         if not boundaryTest is None:
-    #             Boundary = boundaryTest.validElement(element_num)
-    #         if Boundary:
-    #             boundary_elements_map[boundary_number] = boundary_element
-    #         else:
-    #             boundary_number -= 1
-    #     return boundary_elements_map
+        elementsOnBoundary = mesh.locate_elements_on_boundary(elementsNotIncluded=[24])
+        mesh.replace_outer_region(2, elementsOnBoundary)
 
     @staticmethod
     def add_region(cc_data, current_data, region_value):
@@ -244,31 +201,6 @@ class BrainHexMesh():
         
         assert np.all(cc_data.shape == current_data.shape),"Region associated with added data is not the same size as the current data set"
         bm.override_voxel_data(cc_data, current_data, region_value)
-
-    def __convert_heterogeneity__(self, mesh):
-        converter = MaterialsConverterFactory.get_converter(self.config.converter_type)
-        converter.convert_materials_labels(mesh)
-
-        self.config.write_to_config("Heterogeneity level", self.config.converter_type)
-        print("Heterogeneity level: {}".format(self.config.converter_type))
-
-    def write_to_file(self, mesh):
-        """
-        Wriet mesh data to various fiel types as specified in config file
-
-        Parameters
-        ----------
-        mesh: Mesh
-            mesh object to be written
-        """        
-        # Write mesh to file
-        self.__convert_heterogeneity__(mesh)
-        for fileType in self.config.get('fileout_types'):
-            print("########## Writing data as a " + fileType.upper() + " file ##########")             
-            writer = Writer()
-            writer.openWriter(fileType, self.config.get('fileout'), self.config.get('file_out_path'))
-            writer.writeMeshData(mesh)
-            writer.closeWriter()
 
 
 

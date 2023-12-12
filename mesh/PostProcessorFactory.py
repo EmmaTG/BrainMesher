@@ -7,7 +7,7 @@ class PostProcessorFactory:
     @staticmethod
     def get_post_processor(mesh, config):
         post_processor = PostProcessor(config, mesh)
-        if config.get('atrophy'):
+        if config.get('model_type') == 'atrophy':
             # Creates a concentration profile in the brain to eb used for degree fo atrophy calculations
             post_processor = ApplyAtrophyConcentration(post_processor)
 

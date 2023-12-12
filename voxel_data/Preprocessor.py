@@ -205,7 +205,7 @@ class PreProcessorFactory:
         if ventricle_label < 0:
             ventricle_label = 4
 
-        if config_data.get('lesion'):
+        if config_data.get('model_type') == 'lesion':
 
             lesion_label = config_data.get_material_value("lesion")
             if lesion_label < 0:

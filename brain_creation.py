@@ -21,53 +21,70 @@ from mesh.PostProcessorFactory import PostProcessorFactory
 from point_cloud.PointCloud import PointCloud
 from config.Config import ConfigFile
 from voxel_data import Preprocessor
+from writers.HeterogeneityConverter import MaterialsConverterFactory, Heterogeneity
 from writers.aseg_manipulate import create_aseg
+from writers.Writers import Writer
+import mesh.mesh_transformations as mt
 import sys, os
 
-configFilePath = sys.argv[1]
-# configFilePath = os.getcwd()
+def run(config):
 
-# Preferences are defined in ConfigFile
-config = ConfigFile(configFilePath)
+    brainCreator = BrainHexMesh(config)
 
-brainCreator = BrainHexMesh(config)
+    # Writes configuration preferences to output location
+    config.open_config_file()
+    config.write_preamble()
 
-# Writes configuration preferences to output location
-config.open_config_file()
-config.write_preamble()
+    # Gets aseg data as 3D of segmentation labels in voxels
+    data = brainCreator.import_data()
 
-# Gets aseg data as 3D of segmentation labels in voxels
-data = brainCreator.import_data()
+    # Homogenizes data label according to Materials label as defined in Config class
+    data = brainCreator.homogenize_data(data)
 
-# Homogenizes data label according to Materials label as defined in Config class
-data = brainCreator.homogenize_data(data)
+    # Pre-processes data to ensure valid mesh base on config setting:
+    preprocessor = Preprocessor.PreProcessorFactory.get_preprocessor(config, data)
+    assert isinstance(preprocessor, Preprocessor.IPreprocessor)
+    data_new = preprocessor.preprocess_data()
+    create_aseg(config.get("file_in_path"), config.get("file_in"), config.get("file_out_path"), config.get("fileout"),
+                data_new)
 
-# Pre-processes data to ensure valid mesh base on config setting:
-preprocessor = Preprocessor.PreProcessorFactory.get_preprocessor(config, data)
-assert isinstance(preprocessor, Preprocessor.IPreprocessor)
-data_new = preprocessor.preprocess_data()
-create_aseg(config.get("file_in_path"), config.get("file_in"), config.get("file_out_path"), config.get("fileout"),
-            data_new)
+    # Creates point cloud from voxel data
+    pointCloud = PointCloud()
+    pointCloud.create_point_cloud_from_voxel(data_new)
 
-# Creates point cloud from voxel data
-pointCloud = PointCloud()
-pointCloud.create_point_cloud_from_voxel(data_new)
+    # Creates mesh from point cloud
+    mesh = brainCreator.make_mesh(pointCloud.pcd)
+    brainCreator.clean_mesh(mesh)
 
-# Creates mesh from point cloud
-mesh = brainCreator.make_mesh(pointCloud.pcd) 
-brainCreator.clean_mesh(mesh)
+    # Moves mesh to the center of the corpus callosum
+    mesh.center_mesh_by_region(251)
 
-# Moves mesh to the center of the corpus callosum
-mesh.center_mesh_by_region(251)
+    # Wrapping of post-processing operations (operation selection defined in config file)
+    post_processor = PostProcessorFactory.get_post_processor(mesh, config)
+    post_processor.post_process()
 
-# Wrapping of post-processing operations (operation selection defined in config file)
-post_processor = PostProcessorFactory.get_post_processor(mesh, config)
-post_processor.post_process()
+    # Close config file write out
+    config.close_config_file()
 
-# Write mesh to file (ucd, vtk or abq inp as specified in config file)
-brainCreator.write_to_file(mesh)  
+    return mesh
 
-# Close config file write out  
-config.close_config_file()
+def write(mesh, file_out_path, fileout, file_types=None):
+    if file_types is None:
+        file_types = ['vtk','ucd']
+    for fileType in file_types:
+        print("########## Writing data as a " + fileType.upper() + " file ##########")
+        writer = Writer()
+        writer.openWriter(fileType, fileout, file_out_path)
+        writer.writeMeshData(mesh)
+        writer.closeWriter()
+
+
+if __name__ == "__main__":
+    # Model type options: basic_fullcsf, basic_partilacsf, basic_nocsf, atrophy, lesion
+    config = ConfigFile("./IOput/in", "aseg.mgz","./IOput/out",
+                        "full_brain_model", model_type='basic_fullcsf')
+    mesh = run(config)
+    write(mesh, config.get('file_out_path'), config.get('fileout'))
+
 
 

@@ -39,12 +39,12 @@ def create_aseg(fileInPath, filename, fileoutpath, fileout, data_new, remove_ven
     t1_file = "/".join([fileInPath, filename])
     t1 = nb.load(t1_file)
     # t1.orthoview()
-
+    data = np.copy(data_new)
     if remove_ventricle:
-        remove_ventricle_data(data_new)
+        remove_ventricle_data(data)
 
     # Now we can save the changed data into a new NIfTI file
-    new_img = nb.Nifti1Image(data_new, affine=t1.affine, header=t1.header)
+    new_img = nb.Nifti1Image(data, affine=t1.affine, header=t1.header)
     pathOut = fileoutpath + "/tmp"
     file_in_split = filename.split(".")
     file_name_out = fileout + "_" + file_in_split[0]

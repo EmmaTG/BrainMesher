@@ -5,7 +5,6 @@ Created on Thu May 25 09:29:49 2023
 @author: grife
 """
 
-from scipy import stats
 import numpy as np
 
 
@@ -45,7 +44,7 @@ class GridBox:
         return GridBox.splitter.join([str(l) for l in location]);
         
     def mode(self):
-        [modes,count] = stats.find_repeats(self.gridBox)
+        [modes, count] = np.unique(self.gridBox, return_counts=True)
         modeIndices, = np.where(count == max(count))
         modeIndex = modeIndices[0]
         replacedValue = modes[modeIndex]

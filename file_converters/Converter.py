@@ -1,6 +1,6 @@
 
-from readers.Reader import ABQReader, VTKReader
-from writers.Writer import Writer
+from readers.Reader import Reader
+from writers.Writers import Writer
 
 
 class Converter:
@@ -19,28 +19,29 @@ class Converter:
 
         filename = "".join(split_file1[0].split())
         if filename_out == '':
-            filename_out = filename
+            filename_out = "_".join([filename_out, "converted"])
 
-        if ext == "inp" and convert_from == "abaqus":
-            reader = ABQReader()
-        elif ext == "vtk" and convert_from == "vtk":
-            reader = VTKReader()
-        else:
-            print("File type {} not support".format(convert_from))
-            return
-
+        reader = Reader(convert_from)
         reader.openReader(filename, path)
         mesh = reader.getMesh()
 
         writer = Writer()
-        new_filename = "_".join([filename_out,"converted"])
+        new_filename = filename_out
         if convert_to == 'abaqus':
             writer.openWriter('abaqus', new_filename, path)
         elif convert_to == 'vtk':
             writer.openWriter('vtk', new_filename, path)
         elif convert_to == 'ucd':
             writer.openWriter('ucd', new_filename, path)
+        else:
+            raise NotImplementedError
 
         writer.writeMeshData(mesh)
         writer.closeWriter()
+
+
+if __name__ == "__main__":
+    pathout = "C:/Users/grife/OneDrive/Documents/PostDoc/BrainModels/PythonScripts/BrainMesher/Atrophy"
+    filename = "OAS1_0004_MR1"
+    Converter.convert_file(pathout, filename + "_VTK","vtk","ucd", filename)
 
