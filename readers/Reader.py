@@ -316,6 +316,7 @@ class VTKReader(BaseReader, IReader):
             path += "/"
         self.grid = readVtk(path, filename)
 
+
     def readNodes(self):
         """
         Write nodes in the vtk format:

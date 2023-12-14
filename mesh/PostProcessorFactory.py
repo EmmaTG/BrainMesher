@@ -40,6 +40,13 @@ class PostProcessorFactory:
                                                 excluded_regions=excluded_materials)
                 count += 1
 
+        if config.get('model_type') == 'lesion':
+            # Creates blank spaces in areas of the ventricles if specified
+            all_labels = config.MATERIAL_LABELS.get_homogenized_labels_map()
+            label_for_lesion = all_labels.get("lesion", all_labels.get("lesions", -1))
+            if label_for_lesion != -1:
+                post_processor = RemoveRegion(post_processor, label_for_lesion)
+
         # Removes regions specified at unused in the materials label description
         all_labels = config.MATERIAL_LABELS.get_homogenized_labels_map()
         label_for_unused = all_labels.get("unused")

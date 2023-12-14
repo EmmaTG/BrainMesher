@@ -25,8 +25,8 @@ def readVtk(path,filename):
         reader.Update()
         grid = reader.GetOutput()
         return grid
-        
-    return None
+    print("Could not find file with name {}".format(fullFilename1))
+    raise FileNotFoundError
 
 def readData():
     # inputPath = "C:\\Users\grife\OneDrive\Documents\PostDoc\BrainModels\Tumor_growth\\"

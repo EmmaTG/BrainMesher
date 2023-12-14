@@ -1,0 +1,76 @@
+subsection experiment
+  set reset = true
+
+  subsection testing_device@[type=atrophy,instance=1]
+    set input files = %testing_device%
+	set max radius = %radius%
+	set center = %center%
+  end
+
+  subsection sample
+
+    subsection finite element
+      set polynomial degree = 1
+    end
+
+    subsection geometry@[type=import]
+      set inpFile = %inp_file%
+    end  
+
+	# CORONARADIATA (CR)
+	subsection constitutive@[type=modified_one_term_ogden,instance=1,material_id=2]
+		 set empirical coefficient = -2
+		 set alpha = -20.410441511475806
+		 set mu = 169.77774721331022
+		 set poisson ratio = 0.45
+	end
+
+	# CORTEX (C)
+	subsection constitutive@[type=modified_one_term_ogden,instance=1,material_id=3]
+		 set empirical coefficient = -2
+		 set alpha = -19.27409673
+		 set mu = 281.7518902
+		 set poisson ratio = 0.45
+	end
+
+
+    # CSF (~)
+    subsection constitutive@[type=modified_one_term_ogden,instance=1,material_id=24]
+          set alpha = -1.0
+          set poisson ratio = 0.3
+          set empirical coefficient = -2.
+          set mu = 10.e-6
+    end 
+      
+    subsection nonlinear_solver_control
+      set absolute tolerance = 1e-9
+      set linear solver type = CG
+      set maximum number of iterations = 10
+      set relative tolerance = 1e-06
+    end
+
+    subsection quadrature
+      set quadrature points per space direction = auto
+      set quadrature type = gauss
+    end
+
+  end
+end
+
+subsection global
+  set output directory = /calculate/efiSim1F/build_atrophy/out/%output%
+
+  set input directory  = /calculate/efiSim1F/build_atrophy/in
+  
+  set output filename = %output%
+  
+  set paraview output = true
+  
+  set move mesh = false
+
+  # options: quiet|normal|verbose|very verbose|debug
+  set verbosity console = debug
+
+  # options: quiet|normal|verbose|very verbose|debug
+  set verbosity logfile = normal
+end

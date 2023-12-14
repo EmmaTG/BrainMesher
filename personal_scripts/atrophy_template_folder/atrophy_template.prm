@@ -1,0 +1,149 @@
+subsection experiment
+  set reset = true
+
+  subsection testing_device@[type=atrophy,instance=1]
+    set input files = %testing_device%
+	set max radius = %radius%
+	set center = %center%
+  end
+
+  subsection sample
+
+    subsection finite element
+      set polynomial degree = 1
+    end
+
+    subsection geometry@[type=import]
+      set inpFile = %inp_file%
+    end  
+    
+     # Amygdala (A)   
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=18]
+          set alpha = -14.16400654
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 193.3378573e-6
+          set normal atrophy rate = 0.0015
+          set enhanced atrophy rate = 0.0035
+    end
+    
+     # Basal Ganglia (BG)   
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=11]
+          set alpha = -15.04778681
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 169.6653712e-6
+          set normal atrophy rate = 0.0015
+          set enhanced atrophy rate = 0.0035
+    end 
+    
+    # Brain stem (BS)
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=16]
+          set alpha = -19.59379732
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 118.0578761e-6
+          set normal atrophy rate = 0.001
+          set enhanced atrophy rate = 0.002
+    end 
+    
+    # Cortex (C)    
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=3]
+          set alpha = -16.72199854
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 175.2132015e-6
+          set normal atrophy rate = 0.0015
+          set enhanced atrophy rate = 0.0035
+    end    
+    
+    # Cerebellum (CB)    
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=7]
+          set alpha = -18.79482199
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 115.3625404e-6
+          set normal atrophy rate = 0.0015
+          set enhanced atrophy rate = 0.0035
+    end
+
+    # Corpus Callosum (CC)    
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=251]
+          set alpha = -13.7206396
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 37.63876921e-6
+          set normal atrophy rate = 0.001
+          set enhanced atrophy rate = 0.002
+    end     
+    
+    # White Matter (CR)    
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=2]
+          set alpha = -19.07789313
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 87.57646783e-6
+          set normal atrophy rate = 0.001
+          set enhanced atrophy rate = 0.002
+    end 
+    
+    # Hippocampus (Hi)    
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=17]
+          set alpha = -13.08878279
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 129.9607977e-6
+          set normal atrophy rate = 0.0015
+          set enhanced atrophy rate = 0.0035
+    end 
+
+    # Thalamus (M)    
+    subsection constitutive@[type=modified_one_term_ogden_atrophy,instance=1,material_id=10]
+          set alpha = -15.15002338
+          set poisson ratio = 0.49
+          set empirical coefficient = -2.
+          set mu = 137.6724163e-6
+          set normal atrophy rate = 0.0015
+          set enhanced atrophy rate = 0.0035
+    end 
+      
+    # CSF (~)     
+    subsection constitutive@[type=modified_one_term_ogden,instance=1,material_id=24]
+          set alpha = -1.0
+          set poisson ratio = 0.3
+          set empirical coefficient = -2.
+          set mu = 10.e-6
+    end 
+      
+    subsection nonlinear_solver_control
+      set absolute tolerance = 1e-9
+      set linear solver type = CG
+      set maximum number of iterations = 10
+      set relative tolerance = 1e-06
+    end
+
+    subsection quadrature
+      set quadrature points per space direction = auto
+      set quadrature type = gauss
+    end
+
+  end
+end
+
+subsection global
+  set output directory = /calculate/efiSim1F/build_atrophy/out/%output%
+
+  set input directory  = /calculate/efiSim1F/build_atrophy/in
+  
+  set output filename = %output%
+  
+  set paraview output = true
+  
+  set move mesh = false
+
+  # options: quiet|normal|verbose|very verbose|debug
+  set verbosity console = debug
+
+  # options: quiet|normal|verbose|very verbose|debug
+  set verbosity logfile = normal
+end

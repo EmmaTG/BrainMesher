@@ -67,7 +67,7 @@ def run(config):
 
 def write(mesh, file_out_path, fileout, file_types=None):
     if file_types is None:
-        file_types = ['vtk','ucd']
+        file_types = ['vtk', 'ucd']
     for fileType in file_types:
         print("########## Writing data as a " + fileType.upper() + " file ##########")
         writer = Writer()
