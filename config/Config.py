@@ -10,6 +10,7 @@ from config.Material_Label import Material_Label
 from writers.HeterogeneityConverter import Heterogeneity
 import configparser
 import os
+from definitions import MATERIALS_9R_PATH, MATERIALS_17R_PATH
 
 
 class ConfigFile:
@@ -41,17 +42,18 @@ class ConfigFile:
             self.converter_type = Heterogeneity.NINER
 
         self.MATERIAL_LABELS = Material_Label()
-        default_keys = list(config['DEFAULT'])
         try:
             if self.converter_type == Heterogeneity.NINETEENR:
-                materials_config = config['materials19R']
+                materials_config = configparser.ConfigParser()
+                materials_config.read(MATERIALS_17R_PATH)
             else:
-                materials_config = config['materials9R']
-            for key in materials_config:
-                if not default_keys.count(key):
-                    label = key
-                    values = [int(x.strip()) for x in materials_config[key].split(",")]
-                    self.MATERIAL_LABELS.addLabelToMap(label, values)
+                materials_config = configparser.ConfigParser()
+                materials_config.read(MATERIALS_9R_PATH)
+            materials = materials_config['DEFAULT']
+            for key in materials:
+                label = key
+                values = [int(x.strip()) for x in materials[key].split(",")]
+                self.MATERIAL_LABELS.addLabelToMap(label, values)
         except KeyError:
             print("Default materials labels will be used")
             # Material labels (PRESET)
