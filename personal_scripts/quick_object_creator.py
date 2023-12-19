@@ -34,6 +34,7 @@ for curve_number in filenames:
     mat_converter = FourRegionConverter()
     mat_converter.convert_materials_labels(mesh)
 
+
     writer = Writer()
     writer.openWriter('ucd', filename_out, path)
     writer.writeMeshData(mesh)

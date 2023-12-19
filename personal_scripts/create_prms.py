@@ -3,6 +3,7 @@ import writers.HeterogeneityConverter as hc
 from common.brain_regions import BRAINREGIONNAMES, BRAINREGIONNUMBERS, NINEREGIONNUMBERS
 from abc import ABC, abstractmethod
 from readers.Reader import Reader
+from definitions import ROOT_DIR
 
 
 class MaterialDataBase:
@@ -96,8 +97,8 @@ class MaterialFactory:
 class CreatePRM:
     TYPE = "tension_compression_testing_device"
     INPUT_DATA = "tension_1"
-    all_regions_data_path = "./materials_data/region_params.csv"
-    nine_regions_data_path = "./materials_data/gov_region_params.csv"
+    all_regions_data_path = ROOT_DIR + "/personal_scripts/materials_data/region_params.csv"
+    nine_regions_data_path = ROOT_DIR + "/personal_scripts/materials_data/gov_region_params.csv"
 
     def __init__(self, path_to_template):
         self.template = None
@@ -171,6 +172,7 @@ class CreatePRM:
             self.region_numbers = NINEREGIONNUMBERS
         else:
             self.open_nineteen_region_csv_data()
+            seleceted_poissons = seleceted_poissons.replace(",", ".")
 
         material_type = hc.MaterialsConverterFactory.get_converter(heterogeneity)
         material_values = [x.value for x in self.region_numbers]
