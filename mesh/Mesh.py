@@ -13,6 +13,8 @@ from mesh.Node import Node
 from mesh.Element import HexElement, QuadElement
 import numpy as np
 
+from writers.Writers import Writer
+
 
 class Mesh:
     """
@@ -768,6 +770,16 @@ class Mesh:
         print("{} boundary elements created with material number {}"
               .format(len(boundary_elements_map), element_mat_number))
         self.addBoundaryElements(boundary_elements_map)
+
+    def write(self, file_out_path, fileout, file_types=None):
+        if file_types is None:
+            file_types = ['vtk', 'ucd']
+        for fileType in file_types:
+            print("########## Writing data as a " + fileType.upper() + " file ##########")
+            writer = Writer()
+            writer.openWriter(fileType, fileout, file_out_path)
+            writer.writeMeshData(self)
+            writer.closeWriter()
     
 
         

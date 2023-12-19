@@ -172,7 +172,7 @@ class ApplyAtrophyConcentration(PostProcessorDecorator):
     def apply_concentration(self):
         print("########## Applying concentration field ##########")
         # Get center of brain stem
-        center_bs = self.mesh.get_center_of_region(16)
+        center_bs = self.mesh.get_center_of_region(175)
         # Get center of hippocampus
         center_h = self.mesh.get_center_of_region(17)
         bounding_box_hippo = self.mesh.getBoundingBox(regions=17)

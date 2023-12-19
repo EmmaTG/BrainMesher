@@ -65,23 +65,13 @@ def run(config):
 
     return mesh
 
-def write(mesh, file_out_path, fileout, file_types=None):
-    if file_types is None:
-        file_types = ['vtk', 'ucd']
-    for fileType in file_types:
-        print("########## Writing data as a " + fileType.upper() + " file ##########")
-        writer = Writer()
-        writer.openWriter(fileType, fileout, file_out_path)
-        writer.writeMeshData(mesh)
-        writer.closeWriter()
-
 
 if __name__ == "__main__":
     # Model type options: basic_fullcsf, basic_partilacsf, basic_nocsf, atrophy, lesion
     config = ConfigFile("./IOput/in", "aseg.mgz","./IOput/out",
                         "full_brain_model", model_type='basic_fullcsf')
     mesh = run(config)
-    write(mesh, config.get('file_out_path'), config.get('fileout'))
+    mesh.write(config.get('file_out_path'), config.get('fileout'))
 
 
 
