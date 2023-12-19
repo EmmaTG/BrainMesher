@@ -56,19 +56,23 @@ class CSFFunctions:
         for z in range(zmin_tot, zmax_tot + 1):
             points = point_cloud.get_slice(2, z)
             points = points[:, :2]
-            hull = Delaunay(points)
+            if len(points) > 2:
+                hull = Delaunay(points)
 
-            xmin, ymin = np.min(points, axis=0)
-            xmax, ymax_slice = np.max(points, axis=0)
-            ymax = min([ymax_tot, ymax_slice])
-            mid_y = int((int(ymin) + int(ymax + 1)) / 2)
-            for x in range(int(xmin), int(xmax + 1)):
-                for y in range(int(ymin), int(ymax + 1)):
-                    if data[x, y, z] == 0 and (y < ymax_tot):
-                        if in_hull([x, y], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
-                            new_data[x, y, z] = 24
+                xmin, ymin = np.min(points, axis=0)
+                xmax, ymax_slice = np.max(points, axis=0)
+                ymax = min([ymax_tot, ymax_slice])
+                mid_y = int((int(ymin) + int(ymax + 1)) / 2)
+                for x in range(int(xmin), int(xmax + 1)):
+                    for y in range(int(ymin), int(ymax + 1)):
+                        if data[x, y, z] == 0 and (y < ymax_tot):
+                            if in_hull([x, y], hull):
+                                point_cloud.add_point_to_cloud([x, y, z, 24])
+                                data[x, y, z] = 24
+                                new_data[x, y, z] = 24
+            else:
+                print("y-value", z)
+                print("points: ", points)
 
         ##### CSF is not filled for the sagital plane of the brain
         # print("Filling in CSF x-dim")
@@ -93,18 +97,22 @@ class CSFFunctions:
         for y in range(ymin_tot, ymax_tot + 1):
             points = point_cloud.get_slice(1, y)
             points = points[:, [0, 2]]
-            hull = Delaunay(points)
+            if len(points) > 2:
+                hull = Delaunay(points)
 
-            min1d, min2d = np.min(points, axis=0)
-            max1d, max2d = np.max(points, axis=0)
-            mid_2d = int((int(min2d) + int(max2d + 1)) / 2)
-            for x in range(int(min1d), int(max1d + 1)):
-                for z in range(int(min2d), int(max2d + 1)):
-                    if (data[x, y, z] == 0) and (y < ymax_tot):
-                        if in_hull([x, z], hull):
-                            point_cloud.add_point_to_cloud([x, y, z, 24])
-                            data[x, y, z] = 24
-                            new_data[x, y, z] = 24
+                min1d, min2d = np.min(points, axis=0)
+                max1d, max2d = np.max(points, axis=0)
+                mid_2d = int((int(min2d) + int(max2d + 1)) / 2)
+                for x in range(int(min1d), int(max1d + 1)):
+                    for z in range(int(min2d), int(max2d + 1)):
+                        if (data[x, y, z] == 0) and (y < ymax_tot):
+                            if in_hull([x, z], hull):
+                                point_cloud.add_point_to_cloud([x, y, z, 24])
+                                data[x, y, z] = 24
+                                new_data[x, y, z] = 24
+            else:
+                print("y-value", y)
+                print("points: ", points)
 
         # if full:
         #     xs,ys,zs = np.where(data == 57)
@@ -160,17 +168,22 @@ class CSFFunctions:
         for z in range(zmin_tot, zmax_tot + 1):
             points = point_cloud.get_slice(2, z)
             points = points[:, :2]
-            hull = Delaunay(points)
+            if len(points) > 2:
+                hull = Delaunay(points)
 
-            xmin, ymin = np.min(points, axis=0)
-            xmax, ymax_slice = np.max(points, axis=0)
-            ymax = min([ymax_tot, ymax_slice])
-            mid_y = int((int(ymin) + int(ymax + 1)) / 2)
-            for x in range(int(xmin), int(xmax + 1)):
-                for y in range(int(ymin), int(ymax + 1)):
-                    if (data[x, y, z] == 0) and (y < ymax_tot):
-                        if in_hull([x, y], hull):
-                            new_data[x, y, z] = 24
+                xmin, ymin = np.min(points, axis=0)
+                xmax, ymax_slice = np.max(points, axis=0)
+                ymax = min([ymax_tot, ymax_slice])
+                mid_y = int((int(ymin) + int(ymax + 1)) / 2)
+                for x in range(int(xmin), int(xmax + 1)):
+                    for y in range(int(ymin), int(ymax + 1)):
+                        if (data[x, y, z] == 0) and (y < ymax_tot):
+                            if in_hull([x, y], hull):
+                                new_data[x, y, z] = 24
+            else:
+                print("z-value", z)
+                print("points: ", points)
+
 
         ##### CSF is not filled for the sagital plane of the brain
         # print("Filling in CSF x-dim")
@@ -193,16 +206,20 @@ class CSFFunctions:
         for y in range(ymin_tot, ymax_tot + 1):
             points = point_cloud.get_slice(1, y)
             points = points[:, [0, 2]]
-            hull = Delaunay(points)
+            if len(points) > 2:
+                hull = Delaunay(points)
 
-            min1d, min2d = np.min(points, axis=0)
-            max1d, max2d = np.max(points, axis=0)
-            mid_2d = int((int(min2d) + int(max2d + 1)) / 2)
-            for x in range(int(min1d), int(max1d + 1)):
-                for z in range(int(min2d), int(max2d + 1)):
-                    if (data[x, y, z] == 0) and (y < ymax_tot):
-                        if in_hull([x, z], hull):
-                            new_data[x, y, z] = 24
+                min1d, min2d = np.min(points, axis=0)
+                max1d, max2d = np.max(points, axis=0)
+                mid_2d = int((int(min2d) + int(max2d + 1)) / 2)
+                for x in range(int(min1d), int(max1d + 1)):
+                    for z in range(int(min2d), int(max2d + 1)):
+                        if (data[x, y, z] == 0) and (y < ymax_tot):
+                            if in_hull([x, z], hull):
+                                new_data[x, y, z] = 24
+            else:
+                print("y-value", y)
+                print("points: ", points)
 
         new_data = ndimage.binary_erosion(new_data).astype(int)
         # for i in range(1):

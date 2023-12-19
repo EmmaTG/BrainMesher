@@ -709,8 +709,10 @@ class Mesh:
                 e_centroid = e.calculate_element_centroid()
                 num_elements += 1
                 for d in range(len(e_centroid)):
-                  centroid[d] += e_centroid[d];
-        return [float(x/num_elements) for x in centroid]
+                  centroid[d] += e_centroid[d]
+        if num_elements > 0:
+            return [float(x/num_elements) for x in centroid]
+        return [0., 0., 0.]
         
     def create_elements_map(self, elementsNotIncluded, elementsIncluded = []):
         """

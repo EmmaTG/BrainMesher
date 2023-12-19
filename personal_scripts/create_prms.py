@@ -101,11 +101,12 @@ class CreatePRM:
 
     def __init__(self, path_to_template):
         self.template = None
-        self.material_volumes = None
+        self.mesh_material_volumes = None
         self.regions_dict = None
         self.complete_template = None
         self.materials = {}
-        self.region_number = None
+        self.region_numbers = BRAINREGIONNUMBERS
+        self.output_file = None
 
         self.open_template(path_to_template)
 
@@ -151,17 +152,18 @@ class CreatePRM:
         f_all_regions.close()
 
     def calculate_mesh_volumes(self, mesh):
-        self.material_volumes = {}
+        self.mesh_material_volumes = {}
         total = 0
         for ele in mesh.elements.values():
             total += 1
             mat = ele.getMaterial()
             for m in mat:
-                count = self.material_volumes.get(m, 0)
+                count = self.mesh_material_volumes.get(m, 0)
                 count += 1
-                self.material_volumes[m] = count
+                self.mesh_material_volumes[m] = count
 
     def create_materials(self, mesh, selected_conditioning, seleceted_poissons, heterogeneity, constitutive_type="one_term_ogden"):
+        print(heterogeneity.name)
         self.calculate_mesh_volumes(mesh)
 
         if not heterogeneity == hc.Heterogeneity.NINETEENR:
@@ -169,7 +171,6 @@ class CreatePRM:
             self.region_numbers = NINEREGIONNUMBERS
         else:
             self.open_nineteen_region_csv_data()
-            self.region_numbers = BRAINREGIONNUMBERS
 
         material_type = hc.MaterialsConverterFactory.get_converter(heterogeneity)
         material_values = [x.value for x in self.region_numbers]
@@ -178,14 +179,15 @@ class CreatePRM:
         materials_groups = {}
         total_volume_mat_groups = {}
         for i in material_values:
-            converted_type = material_type.converter[i]
-            mats = materials_groups.get(converted_type, [])
-            mats.append(i)
-            materials_groups.update({converted_type: mats})
+            if self.mesh_material_volumes.get(i):
+                converted_type = material_type.converter[i]
+                mats = materials_groups.get(converted_type, [])
+                mats.append(i)
+                materials_groups.update({converted_type: mats})
 
-            volume = total_volume_mat_groups.get(converted_type, 0)
-            volume += self.material_volumes[i]
-            total_volume_mat_groups.update({converted_type: volume})
+                volume = total_volume_mat_groups.get(converted_type, 0)
+                volume += self.mesh_material_volumes[i]
+                total_volume_mat_groups.update({converted_type: volume})
 
         # Calculate volume averaged values
         for mat, associated_mats in materials_groups.items():
@@ -196,7 +198,7 @@ class CreatePRM:
             for i in associated_mats:
                 region_abbrev = self.region_numbers(i).name
                 region_data = self.regions_dict[region_abbrev][selected_conditioning][seleceted_poissons]
-                volume_average = self.material_volumes[i] / total
+                volume_average = self.mesh_material_volumes[i] / total
 
                 curr_alpha = float(region_data.get('alpha_mean').replace(",", "."))
                 alpha += curr_alpha * volume_average
@@ -219,7 +221,7 @@ class CreatePRM:
             print(material.material_data_string())
             abbrev = self.region_numbers(mat).name
             fullname = BRAINREGIONNAMES[abbrev].value
-            mat_string += "\t# {} ({}), {} elements\n".format(fullname.upper(), abbrev, self.material_volumes[mat])
+            mat_string += "\t# {} ({}), {} elements\n".format(fullname.upper(), abbrev, self.mesh_material_volumes[mat])
             mat_string += material.material_data_string()
             mat_string += "\n"
 
@@ -244,12 +246,14 @@ class CreatePRM:
         for key, value in replacement_values.items():
             self.template = self.template.replace(key, str(value))
 
-    def write_and_close_prm(self, path_to_output):
+    def write_prm(self, path_to_output):
         if path_to_output.split(".")[-1] != "prm":
             path_to_output += ".prm"
-        output_file = open(path_to_output, 'w')
-        output_file.write(self.template)
-        output_file.close()
+        self.output_file = open(path_to_output, 'w')
+        self.output_file.write(self.template)
+
+    def close_prm(self):
+        self.output_file.close()
 
 
 class CreateAtrophyPRM(CreatePRM):
@@ -322,4 +326,4 @@ if __name__ == "__main__":
     atrophy_creator.write_materials()
     atrophy_creator.complete_prm(path, filename, "{}_atrophy_{}R".format(filename, heterogeneity_model.value))
     output_prm = "/".join([path, "{}_atrophy_{}R".format(filename, heterogeneity_model.value)])
-    atrophy_creator.write_and_close_prm(output_prm)
+    atrophy_creator.write_prm(output_prm)
