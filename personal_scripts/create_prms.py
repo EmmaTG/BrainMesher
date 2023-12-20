@@ -111,6 +111,16 @@ class CreatePRM:
 
         self.open_template(path_to_template)
 
+    def set_nineR_Model(self, set_model):
+        if set_model:
+            self.region_numbers = NINEREGIONNUMBERS
+
+    @staticmethod
+    def nine_to_nineteen_conversion(nineteen_number):
+        nine_converter = hc.NineRegionConverter()
+        return nine_converter.converter[nineteen_number]
+
+
     def open_template(self, path_to_template):
         template_file = open(path_to_template, 'r')
         self.template = template_file.read()
@@ -169,7 +179,7 @@ class CreatePRM:
 
         if not heterogeneity == hc.Heterogeneity.NINETEENR:
             self.open_nine_region_csv_data()
-            self.region_numbers = NINEREGIONNUMBERS
+            # self.region_numbers = NINEREGIONNUMBERS
         else:
             self.open_nineteen_region_csv_data()
             seleceted_poissons = seleceted_poissons.replace(",", ".")
@@ -198,9 +208,11 @@ class CreatePRM:
             total = total_volume_mat_groups[mat]
 
             for i in associated_mats:
+                volume_average = self.mesh_material_volumes[i] / total
+                if not heterogeneity == hc.Heterogeneity.NINETEENR:
+                    i = CreatePRM.nine_to_nineteen_conversion(i)
                 region_abbrev = self.region_numbers(i).name
                 region_data = self.regions_dict[region_abbrev][selected_conditioning][seleceted_poissons]
-                volume_average = self.mesh_material_volumes[i] / total
 
                 curr_alpha = float(region_data.get('alpha_mean').replace(",", "."))
                 alpha += curr_alpha * volume_average
